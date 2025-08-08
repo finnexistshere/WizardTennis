@@ -5,8 +5,8 @@ using UnityEngine;
 public class Ball : MonoBehaviour
 {
     public Transform aimTarget; // point on the opp side that the ball will aim towards
-    public float strength = 13; // strength of hit
-    public float upForce = 5; // upwards force of hit
+    public float strength = 25; // strength of hit
+    public float upForce = 14; // upwards force of hit
 
     private bool hitting; // is the player currently hitting the ball
     private bool serving; // is the player's next hit a serve
@@ -34,6 +34,19 @@ public class Ball : MonoBehaviour
         {
             if (hitting)
             {
+                if (35.5 < transform.position.x)
+                {
+                    upForce = 13f;
+                } else
+                {
+                    upForce = 11f;
+                }
+                if (-6.25 < transform.position.z || transform.position.z < 6.25)
+                {
+                    upForce += 2;
+                }
+
+
                 if (serving)
                 {
                     other.GetComponent<Rigidbody>().useGravity = true; // Make the ball stop floating midair (will change this once mechanics are properly fleshed out)
