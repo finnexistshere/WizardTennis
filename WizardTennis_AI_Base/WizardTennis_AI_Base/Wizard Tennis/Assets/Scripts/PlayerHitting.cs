@@ -6,7 +6,9 @@ public class Ball : MonoBehaviour
 {
     public Transform aimTarget; // point on the opp side that the ball will aim towards
     public float strength = 25; // strength of hit
-    public float upForce = 14; // upwards force of hit
+    public float ogUpForce = 11;
+    private float upForce = 11; // upwards force of hit
+    public float ballSpeed = 5;
 
     private bool hitting; // is the player currently hitting the ball
     private bool serving; // is the player's next hit a serve
@@ -14,6 +16,7 @@ public class Ball : MonoBehaviour
     void Start()
     {
         serving = true; // Making the player's first hit a serve
+        upForce = ogUpForce;
     }
 
     void Update()
@@ -36,10 +39,10 @@ public class Ball : MonoBehaviour
             {
                 if (35.5 < transform.position.x)
                 {
-                    upForce = 13f;
+                    upForce = ogUpForce + 2;
                 } else
                 {
-                    upForce = 11f;
+                    upForce = ogUpForce;
                 }
                 if (-6.25 < transform.position.z || transform.position.z < 6.25)
                 {
@@ -55,7 +58,8 @@ public class Ball : MonoBehaviour
                 }
                 else
                 {
-                    Vector3 dir = aimTarget.position - transform.position; // Use the aimTarget to get a new direction vector we can use to aim
+                    //Vector3 dir = aimTarget.position - transform.position; // Use the aimTarget to get a new direction vector we can use to aim
+                    Vector3 dir = aimTarget.position - transform.position;
                     other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0); // Apply a force to the ball in the direction made above with the strength modifier + some upwards force so it can get over the net
                 }
             }

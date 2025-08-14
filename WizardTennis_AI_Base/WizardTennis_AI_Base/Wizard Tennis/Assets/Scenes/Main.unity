@@ -938,7 +938,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   aimTarget: {fileID: 1520677982}
   strength: 25
-  upForce: 12.5
+  ogUpForce: 11
+  ballSpeed: 5
 --- !u!4 &227331819 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6388008245533490508, guid: 3af4276c8f647fc4ebf7cc2c8e8120c5, type: 3}
@@ -4745,13 +4746,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1150c558b837a0246ad4026887fb53ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pickupPrefab: {fileID: 7109859178366572936, guid: a227066672fbdf248ad3205225023abe, type: 3}
+  pickupPrefabs:
+  - {fileID: 7109859178366572936, guid: a227066672fbdf248ad3205225023abe, type: 3}
   spawnInterval: 3
-  buffValue: 0.2
-  debuffValue: -0.2
-  spawnPointParent: {fileID: 1834355989}
-  spawnPoints:
-  - {fileID: 1834355989}
+  spawnRadius: 25
+  maxActivePickups: 4
+  spawnCenter: {fileID: 1834355989}
 --- !u!1001 &1613536706
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5191,7 +5191,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 2.61, z: 0}
-  m_LocalScale: {x: -0.09815206, y: 24.67, z: 68.44527}
+  m_LocalScale: {x: 0, y: 24.67, z: 68.44527}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 943807689}
@@ -5668,6 +5668,7 @@ MonoBehaviour:
   - -12.5
   - 0
   - 12.5
+  TennisAI: {fileID: 1594825193}
 --- !u!1001 &1912989300
 PrefabInstance:
   m_ObjectHideFlags: 0

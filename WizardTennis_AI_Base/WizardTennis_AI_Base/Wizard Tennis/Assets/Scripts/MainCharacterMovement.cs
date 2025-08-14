@@ -42,7 +42,7 @@ public class MainCharacterMovement : MonoBehaviour
             // Apply the debuff/spell to the next AI return attempt, then clear
             if (debuffValue != 0f)
             {
-                TennisAi.ApplyDebuff(debuffValue, spellName);
+                TennisAi.ApplyBuff(debuffValue, spellName);
                 debuffValue = 0f;
                 spellName = "";
                 UIManager.Instance?.UpdateSpellStatus(spellName, debuffValue); // Clear UI display
