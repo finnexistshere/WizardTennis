@@ -29,27 +29,6 @@ public class MainCharacterMovement : MonoBehaviour
 
         moveDirection.y -= gravity * Time.deltaTime;
         controller.Move(moveDirection * Time.deltaTime);
-        // Basic hit on Left mouse click
-        if (Input.GetMouseButtonDown(0))
-        {
-            // Normal ball hit with no modifiers
-            TennisAi.AttemptReturn();
-        }
-
-        // Right mouse click: Fires off a hit with the current spell equipped.
-        if (Input.GetMouseButtonDown(1))
-        {
-            // Apply the debuff/spell to the next AI return attempt, then clear
-            if (debuffValue != 0f)
-            {
-                TennisAi.ApplyBuff(debuffValue, spellName);
-                debuffValue = 0f;
-                spellName = "";
-                UIManager.Instance?.UpdateSpellStatus(spellName, debuffValue); // Clear UI display
-            }
-
-            TennisAi.AttemptReturn();
-        }
     }
 
     // Call this method from the pickup effect to set the debuff value and spell name
