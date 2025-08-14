@@ -30,9 +30,15 @@ public class Ball : MonoBehaviour
         {
             hitting = true;
         }
-        else if (Input.GetMouseButtonDown(0)) // If the player lets go of the left mouse
+        else if (Input.GetMouseButtonUp(0)) // If the player lets go of the left mouse
         {
             hitting = false;
+        }
+        
+        // Let the Player re-serve for now to make testing easier
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            serving = true;
         }
     }
     private void OnTriggerEnter(Collider other)
