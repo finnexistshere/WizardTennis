@@ -1,0 +1,88 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|c:\\users\\a250051\\desktop\\wizard tennis\\assets\\scripts\\opphitting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\opphitting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|c:\\users\\a250051\\desktop\\wizard tennis\\assets\\scripts\\playerhitting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\playerhitting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|C:\\Users\\a250051\\Desktop\\Wizard Tennis\\assets\\scripts\\spells\\pickupeffect.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\spells\\pickupeffect.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|c:\\users\\a250051\\desktop\\wizard tennis\\assets\\scripts\\tennisai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{548D4CF6-04AA-21CD-E664-0855E72AAC89}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\tennisai.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PlayerHitting.cs",
+              "DocumentMoniker": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\PlayerHitting.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\PlayerHitting.cs",
+              "ToolTip": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\PlayerHitting.cs",
+              "RelativeToolTip": "Assets\\Scripts\\PlayerHitting.cs",
+              "ViewState": "AgIAACoAAAAAAAAAAAAiwD4AAABKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-14T04:53:32.476Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "TennisAI.cs",
+              "DocumentMoniker": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\TennisAI.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\TennisAI.cs",
+              "ToolTip": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\TennisAI.cs",
+              "RelativeToolTip": "Assets\\Scripts\\TennisAI.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-14T04:52:10.803Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "OppHitting.cs",
+              "DocumentMoniker": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\OppHitting.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\OppHitting.cs",
+              "ToolTip": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\OppHitting.cs",
+              "RelativeToolTip": "Assets\\Scripts\\OppHitting.cs",
+              "ViewState": "AgIAAEAAAAAAAAAAAAAowGAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-14T04:30:20.284Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PickupEffect.cs",
+              "DocumentMoniker": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\Spells\\PickupEffect.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Spells\\PickupEffect.cs",
+              "ToolTip": "C:\\Users\\a250051\\Desktop\\Wizard Tennis\\Assets\\Scripts\\Spells\\PickupEffect.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Spells\\PickupEffect.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-14T04:12:54.857Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
