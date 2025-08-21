@@ -1,0 +1,92 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Ball : MonoBehaviour
+{
+    public Transform aimTarget; // point on the opp side that the ball will aim towards
+    public float strength = 25; // strength of hit
+    public float ogUpForce = 11;
+    private float upForce = 11; // upwards force of hit
+    public float ballSpeed = 5;
+
+    private bool hitting; // is the player currently hitting the ball
+    private bool serving; // is the player's next hit a serve
+
+    public TennisAI TennisAi;
+    // Store current pickup debuff value and spell name
+    private float debuffValue = 0f;
+    private string spellName = "";
+    void Start()
+    {
+        serving = true; // Making the player's first hit a serve
+        upForce = ogUpForce;
+    }
+
+    void Update()
+    {
+        // While the player holds down left mouse, they can hit the ball, but once they let go, they cannot
+        if (Input.GetMouseButtonDown(0)) // If the player is holding down the left mouse
+        {
+            hitting = true;
+        }
+        else if (Input.GetMouseButtonUp(0)) // If the player lets go of the left mouse
+        {
+            hitting = false;
+        }
+        
+        // Let the Player re-serve for now to make testing easier
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            serving = true;
+        }
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Ball")) // if we collide with the ball 
+        {
+            if (hitting)
+            {
+                if (35.5 < transform.position.x)
+                {
+                    upForce = ogUpForce + 2;
+                }
+                else
+                {
+                    upForce = ogUpForce;
+                }
+                if (-6.25 < transform.position.z || transform.position.z < 6.25)
+                {
+                    upForce += 2;
+                }
+
+
+                if (serving)
+                {
+                    other.GetComponent<Rigidbody>().useGravity = true; // Make the ball stop floating midair (will change this once mechanics are properly fleshed out)
+                    other.GetComponent<Rigidbody>().velocity = new Vector3(0, upForce, 0).normalized * strength / 2; // Send the ball straight upwards
+                    serving = false; // Player is no longer serving
+                }
+                else
+                {
+                    //Vector3 dir = aimTarget.position - transform.position; // Use the aimTarget to get a new direction vector we can use to aim
+                    Vector3 dir = aimTarget.position - transform.position;
+                    other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0); // Apply a force to the ball in the direction made above with the strength modifier + some upwards force so it can get over the net
+                }
+                hitting = false;
+            }
+        }
+        if (Input.GetMouseButtonDown(1))
+        {
+            hitting = true;
+            // Apply the debuff/spell to the next AI return attempt, then clear
+            if (debuffValue != 0f)
+            {
+                TennisAi.ApplyBuff(debuffValue, spellName);
+                debuffValue = 0f;
+                spellName = "";
+                UIManager.Instance?.UpdateSpellStatus(spellName, debuffValue); // Clear UI display
+            }
+        }
+    }
+}

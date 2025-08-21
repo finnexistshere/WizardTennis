@@ -1,0 +1,139 @@
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+
+public class GameManager : MonoBehaviour
+{
+    public static GameManager Instance;
+
+    [Header("Pickup Settings")]
+    public List<GameObject> pickupPrefabs;
+    public float spawnInterval = 7f;
+    public float spawnRadius = 25f;
+    public int maxActivePickups = 4;
+
+    [Header("Spawn Settings")]
+    public Transform spawnCenter;
+    private float spawnTimer;
+    private List<GameObject> activePickups = new List<GameObject>();
+
+    [Header("UI Panels")]
+    public GameObject pauseMenuUI;
+    public GameObject gameOverUI;
+
+    private bool isPaused = false;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else Destroy(gameObject);
+    }
+
+    private void Start()
+    {
+        spawnTimer = spawnInterval;
+    }
+
+    private void Update()
+    {
+        // Pause toggle
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (!isPaused) PauseGame();
+            else ResumeGame();
+        }
+
+        // Clean nulls from pickup list
+        activePickups.RemoveAll(p => p == null);
+
+        // Spawn timer logic
+        spawnTimer -= Time.deltaTime;
+        if (spawnTimer <= 0f && activePickups.Count < maxActivePickups)
+        {
+            SpawnPickup();
+            spawnTimer = spawnInterval;
+        }
+    }
+
+    private void SpawnPickup()
+    {
+        Vector3 spawnPos = Vector3.zero;
+        bool validPositionFound = false;
+        int attempts = 0;
+
+        while (!validPositionFound && attempts < 20)
+        {
+            attempts++;
+            Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
+            spawnPos = spawnCenter.position + new Vector3(randomCircle.x, 0f, randomCircle.y);
+
+            bool tooClose = false;
+            foreach (GameObject pickup in activePickups)
+            {
+                if (pickup != null && Vector3.Distance(pickup.transform.position, spawnPos) < 1.5f)
+                {
+                    tooClose = true;
+                    break;
+                }
+            }
+
+            if (!tooClose)
+                validPositionFound = true;
+        }
+
+        if (!validPositionFound) return;
+
+        GameObject prefab = pickupPrefabs[Random.Range(0, pickupPrefabs.Count)];
+        GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
+        activePickups.Add(newPickup);
+    }
+
+    // ----- Pause / Resume -----
+    public void PauseGame()
+    {
+        isPaused = true;
+        Time.timeScale = 0f;
+        pauseMenuUI?.SetActive(true);
+    }
+
+    public void ResumeGame()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        pauseMenuUI?.SetActive(false);
+    }
+
+    // ----- Game Over -----
+    public void GameOver()
+    {
+        Time.timeScale = 0f;
+        gameOverUI?.SetActive(true);
+    }
+
+    // ----- Restart -----
+    public void RestartGame()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // ----- Quit -----
+    public void QuitGame()
+    {
+        Debug.Log("Quitting game...");
+        Application.Quit();
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (spawnCenter != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(spawnCenter.position, spawnRadius);
+        }
+    }
+}
