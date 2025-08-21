@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -25,17 +26,30 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
         }
-        else Destroy(gameObject);
+
+        spawnCenter = GameObject.Find("SpawnCenter").transform;
+        pauseMenuUI = GameObject.Find("PauseMenu");
+        pauseMenuUI.SetActive(false);
+        gameOverUI = GameObject.Find("GameOverMenu");
+        gameOverUI.SetActive(false);
     }
 
     private void Start()
     {
         spawnTimer = spawnInterval;
+
+        //setup buttonz
+        foreach (var btn in pauseMenuUI.GetComponentsInChildren<Button>())
+        {
+            string name = btn.name;
+            btn.onClick.AddListener(() => buttonClick(name));
+        }
     }
 
     private void Update()
@@ -107,6 +121,19 @@ public class GameManager : MonoBehaviour
         pauseMenuUI?.SetActive(false);
     }
 
+    // ----- Pause menu buttons -----
+
+    void buttonClick(string buttonName)
+    {
+        switch (buttonName)
+        {
+            case "Resume": ResumeGame(); break;
+            case "Restart": RestartGame(); break;
+            case "Menu": QuitMenu(); break;
+            case "OS": QuitGame(); break;
+        }
+    }
+
     // ----- Game Over -----
     public void GameOver()
     {
@@ -119,6 +146,12 @@ public class GameManager : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // ----- Quit to menu -----
+    public void QuitMenu()
+    {
+        SceneManager.LoadScene("Main Menu");
     }
 
     // ----- Quit -----
