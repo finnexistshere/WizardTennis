@@ -18,6 +18,7 @@
 	{
 		Tags {"RenderType" = "Opaque" }
 		ZWrite On
+		Cull Off
 		LOD 100
 
 		Pass
