@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using TMPro;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -20,22 +22,36 @@ public class GameManager : MonoBehaviour
     [Header("UI Panels")]
     public GameObject pauseMenuUI;
     public GameObject gameOverUI;
+    public TextMeshProUGUI WinLoseText;
 
     private bool isPaused = false;
 
     private void Awake()
     {
+
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
         }
-        else Destroy(gameObject);
+
+        spawnCenter = GameObject.Find("SpawnCenter").transform;
+        pauseMenuUI = GameObject.Find("PauseMenu");
+        pauseMenuUI.SetActive(false);
+        gameOverUI = GameObject.Find("GameOverMenu");
+        gameOverUI.SetActive(false);
     }
 
     private void Start()
     {
         spawnTimer = spawnInterval;
+
+        //setup buttonz
+        foreach (var btn in pauseMenuUI.GetComponentsInChildren<Button>())
+        {
+            string name = btn.name;
+            btn.onClick.AddListener(() => buttonClick(name));
+        }
     }
 
     private void Update()
@@ -47,10 +63,10 @@ public class GameManager : MonoBehaviour
             else ResumeGame();
         }
 
-        // Clean nulls from pickup list
+        // Clean up destroyed pickups
         activePickups.RemoveAll(p => p == null);
 
-        // Spawn timer logic
+        // Spawn new pickups if timer elapsed
         spawnTimer -= Time.deltaTime;
         if (spawnTimer <= 0f && activePickups.Count < maxActivePickups)
         {
@@ -108,10 +124,14 @@ public class GameManager : MonoBehaviour
     }
 
     // ----- Game Over -----
-    public void GameOver()
+    public void GameOver(string message)
     {
         Time.timeScale = 0f;
-        gameOverUI?.SetActive(true);
+        if (gameOverUI != null)
+            gameOverUI.SetActive(true);
+
+        if (WinLoseText != null)
+            WinLoseText.text = message;
     }
 
     // ----- Restart -----
@@ -126,6 +146,25 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Quitting game...");
         Application.Quit();
+    }
+
+    // ----- Pause menu buttons -----
+
+    void buttonClick(string buttonName)
+    {
+        switch (buttonName)
+        {
+            case "Resume": ResumeGame(); break;
+            case "Restart": RestartGame(); break;
+            case "Menu": QuitMenu(); break;
+            case "OS": QuitGame(); break;
+        }
+    }
+
+    // ----- Quit to menu -----
+    public void QuitMenu()
+    {
+        SceneManager.LoadScene("Main Menu");
     }
 
     private void OnDrawGizmos()

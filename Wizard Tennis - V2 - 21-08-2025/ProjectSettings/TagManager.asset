@@ -5,6 +5,12 @@ TagManager:
   serializedVersion: 2
   tags:
   - Ball
+  - Opponent
+  - OutOfBounds
+  - OutOfBoundsSide2
+  - Ground
+  - Net
+  - BounceCheck
   layers:
   - Default
   - TransparentFX
