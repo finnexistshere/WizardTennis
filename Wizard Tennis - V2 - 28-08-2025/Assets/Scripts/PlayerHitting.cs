@@ -14,10 +14,6 @@ public class Ball : MonoBehaviour
     private bool hitting; // is the player currently hitting the ball
     private bool serving; // is the player's next hit a serve
 
-    public TennisAI TennisAi;
-    // Store current pickup debuff value and spell name
-    private float debuffValue = 0f;
-    private string spellName = "";
     void Start()
     {
         serving = true; // Making the player's first hit a serve
@@ -77,18 +73,6 @@ public class Ball : MonoBehaviour
                     other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0); // Apply a force to the ball in the direction made above with the strength modifier + some upwards force so it can get over the net
                 }
                 hitting = false;
-            }
-        }
-        if (Input.GetMouseButtonDown(1))
-        {
-            hitting = true;
-            // Apply the debuff/spell to the next AI return attempt, then clear
-            if (debuffValue != 0f)
-            {
-                TennisAi.ApplyBuff(debuffValue, spellName);
-                debuffValue = 0f;
-                spellName = "";
-                UIManager.Instance?.UpdateSpellStatus(spellName, debuffValue); // Clear UI display
             }
         }
     }

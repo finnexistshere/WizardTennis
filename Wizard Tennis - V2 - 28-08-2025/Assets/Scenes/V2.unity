@@ -1059,7 +1059,6 @@ MonoBehaviour:
   strength: 15
   ogUpForce: 5
   ballSpeed: 2.5
-  TennisAi: {fileID: 1594825194}
 --- !u!114 &153926191
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1203,11 +1202,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 899ff2024ed4c6a41987d549fd46cf51, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spellBook:
-  - LRU
-  - URL
-  - LUR
   inputSpellAddress: 
+  TennisAi: {fileID: 1594825194}
 --- !u!114 &153926198
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5310,7 +5306,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d364286573356ec468d576f4c1e6a75d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseProbability: 1
+  baseProbability: 0.5
 --- !u!1 &1606848551
 GameObject:
   m_ObjectHideFlags: 0

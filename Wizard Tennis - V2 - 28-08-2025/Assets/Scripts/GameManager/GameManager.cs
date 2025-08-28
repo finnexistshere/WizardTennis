@@ -72,6 +72,17 @@ public class GameManager : MonoBehaviour
         else ResumeGame();
     }
 
+    void buttonClick(string buttonName)
+    {
+        switch (buttonName)
+        {
+            case "Resume": ResumeGame(); break;
+            case "Restart": RestartGame(); break;
+            case "Menu": QuitMenu(); break;
+            case "OS": QuitGame(); break;
+        }
+    }
+
     private void SpawnPickup()
     {
         Vector3 spawnPos = Vector3.zero;
@@ -136,6 +147,12 @@ public class GameManager : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // ----- Quit to menu -----
+    public void QuitMenu()
+    {
+        SceneManager.LoadScene("Main Menu");
     }
 
     // ----- Quit -----

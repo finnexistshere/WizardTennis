@@ -7,19 +7,25 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] public EffectType type;
     [SerializeField] public float value;
     [SerializeField] private string spellName;
+    [SerializeField] private string spellAddress;
 
     public bool IsBuff => type == EffectType.Buff;
     public float Amount => value;
     public string SpellName => spellName;
+    public string SpellAddress => spellAddress;
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            MainCharacterMovement playerMovement = other.GetComponent<MainCharacterMovement>();
-            if (playerMovement != null)
+            Spellcasting spellcasting = other.GetComponent<Spellcasting>();
+            if (spellcasting != null)
             {
-                playerMovement.SetDebuff(value, spellName);
+                if (!spellcasting.spellBook.ContainsKey(SpellAddress))
+                {
+                    spellcasting.spellBook.Add(SpellAddress, SpellName);
+                    spellcasting.debuffBook.Add(SpellName, value);
+                }
             }
 
             Destroy(gameObject);

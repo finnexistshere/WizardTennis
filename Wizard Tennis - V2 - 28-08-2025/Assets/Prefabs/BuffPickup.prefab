@@ -121,3 +121,4 @@ MonoBehaviour:
   type: 1
   value: -0.2
   spellName: Fireball
+  spellAddress: LRU
