@@ -40,13 +40,12 @@ public class CollisionTrackerBall : MonoBehaviour
             HandleNetHit();
         }
         // This is supposed to check if the ball has bounced before it went over, as of right now it's not working, presumably because of how I'm marking hasbounced. I'll fix it later.
- //     if (!hasbounced)
- //     {
-  //        if (other.CompareTag("BounceCheck"))
-  //        {
-  //            HandleBounceCheck();
-   //       }
-   //   }
+
+          if (other.CompareTag("BounceCheck"))
+          {
+              HandleBounceCheck();
+          }
+  
         hasbounced = false;
     }
 
@@ -58,7 +57,6 @@ public class CollisionTrackerBall : MonoBehaviour
 
             if (gameManager == null)
                 gameManager = GameManager.Instance;
-
             if (LastHitWizard == "Player")
             {
                 gameManager.GameOver("Opponent Wins! You hit it out!");
@@ -113,7 +111,7 @@ public class CollisionTrackerBall : MonoBehaviour
                 gameManager.GameOver("Game Over: Unknown State!");
             }
         }
-        if (hasbounced == true) ;
+        if (hasbounced == true);
         {
             if (gameManager == null)
                 gameManager = GameManager.Instance;
@@ -156,17 +154,20 @@ public class CollisionTrackerBall : MonoBehaviour
         if (gameManager == null)
             gameManager = GameManager.Instance;
 
-        if (LastHitWizard == "Player")
+        if (hasbounced == true)
         {
-            gameManager.GameOver("You lose! Your ball bounced before it went over!");
-        }
-        else if (LastHitWizard == "Opponent")
-        {
-            gameManager.GameOver("The AI is stupid and couldn't hit the ball properly");
-        }
-        else
-        {
-            gameManager.GameOver("Game Over: Unknown State!");
+            if (LastHitWizard == "Player")
+            {
+                gameManager.GameOver("You lose! Your ball bounced before it went over!");
+            }
+            else if (LastHitWizard == "Opponent")
+            {
+                gameManager.GameOver("The AI is stupid and couldn't hit the ball properly");
+            }
+            else
+            {
+                gameManager.GameOver("Game Over: Unknown State!");
+            }
         }
     }
 }
