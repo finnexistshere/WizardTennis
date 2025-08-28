@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class Ball : MonoBehaviour
 {
@@ -24,23 +25,25 @@ public class Ball : MonoBehaviour
     }
 
     void Update()
-    {
-        // While the player holds down left mouse, they can hit the ball, but once they let go, they cannot
-        if (Input.GetMouseButtonDown(0)) // If the player is holding down the left mouse
-        {
-            hitting = true;
-        }
-        else if (Input.GetMouseButtonUp(0)) // If the player lets go of the left mouse
-        {
-            hitting = false;
-        }
-        
+    {   
         // Let the Player re-serve for now to make testing easier
         if (Input.GetKeyDown(KeyCode.E))
         {
             serving = true;
         }
     }
+
+    public void OnHitBall(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            hitting = true;
+        } else if (context.canceled)
+        {
+            hitting = false;
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Ball")) // if we collide with the ball 

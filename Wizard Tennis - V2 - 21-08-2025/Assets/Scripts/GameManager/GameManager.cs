@@ -3,6 +3,7 @@ using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 public class GameManager : MonoBehaviour
 {
@@ -56,13 +57,6 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        // Pause toggle
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            if (!isPaused) PauseGame();
-            else ResumeGame();
-        }
-
         // Clean up destroyed pickups
         activePickups.RemoveAll(p => p == null);
 
@@ -73,6 +67,15 @@ public class GameManager : MonoBehaviour
             SpawnPickup();
             spawnTimer = spawnInterval;
         }
+    }
+
+    void OnPause(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            if (!isPaused) PauseGame();
+        }
+        else ResumeGame();
     }
 
     private void SpawnPickup()
@@ -165,25 +168,6 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Quitting game...");
         Application.Quit();
-    }
-
-    // ----- Pause menu buttons -----
-
-    void buttonClick(string buttonName)
-    {
-        switch (buttonName)
-        {
-            case "Resume": ResumeGame(); break;
-            case "Restart": RestartGame(); break;
-            case "Menu": QuitMenu(); break;
-            case "OS": QuitGame(); break;
-        }
-    }
-
-    // ----- Quit to menu -----
-    public void QuitMenu()
-    {
-        SceneManager.LoadScene("Main Menu");
     }
 
     private void OnDrawGizmos()

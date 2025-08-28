@@ -53,7 +53,7 @@ public class CollisionTrackerBall : MonoBehaviour
     // this has got to be the worst code I've ever written
     private void HandleOutOfBounds()
     {
-        if (hasbounced == false) ;
+        if (hasbounced == false)
         {
 
             if (gameManager == null)
@@ -72,7 +72,7 @@ public class CollisionTrackerBall : MonoBehaviour
                 gameManager.GameOver("Game Over: Unknown State!");
             }
         }
-        if (hasbounced == true) ;
+        if (hasbounced == true)
         {
 
             if (gameManager == null)
@@ -95,7 +95,7 @@ public class CollisionTrackerBall : MonoBehaviour
 
     private void HandleOutOfBoundsSide2()
     {
-        if (hasbounced == false) ;
+        if (hasbounced == false)
         {
             if (gameManager == null)
                 gameManager = GameManager.Instance;
@@ -113,7 +113,7 @@ public class CollisionTrackerBall : MonoBehaviour
                 gameManager.GameOver("Game Over: Unknown State!");
             }
         }
-        if (hasbounced == true) ;
+        if (hasbounced == true)
         {
             if (gameManager == null)
                 gameManager = GameManager.Instance;

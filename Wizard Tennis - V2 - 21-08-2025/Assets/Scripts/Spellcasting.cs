@@ -3,18 +3,26 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Accessibility;
+using UnityEngine.InputSystem;
 
 public class Spellcasting : MonoBehaviour
 {
-
-    public List<string> spellBook; // spellBook is currently here just for testing out spellcasting. This will be moved to a different script later on.
+    Dictionary<string, string> spellBook = new Dictionary<string, string>();
+    // spellBook is currently here just for testing out spellcasting. This will be moved to a different script later on.
 
     private bool spellCasting = false;
     public string inputSpellAddress = "";
 
+    private void Start()
+    {
+        spellBook.Add("LRU", "Spell 1");
+        spellBook.Add("UDD", "Spell 2");
+        spellBook.Add("RDL", "Spell 3");
+    }
+
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        /* if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             spellCasting = true;
         }
@@ -23,6 +31,7 @@ public class Spellcasting : MonoBehaviour
             spellCasting = false;
             checkSpell();
         }
+        */
 
         if (spellCasting)
         {
@@ -43,24 +52,31 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
+    public void OnCastSpell(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            spellCasting = true;
+        } else if (context.canceled)
+        {
+            spellCasting = false;
+            checkSpell();
+        }
+    }
+
     private void checkSpell()
     {
         string currentSpell = "";
-        bool spellFound = false;
-        for (int i = 0; i < spellBook.Count; i++)
-        {
-            if (spellBook[i] == inputSpellAddress)
-            {
-                currentSpell = spellBook[i];
-                spellFound = true;
-                break;
-            }
-        }
 
-        if (spellFound)
+        if (spellBook.ContainsKey(inputSpellAddress))
         {
-            Debug.Log(currentSpell);
-        } else { Debug.Log("Spell not found"); }
+            currentSpell = spellBook[inputSpellAddress];
+            Debug.Log(currentSpell + " cast!");
+        }
+        else
+        {
+            Debug.Log("Spell not found");
+        }
 
         inputSpellAddress = "";
     }
