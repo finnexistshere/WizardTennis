@@ -28,7 +28,7 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-
+        
         if (Instance == null)
         {
             Instance = this;
@@ -123,6 +123,19 @@ public class GameManager : MonoBehaviour
         pauseMenuUI?.SetActive(false);
     }
 
+    // ----- Pause menu buttons -----
+
+    void buttonClick(string buttonName)
+    {
+        switch (buttonName)
+        {
+            case "Resume": ResumeGame(); break;
+            case "Restart": RestartGame(); break;
+            case "Menu": QuitMenu(); break;
+            case "OS": QuitGame(); break;
+        }
+    }
+
     // ----- Game Over -----
     public void GameOver(string message)
     {
@@ -139,6 +152,12 @@ public class GameManager : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // ----- Quit to menu -----
+    public void QuitMenu()
+    {
+        SceneManager.LoadScene("Main Menu");
     }
 
     // ----- Quit -----
