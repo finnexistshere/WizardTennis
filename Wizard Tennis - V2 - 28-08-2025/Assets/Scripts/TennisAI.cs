@@ -25,7 +25,7 @@ public class TennisAI : MonoBehaviour
         Debug.Log(success ? "AI returned the ball!" : "AI missed!");
 
         // Reset one-time modifiers after use
-        buff = 0f;
+        ClearEffects();
 
         return success;
     }
@@ -49,6 +49,6 @@ public class TennisAI : MonoBehaviour
     // I'm not sure if this is actually doing anything but I don't wanna risk breaking it
     private void UpdateSpellUI()
     {
-        Debug.Log("Current spell: " + currentSpellName);
+        UIManager.Instance?.UpdateSpellStatus(currentSpellName, buff);
     }
 }

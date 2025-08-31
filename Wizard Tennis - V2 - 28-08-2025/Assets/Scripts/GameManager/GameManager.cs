@@ -19,6 +19,7 @@ public class GameManager : MonoBehaviour
     public Transform spawnCenter;
     private float spawnTimer;
     private List<GameObject> activePickups = new List<GameObject>();
+    public Spellcasting spellcasting;
 
     [Header("UI Panels")]
     public GameObject pauseMenuUI;
@@ -26,6 +27,7 @@ public class GameManager : MonoBehaviour
     public TextMeshProUGUI WinLoseText;
 
     private bool isPaused = false;
+    public PlayerInput playerInput;
 
     private void Awake()
     {
@@ -35,6 +37,7 @@ public class GameManager : MonoBehaviour
         pauseMenuUI.SetActive(false);
         gameOverUI = GameObject.Find("GameOverMenu");
         gameOverUI.SetActive(false);
+        playerInput.SwitchCurrentActionMap("Player");
     }
 
     private void Start()
@@ -112,8 +115,11 @@ public class GameManager : MonoBehaviour
         if (!validPositionFound) return;
 
         GameObject prefab = pickupPrefabs[Random.Range(0, pickupPrefabs.Count)];
-        GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
-        activePickups.Add(newPickup);
+        if (!spellcasting.spellBook.ContainsKey(prefab.GetComponent<PickupEffect>().SpellAddress))
+        {
+            GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
+            activePickups.Add(newPickup);
+        }
     }
 
     // ----- Pause / Resume -----
@@ -121,6 +127,7 @@ public class GameManager : MonoBehaviour
     {
         isPaused = true;
         Time.timeScale = 0f;
+        playerInput.SwitchCurrentActionMap("UI");
         pauseMenuUI?.SetActive(true);
     }
 
@@ -128,6 +135,7 @@ public class GameManager : MonoBehaviour
     {
         isPaused = false;
         Time.timeScale = 1f;
+        playerInput.SwitchCurrentActionMap("Player");
         pauseMenuUI?.SetActive(false);
     }
 

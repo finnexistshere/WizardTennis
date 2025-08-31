@@ -41,21 +41,21 @@ public class OppHitting : MonoBehaviour
                 float aimTargety = aimTarget.transform.position.y;
                 int xRand = Random.Range(0, xCourtAim.Length);
                 int zRand = Random.Range(0, zCourtAim.Length);
-                if (xRand == 0)
+                if (xRand == 1)
                 {
-                    upForce = ogUpForce + 2;
+                    upForce = ogUpForce + 1.5f;
                 }
                 else
                 {
                     upForce = ogUpForce;
                 }
-                if (zRand == 1)
+                /*if (zRand < 2)
                 {
                     upForce += 2;
-                }
-                if (other.transform.position.y < 3)
+                } else { upForce += 2f; }*/
+                if (other.transform.position.y < 3 && zRand != 2 && xRand != 1)
                 {
-                    upForce += 2;
+                    upForce += 1;
                 }
 
                 aimTarget.transform.position = new Vector3(xCourtAim[xRand], aimTargety, zCourtAim[zRand]);

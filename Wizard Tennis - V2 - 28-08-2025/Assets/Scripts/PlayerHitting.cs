@@ -11,7 +11,7 @@ public class Ball : MonoBehaviour
     private float upForce = 11; // upwards force of hit
     public float ballSpeed = 5;
 
-    private bool hitting; // is the player currently hitting the ball
+    private bool hitting = true; // is the player currently hitting the ball
     private bool serving; // is the player's next hit a serve
 
     void Start()
@@ -29,7 +29,7 @@ public class Ball : MonoBehaviour
         }
     }
 
-    public void OnHitBall(InputAction.CallbackContext context)
+    /*public void OnHitBall(InputAction.CallbackContext context)
     {
         if (context.started)
         {
@@ -38,7 +38,7 @@ public class Ball : MonoBehaviour
         {
             hitting = false;
         }
-    }
+    }*/
 
     private void OnTriggerEnter(Collider other)
     {
@@ -72,7 +72,6 @@ public class Ball : MonoBehaviour
                     Vector3 dir = aimTarget.position - transform.position;
                     other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0); // Apply a force to the ball in the direction made above with the strength modifier + some upwards force so it can get over the net
                 }
-                hitting = false;
             }
         }
     }
