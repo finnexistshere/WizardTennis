@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class shadowFollow : MonoBehaviour
 {
-    public GameObject gameObject;
+    public GameObject follow;
     // Update is called once per frame
     void Update()
     {
-        transform.position = new Vector3(gameObject.transform.position.x, 0.941f, gameObject.transform.position.z);
+        transform.position = new Vector3(follow.transform.position.x, 0.941f, follow.transform.position.z);
         transform.rotation = Quaternion.Euler(-90, 0, 0);
     }
 }
