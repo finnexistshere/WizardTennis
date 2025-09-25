@@ -8,6 +8,10 @@ public class TennisAI : MonoBehaviour
     private float buff = 0f;
     private string currentSpellName = "";
 
+
+    [Header("Ball Reference")]
+    public GameObject ball; // assign the actual tennis ball in the Inspector
+
     private void Start()
     {
 

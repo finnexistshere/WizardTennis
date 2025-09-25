@@ -4,10 +4,14 @@ public class PickupEffect : MonoBehaviour
 {
     public enum EffectType { Buff, Debuff }
 
-    [SerializeField] public EffectType type;
-    [SerializeField] public float value;
+    [Header("Effect Settings")]
+    [SerializeField] private EffectType type;
+    [SerializeField] private float value;
     [SerializeField] private string spellName;
     [SerializeField] private string spellAddress;
+
+    [Header("Visual Prefab")]
+    [SerializeField] private GameObject spellVisualPrefab; // full ball visual prefab
 
     public bool IsBuff => type == EffectType.Buff;
     public float Amount => value;
@@ -16,22 +20,19 @@ public class PickupEffect : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
-        {
-            Spellcasting spellcasting = other.GetComponent<Spellcasting>();
-            if (spellcasting != null)
-            {
-                if (!spellcasting.spellBook.ContainsKey(SpellAddress))
-                {
-                    spellcasting.spellBook.Add(SpellAddress, SpellName);
-                    spellcasting.debuffBook.Add(SpellName, value);
-                }
-            }
+        if (!other.CompareTag("Player")) return;
 
-            Destroy(gameObject);
+        Spellcasting spellcasting = other.GetComponent<Spellcasting>();
+        if (spellcasting != null)
+        {
+            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab);
         }
+
+        Destroy(gameObject);
     }
-    // This script is to hold the Values of a Name and a debuff value
-    // We can honestly just clone this script to hold weird shit down the line, but it'd have to involve upgrades to GameManager.cs and MainCharacterMovement.cs because they call values from this
 }
+
+
+// This script is to hold the Values of a Name and a debuff value
+// We can honestly just clone this script to hold weird shit down the line, but it'd have to involve upgrades to GameManager.cs and MainCharacterMovement.cs because they call values from this
 
