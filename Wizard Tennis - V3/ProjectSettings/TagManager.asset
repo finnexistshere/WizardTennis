@@ -12,6 +12,8 @@ TagManager:
   - Net
   - BounceCheck
   - SpellUI
+  - Player Hit Particle
+  - Opponent Hit Particle
   layers:
   - Default
   - TransparentFX
