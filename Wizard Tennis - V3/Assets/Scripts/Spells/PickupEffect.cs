@@ -25,6 +25,7 @@ public class PickupEffect : MonoBehaviour
                 {
                     spellcasting.spellBook.Add(SpellAddress, SpellName);
                     spellcasting.debuffBook.Add(SpellName, value);
+                    spellcasting.updateSpellBook();
                 }
             }
 

@@ -14,11 +14,6 @@ public class CollisionTrackerBall : MonoBehaviour
             LastHitWizard = "Player";
             hasbounced = false;
         }
-        else if (other.CompareTag("Ground"))
-        {
-            hasbounced = true;
-            return;
-        }
         else if (other.CompareTag("Opponent"))
         {
             LastHitWizard = "Opponent";
@@ -40,10 +35,9 @@ public class CollisionTrackerBall : MonoBehaviour
         }
         else if (other.CompareTag("BounceCheck"))
         {
-            HandleBounceCheck();
+            //HandleBounceCheck();
         }
 
-        hasbounced = false;
     }
 
     private void HandleOutOfBounds()
@@ -120,20 +114,23 @@ public class CollisionTrackerBall : MonoBehaviour
         }
     }
 
-    private void HandleBounceCheck()
+    public void HandleBounceCheck()
     {
         if (hasbounced)
         {
             if (LastHitWizard == "Player")
             {
                 ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("You lose! Your ball bounced before it went over!");
+                gameManager.RoundOver("The AI is stupid and couldn't hit the ball properly");
             }
             else if (LastHitWizard == "Opponent")
             {
                 ScoreManager.Instance.AddPoint("Player");
-                gameManager.RoundOver("The AI is stupid and couldn't hit the ball properly");
+                gameManager.RoundOver("You lose! Your ball bounced before it went over!");
             }
+        } else
+        {
+            hasbounced = true;
         }
     }
 }

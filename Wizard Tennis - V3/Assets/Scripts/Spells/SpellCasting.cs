@@ -16,7 +16,7 @@ public class Spellcasting : MonoBehaviour
     public TextMeshProUGUI spellAddressText;
     public TextMeshProUGUI spellTextPrefab;
 
-    private bool spellCasting = false;
+    private bool spellCasting = true;
     public string inputSpellAddress = "";
 
     public TennisAI TennisAi;
@@ -59,19 +59,26 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
+    private void Awake()
+    {
+        spellBookPanel = GameObject.Find("SpellBook");
+        spellAddressText = GameObject.Find("SpellAddress").GetComponent<TextMeshProUGUI>();
+    }
+
     public void OnCastSpell(InputAction.CallbackContext context)
     {
         if (context.started)
         {
-            spellCasting = true;
-            spellBookPanel.SetActive(true);
-            updateSpellBook();
-        }
-        else if (context.canceled)
-        {
-            spellCasting = false;
-            spellBookPanel.SetActive(false);
             checkSpell();
+        }
+    }
+
+    public void OnCancelSpell(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            inputSpellAddress = "";
+            updateSpellBook();
         }
     }
 
@@ -91,9 +98,10 @@ public class Spellcasting : MonoBehaviour
         }
 
         inputSpellAddress = "";
+        updateSpellBook();
     }
 
-    private void updateSpellBook()
+    public void updateSpellBook()
     {
         if (inputSpellAddress == "")
         {

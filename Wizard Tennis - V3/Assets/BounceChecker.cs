@@ -3,6 +3,7 @@ using UnityEngine;
 public class BounceChecker : MonoBehaviour
 {
     private CollisionTrackerBall collisionTrackerBall;
+    private bool justOnce = true;
 
     private void Awake()
     {
@@ -19,18 +20,32 @@ public class BounceChecker : MonoBehaviour
         }
     }
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
         if (collisionTrackerBall == null) return;
 
         // If the ball hits the ground, mark as bounced
-        if (collision.collider.CompareTag("Ground"))
+        if (other.CompareTag("Ground"))
         {
-            collisionTrackerBall.hasbounced = true;
+            if (justOnce)
+            {
+                collisionTrackerBall.HandleBounceCheck();
+                justOnce = false;
+            }
         }
         else
         {
             collisionTrackerBall.hasbounced = false;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (collisionTrackerBall == null) return;
+
+        if (other.CompareTag("Ground"))
+        {
+            justOnce = true;
         }
     }
 }
