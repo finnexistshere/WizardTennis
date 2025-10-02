@@ -1,8 +1,7 @@
+using UnityEngine;
+using TMPro;
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
-using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class Spellcasting : MonoBehaviour
 {
@@ -27,41 +26,55 @@ public class Spellcasting : MonoBehaviour
     [Tooltip("Time in seconds before returning to the base ball and clearing effect")]
     public float spellDuration = 5f;
 
+    [Tooltip("Time before spell input auto-clears if no further input is given")]
+    public float inputTimeout = 2f;
+
     // --- Spellcasting State ---
     private bool spellCasting = false;
     public string inputSpellAddress = "";
     private string currentActiveSpell = ""; // track which spell is currently active
 
+    private float lastInputTime; // tracks when the last input happened
+
     public TennisAI TennisAi; // assign TennisAI in Inspector
+
+    private void Awake()
+    {
+        spellCasting = true;
+        spellBookPanel.SetActive(true);
+        lastInputTime = -inputTimeout; // so it doesn't auto-clear at start
+    }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift)) spellCasting = true;
-        if (Input.GetKeyUp(KeyCode.LeftShift)) spellCasting = false;
+        UpdateSpellBook();
 
-        if (spellCasting)
+        // Auto-clear if no input for `inputTimeout` seconds
+        if (!string.IsNullOrEmpty(inputSpellAddress) && Time.time - lastInputTime >= inputTimeout)
         {
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) { inputSpellAddress += "L"; UpdateSpellBook(); }
-            else if (Input.GetKeyDown(KeyCode.RightArrow)) { inputSpellAddress += "R"; UpdateSpellBook(); }
-            else if (Input.GetKeyDown(KeyCode.UpArrow)) { inputSpellAddress += "U"; UpdateSpellBook(); }
-            else if (Input.GetKeyDown(KeyCode.DownArrow)) { inputSpellAddress += "D"; UpdateSpellBook(); }
+            Debug.Log("Input timeout reached, clearing input...");
+            inputSpellAddress = "";
+            UpdateSpellBook();
+        }
+
+        // --- Spellcasting inputs ---
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) { RegisterInput("L"); }
+        else if (Input.GetKeyDown(KeyCode.RightArrow)) { RegisterInput("R"); }
+        else if (Input.GetKeyDown(KeyCode.UpArrow)) { RegisterInput("U"); }
+        else if (Input.GetKeyDown(KeyCode.DownArrow)) { RegisterInput("D"); }
+
+        // Check only if a valid spell has been fully entered
+        if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
+        {
+            CheckSpell();
         }
     }
 
-    public void OnCastSpell(InputAction.CallbackContext context)
+    private void RegisterInput(string direction)
     {
-        if (context.started)
-        {
-            spellCasting = true;
-            spellBookPanel.SetActive(true);
-            UpdateSpellBook();
-        }
-        else if (context.canceled)
-        {
-            spellCasting = false;
-            spellBookPanel.SetActive(false);
-            CheckSpell();
-        }
+        inputSpellAddress += direction;
+        lastInputTime = Time.time; // reset timeout timer
+        UpdateSpellBook();
     }
 
     private void CheckSpell()
@@ -93,49 +106,36 @@ public class Spellcasting : MonoBehaviour
         }
 
         inputSpellAddress = "";
+        UpdateSpellBook();
     }
 
-    /// <summary>
-    /// Swap the current visual to a new spell visual
-    /// </summary>
     private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
     {
-        // Destroy existing spell visual
         if (currentVisualInstance != null)
             Destroy(currentVisualInstance);
 
-        // Disable base effect
         if (baseEffect != null)
             baseEffect.SetActive(false);
 
-        // Instantiate new visual as a child of the parent object
         currentVisualInstance = Instantiate(newPrefab, parentTransform);
-
-        // Reset local transform so it aligns with parent
         currentVisualInstance.transform.localPosition = Vector3.zero;
         currentVisualInstance.transform.localRotation = Quaternion.identity;
         currentVisualInstance.transform.localScale = Vector3.one;
     }
 
-    /// <summary>
-    /// Waits for delay, then resets visual to base effect and clears active spell
-    /// </summary>
     private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect)
     {
         yield return new WaitForSeconds(delay);
 
-        // Destroy spell visual
         if (currentVisualInstance != null)
         {
             Destroy(currentVisualInstance);
             currentVisualInstance = null;
         }
 
-        // Re-enable base effect
         if (baseEffect != null)
             baseEffect.SetActive(true);
 
-        // Clear active spell effect
         if (!string.IsNullOrEmpty(currentActiveSpell))
         {
             TennisAi.ClearEffects();
@@ -161,7 +161,6 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
-    // --- Add a spell (called by pickups) ---
     public void AddSpell(string address, string name, float value, GameObject visualPrefab)
     {
         if (!spellBook.ContainsKey(address))

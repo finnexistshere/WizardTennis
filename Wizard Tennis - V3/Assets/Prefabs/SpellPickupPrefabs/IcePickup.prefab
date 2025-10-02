@@ -13,9 +13,9 @@ GameObject:
   - component: {fileID: 4816375581768926881}
   - component: {fileID: 3609873570403320339}
   - component: {fileID: 2088207171365508779}
-  - component: {fileID: -366097378415648604}
+  - component: {fileID: 2732718826391848496}
   m_Layer: 0
-  m_Name: LightningPickup
+  m_Name: IcePickup
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -64,7 +64,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 70be9b064068ba742a8eb53b924662be, type: 2}
+  - {fileID: 2100000, guid: 3389fcee669bdae48bbec5e6be314d9c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -121,10 +121,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   type: 1
   value: -0.35
-  spellName: Lightning
-  spellAddress: UUDL
-  spellVisualPrefab: {fileID: 4549237697235292045, guid: 91d6565c3c117ea4d98e1380e3148ff1, type: 3}
---- !u!96 &-366097378415648604
+  spellName: Ice
+  spellAddress: DRL
+  spellVisualPrefab: {fileID: 4549237697235292045, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
+--- !u!96 &2732718826391848496
 TrailRenderer:
   serializedVersion: 3
   m_ObjectHideFlags: 0
@@ -145,7 +145,7 @@ TrailRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ec31ab891af6e30449779dd049708bb5, type: 2}
+  - {fileID: 2100000, guid: 80c69129adabae84c9137bebba692ae1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -170,7 +170,7 @@ TrailRenderer:
   m_PreviewTimeScale: 1
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 2.5
+    widthMultiplier: 0.6
     widthCurve:
       serializedVersion: 2
       m_Curve:
@@ -197,8 +197,8 @@ TrailRenderer:
       m_RotationOrder: 4
     colorGradient:
       serializedVersion: 2
-      key0: {r: 1, g: 0.8895351, b: 0, a: 1}
-      key1: {r: 1, g: 0.7392709, b: 0, a: 0}
+      key0: {r: 0.8160377, g: 0.97961026, b: 1, a: 1}
+      key1: {r: 0.6018156, g: 0.72879934, b: 0.7924528, a: 0}
       key2: {r: 0, g: 0, b: 0, a: 0}
       key3: {r: 0, g: 0, b: 0, a: 0}
       key4: {r: 0, g: 0, b: 0, a: 0}

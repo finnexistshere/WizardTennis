@@ -26,7 +26,7 @@ public class UIManager : MonoBehaviour
         }
         else
         {
-            spellStatusText.text = $"Current Spell: {spellName} (Debuff: {debuffValue:F2})";
+            spellStatusText.text = $"Spell: {spellName}";
         }
     }
 }

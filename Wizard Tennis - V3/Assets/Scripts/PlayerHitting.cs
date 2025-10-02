@@ -20,11 +20,6 @@ public class Ball : MonoBehaviour
         upForce = ogUpForce;
     }
 
-    void Update()
-    {   
-
-    }
-
     /*public void OnHitBall(InputAction.CallbackContext context)
     {
         if (context.started)

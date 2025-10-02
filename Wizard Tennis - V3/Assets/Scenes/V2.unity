@@ -468,63 +468,6 @@ PrefabInstance:
       addedObject: {fileID: 870614591}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: bbf396a5201154649b013f673ad572c5, type: 3}
---- !u!1001 &83155304
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.14654398
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1.190409
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 5.6925116
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1906407426832821485, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2459800992572170402, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-      propertyPath: m_Name
-      value: LightningPickup
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 91e928701712ec243ba310cdad928c54, type: 3}
 --- !u!1001 &112840143
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1268,6 +1211,7 @@ MonoBehaviour:
   parentObject: {fileID: 1084974128}
   baseEffectObject: {fileID: 900966365}
   spellDuration: 3
+  inputTimeout: 2
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
 --- !u!114 &153926198
@@ -4097,7 +4041,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -390, y: 280}
+  m_AnchoredPosition: {x: -256, y: 246}
   m_SizeDelta: {x: 600, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &838355079
@@ -6417,6 +6361,8 @@ MonoBehaviour:
   pickupPrefabs:
   - {fileID: 7109859178366572936, guid: a227066672fbdf248ad3205225023abe, type: 3}
   - {fileID: 2459800992572170402, guid: 91e928701712ec243ba310cdad928c54, type: 3}
+  - {fileID: 2459800992572170402, guid: fff5a79dc4be55a48861a22405a31cc9, type: 3}
+  - {fileID: 7109859178366572936, guid: f59d810aa651e6240ae499e5587d48da, type: 3}
   spawnInterval: 5
   spawnRadius: 6
   maxActivePickups: 4
@@ -6477,10 +6423,10 @@ RectTransform:
   - {fileID: 3126103}
   m_Father: {fileID: 1265070138}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 599.5, y: 0}
-  m_SizeDelta: {x: -1201, y: 0}
+  m_AnchorMin: {x: 1, y: 0.5}
+  m_AnchorMax: {x: 1, y: 0.5}
+  m_AnchoredPosition: {x: -169, y: 0}
+  m_SizeDelta: {x: 45, y: 588}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1596896131
 MonoBehaviour:
@@ -8311,4 +8257,3 @@ SceneRoots:
   - {fileID: 430152290}
   - {fileID: 570152637}
   - {fileID: 2072559161}
-  - {fileID: 83155304}
