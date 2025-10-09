@@ -58,6 +58,11 @@ public class OppHitting : MonoBehaviour
                     upForce += 1;
                 }
 
+                ParticleSystem particle = GameObject.FindGameObjectWithTag("Opponent Hit Particle").GetComponent<ParticleSystem>(); // Plays opponent hit particle
+
+                particle.transform.position = other.transform.position;
+                particle.Play();
+
                 aimTarget.transform.position = new Vector3(xCourtAim[xRand], aimTargety, zCourtAim[zRand]);
 
                 // If you want more detailed comments regarding how the ball hitting works, check the PlayerHitting code

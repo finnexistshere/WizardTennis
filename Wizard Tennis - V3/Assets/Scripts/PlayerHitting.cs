@@ -20,6 +20,11 @@ public class Ball : MonoBehaviour
         upForce = ogUpForce;
     }
 
+    void Update()
+    {   
+
+    }
+
     /*public void OnHitBall(InputAction.CallbackContext context)
     {
         if (context.started)
@@ -49,6 +54,11 @@ public class Ball : MonoBehaviour
                 {
                     upForce += 2;
                 }
+
+                ParticleSystem particle = GameObject.FindGameObjectWithTag("Player Hit Particle").GetComponent<ParticleSystem>(); // Plays player hit particle
+
+                particle.transform.position = other.transform.position;
+                particle.Play();
 
 
                 if (serving)

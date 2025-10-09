@@ -22,6 +22,8 @@
 
 		Pass
 		{
+			Cull Off
+
 			Tags { "LightMode" = "VertexLM" }
 			CGPROGRAM
 			#pragma vertex vert
@@ -52,6 +54,8 @@
 
 		Pass
 		{
+			Cull Off
+
 			Tags { "LightMode" = "Vertex" }
 			CGPROGRAM
 			#pragma vertex vert
