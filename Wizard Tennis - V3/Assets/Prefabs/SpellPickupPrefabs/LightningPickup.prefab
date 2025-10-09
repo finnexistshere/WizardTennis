@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 4816375581768926881}
   - component: {fileID: 3609873570403320339}
   - component: {fileID: 2088207171365508779}
+  - component: {fileID: 6287557600189978675}
   m_Layer: 0
   m_Name: LightningPickup
   m_TagString: Untagged
@@ -122,3 +123,16 @@ MonoBehaviour:
   value: -0.35
   spellName: Lightning
   spellAddress: UUDL
+  audioClip: {fileID: 8300000, guid: fee99333f21bc0745a87a6cc2a569b6d, type: 3}
+--- !u!114 &6287557600189978675
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2459800992572170402}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e39723921257e641b61f0de6e22d708, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

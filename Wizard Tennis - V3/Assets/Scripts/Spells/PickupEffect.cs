@@ -9,11 +9,19 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] private string spellName;
     [SerializeField] private string spellAddress;
 
+    [SerializeField] private AudioClip audioClip;
+
+    private AudioSource audioSource;
+
     public bool IsBuff => type == EffectType.Buff;
     public float Amount => value;
     public string SpellName => spellName;
     public string SpellAddress => spellAddress;
 
+    private void Awake()
+    {
+        audioSource = GameObject.FindGameObjectWithTag("Audio Source").GetComponent<AudioSource>();
+    }
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
@@ -25,8 +33,10 @@ public class PickupEffect : MonoBehaviour
                 {
                     spellcasting.spellBook.Add(SpellAddress, SpellName);
                     spellcasting.debuffBook.Add(SpellName, value);
+                    audioSource.PlayOneShot(audioClip);
                 }
             }
+
 
             Destroy(gameObject);
         }

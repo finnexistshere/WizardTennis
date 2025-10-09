@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 1085787360507637341}
   - component: {fileID: 8823940392488962118}
   - component: {fileID: 2449358422025720997}
+  - component: {fileID: -7289763585915852190}
   m_Layer: 0
   m_Name: FireballPickup
   m_TagString: Untagged
@@ -122,3 +123,16 @@ MonoBehaviour:
   value: -0.2
   spellName: Fireball
   spellAddress: LRU
+  audioClip: {fileID: 8300000, guid: fee99333f21bc0745a87a6cc2a569b6d, type: 3}
+--- !u!114 &-7289763585915852190
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7109859178366572936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e39723921257e641b61f0de6e22d708, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
