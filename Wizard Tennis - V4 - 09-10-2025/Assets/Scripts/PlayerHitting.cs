@@ -18,6 +18,10 @@ public class Ball : MonoBehaviour
     private bool nearBall = false; // only used when serving; detect if the player is near the ball when they press e
     private GameObject ball;
 
+    public SpellEffects SpellEffects;
+
+    public CollisionTrackerBall CollisionTracker;
+
     void Start()
     {
         serving = true; // Making the player's first hit a serve
@@ -56,6 +60,11 @@ public class Ball : MonoBehaviour
             nearBall = true;
             if (hitting)
             {
+                if (SpellEffects.plrHitSpell)
+                {
+                    SpellEffects.castSpell();
+                }
+
                 if (35.5 < transform.position.x)
                 {
                     upForce = ogUpForce + 2;
@@ -82,6 +91,14 @@ public class Ball : MonoBehaviour
                     Vector3 dir = aimTarget.position - transform.position;
                     ball.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0); // Apply a force to the ball in the direction made above with the strength modifier + some upwards force so it can get over the net
                 }
+
+                if (SpellEffects.resetOnPlrHit)
+                {
+                    SpellEffects.resetSpellEffect();
+                }
+
+                CollisionTracker.LastHitWizard = "Player";
+                CollisionTracker.hasbounced = false;
             }
         }
     }

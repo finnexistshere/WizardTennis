@@ -9,6 +9,7 @@ public class Spellcasting : MonoBehaviour
     public Dictionary<string, string> spellBook = new Dictionary<string, string>();        // address spell name
     public Dictionary<string, float> debuffBook = new Dictionary<string, float>();         // address value
     public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>(); // address prefab
+    public Dictionary<string, bool> boolBook = new Dictionary<string, bool>(); // dictionary that reads a spell bool value (bool value will tell whether the spell is cast immediately or when the player hits the ball)
 
     // --- UI References ---
     [Header("UI References")]
@@ -30,7 +31,6 @@ public class Spellcasting : MonoBehaviour
     public float inputTimeout = 2f;
 
     // --- Spellcasting State ---
-    private bool spellCasting = false;
     public string inputSpellAddress = "";
     private string currentActiveSpell = ""; // track which spell is currently active
 
@@ -38,9 +38,10 @@ public class Spellcasting : MonoBehaviour
 
     public TennisAI TennisAi; // assign TennisAI in Inspector
 
+    public SpellEffects SpellEffects; // assign SpellEffects in Inspector
+
     private void Awake()
     {
-        spellCasting = true;
         spellBookPanel.SetActive(true);
         lastInputTime = -inputTimeout; // so it doesn't auto-clear at start
     }
@@ -89,8 +90,20 @@ public class Spellcasting : MonoBehaviour
 
             // Apply new buff/debuff
             float value = debuffBook[inputSpellAddress];
-            TennisAi.ApplyBuff(value, spellName);
-            currentActiveSpell = spellName;
+            //TennisAi.ApplyBuff(value, spellName);
+
+            SpellEffects.spellName = spellBook[inputSpellAddress];
+
+            if (boolBook[spellName])
+            {
+                SpellEffects.plrHitSpell = true;
+            } else
+            {
+                SpellEffects.plrHitSpell = false;
+                SpellEffects.castSpell();
+            }
+
+                currentActiveSpell = spellName;
             Debug.Log(spellName + " cast!");
 
             // Swap visual if prefab exists
@@ -161,7 +174,7 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
-    public void AddSpell(string address, string name, float value, GameObject visualPrefab)
+    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool)
     {
         if (!spellBook.ContainsKey(address))
         {
@@ -169,6 +182,7 @@ public class Spellcasting : MonoBehaviour
             debuffBook[address] = value;
             if (visualPrefab != null)
                 spellVisuals[address] = visualPrefab;
+            boolBook[name] = onHitBool;
         }
     }
 }

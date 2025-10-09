@@ -7,27 +7,44 @@ public class CollisionTrackerBall : MonoBehaviour
     public GameManager gameManager;
     public bool hasbounced = false;
 
+    private bool justOnce = true;
+
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            LastHitWizard = "Player";
-            hasbounced = false;
+            //LastHitWizard = "Player";
+            //hasbounced = false;
         }
         else if (other.CompareTag("Opponent"))
         {
-            LastHitWizard = "Opponent";
-            hasbounced = false;
+            //LastHitWizard = "Opponent";
+            //hasbounced = false;
         }
         else if (other.CompareTag("OutOfBounds"))
         {
-            HandleOutOfBounds();
-            hasbounced = false;
+            if (justOnce)
+            {
+                HandleOutOfBounds();
+                hasbounced = false;
+                justOnce = false;
+            } else
+            {
+                justOnce = true;
+            }
         }
         else if (other.CompareTag("OutOfBoundsSide2"))
         {
-            HandleOutOfBoundsSide2();
-            hasbounced = false;
+            if (justOnce)
+            {
+                HandleOutOfBoundsSide2();
+                hasbounced = false;
+                justOnce = false;
+            }
+            else
+            {
+                justOnce = true;
+            }
         }
         else if (other.CompareTag("Net"))
         {
@@ -64,8 +81,8 @@ public class CollisionTrackerBall : MonoBehaviour
             }
             else if (LastHitWizard == "Opponent")
             {
-                ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("Opponent Wins! You missed!");
+                ScoreManager.Instance.AddPoint("Player");
+                gameManager.RoundOver("Opponent messed up, Player wins the point!");
             }
         }
     }
@@ -94,8 +111,8 @@ public class CollisionTrackerBall : MonoBehaviour
             }
             else if (LastHitWizard == "Opponent")
             {
-                ScoreManager.Instance.AddPoint("Player");
-                gameManager.RoundOver("Opponent messed up, Player wins the point!");
+                ScoreManager.Instance.AddPoint("Opponent");
+                gameManager.RoundOver("Opponent wins! You Missed!");
             }
         }
     }

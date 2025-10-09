@@ -1137,6 +1137,8 @@ MonoBehaviour:
   ogUpForce: 5
   ballSpeed: 2.5
   serving: 1
+  SpellEffects: {fileID: 1594825195}
+  CollisionTracker: {fileID: 1786689992}
 --- !u!114 &153926191
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1290,6 +1292,7 @@ MonoBehaviour:
   inputTimeout: 2
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
+  SpellEffects: {fileID: 1594825195}
 --- !u!114 &153926198
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8525,6 +8528,7 @@ GameObject:
   - component: {fileID: 1594825192}
   - component: {fileID: 1594825193}
   - component: {fileID: 1594825194}
+  - component: {fileID: 1594825195}
   m_Layer: 0
   m_Name: Game Manager
   m_TagString: Untagged
@@ -8589,6 +8593,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseProbability: 0.95
   ball: {fileID: 0}
+--- !u!114 &1594825195
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1594825190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e241b6e3a1f5c06429f6696e64ba78df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Player: {fileID: 153926187}
+  Opponent: {fileID: 2092549635}
+  spellName: 
+  resetOnOppHit: 0
+  resetOnPlrHit: 0
+  oppHitSpell: 0
+  plrHitSpell: 0
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0
@@ -9497,6 +9520,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5800074195825860628, guid: 821592db6c51d724797d43bbea253cb2, type: 3}
   m_PrefabInstance: {fileID: 3161410765105879314}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1786689992 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4869152634622641947, guid: 821592db6c51d724797d43bbea253cb2, type: 3}
+  m_PrefabInstance: {fileID: 3161410765105879314}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1178172288}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4e3925355be2824cb3d9b1d816a7c99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &1790106858 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1c487447fde61f64f8ae1517f83de4a5, type: 3}
@@ -10863,6 +10897,8 @@ MonoBehaviour:
   - 6
   - 3
   TennisAI: {fileID: 1594825194}
+  SpellEffects: {fileID: 1594825195}
+  CollisionTracker: {fileID: 1786689992}
 --- !u!136 &2092549637
 CapsuleCollider:
   m_ObjectHideFlags: 0

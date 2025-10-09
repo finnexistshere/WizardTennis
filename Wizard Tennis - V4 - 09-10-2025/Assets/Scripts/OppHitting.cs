@@ -17,6 +17,10 @@ public class OppHitting : MonoBehaviour
 
     public TennisAI TennisAI;
 
+    public SpellEffects SpellEffects;
+
+    public CollisionTrackerBall CollisionTracker;
+
     void Start()
     {
         targetPosition = transform.position; // make the 'targetPosition' equal to the opponent's current position
@@ -37,6 +41,11 @@ public class OppHitting : MonoBehaviour
         {
             if (TennisAI.AttemptReturn() == true)
             {
+                if (SpellEffects.oppHitSpell)
+                {
+                    SpellEffects.castSpell();
+                }
+
                 // Change the position of the aimTarget to a random position on the Player court. This position is divided into sections (upcourt, downcourt, and centre, left, right)
                 float aimTargety = aimTarget.transform.position.y;
                 int xRand = Random.Range(0, xCourtAim.Length);
@@ -68,6 +77,14 @@ public class OppHitting : MonoBehaviour
                 // If you want more detailed comments regarding how the ball hitting works, check the PlayerHitting code
                 Vector3 dir = aimTarget.transform.position - transform.position;
                 other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
+
+                if (SpellEffects.resetOnOppHit)
+                {
+                    SpellEffects.resetSpellEffect();
+                }
+
+                CollisionTracker.LastHitWizard = "Opponent";
+                CollisionTracker.hasbounced = false;
             }
         }
     }

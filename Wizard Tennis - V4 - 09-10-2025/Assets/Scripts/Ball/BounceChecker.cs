@@ -35,7 +35,7 @@ public class BounceChecker : MonoBehaviour
         }
         else
         {
-            collisionTrackerBall.hasbounced = false;
+            //collisionTrackerBall.hasbounced = false;
         }
     }
 

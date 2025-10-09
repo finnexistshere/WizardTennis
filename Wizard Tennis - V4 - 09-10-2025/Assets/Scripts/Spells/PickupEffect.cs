@@ -9,6 +9,7 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] private float value;
     [SerializeField] private string spellName;
     [SerializeField] private string spellAddress;
+    [SerializeField] private bool onHitBool;
 
     [Header("Visual Prefab")]
     [SerializeField] private GameObject spellVisualPrefab; // full ball visual prefab
@@ -17,6 +18,7 @@ public class PickupEffect : MonoBehaviour
     public float Amount => value;
     public string SpellName => spellName;
     public string SpellAddress => spellAddress;
+    public bool OnHitBool => onHitBool;
 
     private void OnTriggerEnter(Collider other)
     {
@@ -25,7 +27,7 @@ public class PickupEffect : MonoBehaviour
         Spellcasting spellcasting = other.GetComponent<Spellcasting>();
         if (spellcasting != null)
         {
-            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab);
+            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool);
         }
 
         Destroy(gameObject);
