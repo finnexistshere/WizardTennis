@@ -47,17 +47,22 @@ public class GameManager : MonoBehaviour
         ballSpawner = FindObjectOfType<BallSpawner>();
 
         if (spawnCenter == null)
-            spawnCenter = GameObject.Find("SpawnCenter").transform;
+            spawnCenter = GameObject.Find("SpawnCenter")?.transform;
 
-        pauseMenuUI = GameObject.Find("PauseMenu");
-        if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+        if (pauseMenuUI == null)
+            pauseMenuUI = GameObject.Find("PauseMenu");
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(false);
 
-        gameOverUI = GameObject.Find("GameOverMenu");
-        if (gameOverUI != null) gameOverUI.SetActive(false);
+        if (gameOverUI == null)
+            gameOverUI = GameObject.Find("GameOverMenu");
+        if (gameOverUI != null)
+            gameOverUI.SetActive(false);
 
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
     }
+
 
     private void Start()
     {
@@ -171,7 +176,8 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
-        pauseMenuUI?.SetActive(false);
+        pauseMenuUI.SetActive(false);
+        Debug.Log("Resuming Game");
     }
 
     // ----- Show message (round messages) -----
