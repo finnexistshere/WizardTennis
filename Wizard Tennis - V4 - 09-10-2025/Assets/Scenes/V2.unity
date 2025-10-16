@@ -9201,7 +9201,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d364286573356ec468d576f4c1e6a75d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseProbability: 0.95
+  baseProbability: 1
   ball: {fileID: 0}
 --- !u!114 &1594825195
 MonoBehaviour:
