@@ -122,4 +122,4 @@ MonoBehaviour:
   value: -0.2
   spellName: Fireball
   spellAddress: LRU
-  spellVisualPrefab: {fileID: 4549237697235292045, guid: de8332094fc41bd4480762e02c4946c4, type: 3}
+  audioClip: {fileID: 8300000, guid: da25ad18aa40d4c4fa7bc1d67d575b5b, type: 3}
