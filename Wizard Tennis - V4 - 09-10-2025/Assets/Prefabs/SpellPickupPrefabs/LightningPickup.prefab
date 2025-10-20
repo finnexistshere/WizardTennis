@@ -122,4 +122,6 @@ MonoBehaviour:
   value: -0.35
   spellName: Lightning
   spellAddress: UUDL
-  spellVisualPrefab: {fileID: 0}
+  onHitBool: 0
+  spellVisualPrefab: {fileID: 4549237697235292045, guid: 91d6565c3c117ea4d98e1380e3148ff1, type: 3}
+  audioClip: {fileID: 0}

@@ -8,6 +8,10 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] public float value;
     [SerializeField] private string spellName;
     [SerializeField] private string spellAddress;
+    [SerializeField] private bool onHitBool;
+
+    [Header("Visual Prefab")]
+    [SerializeField] private GameObject spellVisualPrefab; // full ball visual prefab
 
     [SerializeField] private AudioClip audioClip;
 
@@ -18,6 +22,8 @@ public class PickupEffect : MonoBehaviour
     public string SpellName => spellName;
     public string SpellAddress => spellAddress;
 
+    public bool OnHitBool => onHitBool;
+
     private void Awake()
     {
         audioSource = GameObject.FindGameObjectWithTag("Audio Source").GetComponent<AudioSource>();
@@ -27,20 +33,28 @@ public class PickupEffect : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             Spellcasting spellcasting = other.GetComponent<Spellcasting>();
+
+            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool);
             if (spellcasting != null)
             {
                 if (!spellcasting.spellBook.ContainsKey(SpellAddress))
                 {
-                    spellcasting.spellBook.Add(SpellAddress, SpellName);
-                    spellcasting.debuffBook.Add(SpellName, value);
-                    audioSource.PlayOneShot(audioClip);
+                    // Match Spellcasting.AddSpell() structure
+                    spellcasting.spellBook[SpellAddress] = SpellName;
+                    spellcasting.debuffBook[SpellAddress] = value;  // fixed line!
+
+                    // Optionally assign a prefab and bool if you have those
+                    spellcasting.boolBook[SpellName] = false; // default to false or set dynamically
+
+                    if (audioClip != null)
+                        audioSource.PlayOneShot(audioClip);
                 }
             }
-
 
             Destroy(gameObject);
         }
     }
+
     // This script is to hold the Values of a Name and a debuff value
     // We can honestly just clone this script to hold weird shit down the line, but it'd have to involve upgrades to GameManager.cs and MainCharacterMovement.cs because they call values from this
 }
