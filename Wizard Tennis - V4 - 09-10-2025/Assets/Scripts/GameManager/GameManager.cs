@@ -31,6 +31,7 @@ public class GameManager : MonoBehaviour
     public GameObject pauseMenuUI;
     public GameObject gameOverUI;
     public TextMeshProUGUI WinLoseText;
+    public TextMeshProUGUI tutorialText;
 
     private bool isPaused = false;
     public PlayerInput playerInput;
@@ -83,6 +84,14 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
+        if (tutorialText.gameObject.activeSelf)
+        {
+            if (Input.GetKeyDown(KeyCode.E))
+                    {
+                tutorialText.gameObject.SetActive(false);
+                    }
+        }
+
 
         // Clean up destroyed pickups
         activePickups.RemoveAll(p => p == null);

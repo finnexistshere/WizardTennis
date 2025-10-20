@@ -14,6 +14,7 @@ TagManager:
   - SpellUI
   - Player Hit Particle
   - Opponent Hit Particle
+  - Audio Source
   layers:
   - Default
   - TransparentFX
