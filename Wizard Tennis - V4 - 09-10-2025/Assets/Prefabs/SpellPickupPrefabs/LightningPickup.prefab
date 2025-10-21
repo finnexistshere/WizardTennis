@@ -121,7 +121,7 @@ MonoBehaviour:
   type: 1
   value: -0.35
   spellName: Lightning
-  spellAddress: UUDL
+  spellAddress: BBbA
   onHitBool: 0
   FloorVisualColor: {r: 1, g: 0.9924085, b: 0.36320752, a: 1}
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 91d6565c3c117ea4d98e1380e3148ff1, type: 3}

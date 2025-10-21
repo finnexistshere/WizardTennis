@@ -122,7 +122,7 @@ MonoBehaviour:
   type: 1
   value: -0.35
   spellName: Ice
-  spellAddress: DRL
+  spellAddress: bAa
   onHitBool: 0
   FloorVisualColor: {r: 0, g: 0.9430566, b: 1, a: 1}
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}

@@ -15,7 +15,7 @@ public class Spellcasting : MonoBehaviour
     [Header("UI References")]
     public GameObject spellBookPanel;
     public TextMeshProUGUI spellAddressText;
-    public TextMeshProUGUI spellTextPrefab;
+    public SpellTextEntry spellTextPrefab;
 
     // --- Ball Visuals ---
     [Header("Ball Visual")]
@@ -64,10 +64,10 @@ public class Spellcasting : MonoBehaviour
         }
 
         // --- Spellcasting inputs ---
-        if (Input.GetKeyDown(KeyCode.LeftArrow)) { RegisterInput("L"); }
-        else if (Input.GetKeyDown(KeyCode.RightArrow)) { RegisterInput("R"); }
-        else if (Input.GetKeyDown(KeyCode.UpArrow)) { RegisterInput("U"); }
-        else if (Input.GetKeyDown(KeyCode.DownArrow)) { RegisterInput("D"); }
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) { RegisterInput("a"); }
+        else if (Input.GetKeyDown(KeyCode.RightArrow)) { RegisterInput("A"); }
+        else if (Input.GetKeyDown(KeyCode.UpArrow)) { RegisterInput("B"); }
+        else if (Input.GetKeyDown(KeyCode.DownArrow)) { RegisterInput("b"); }
 
         // Check only if a valid spell has been fully entered
         if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
@@ -164,18 +164,24 @@ public class Spellcasting : MonoBehaviour
 
     private void UpdateSpellBook()
     {
-        spellAddressText.text = string.IsNullOrEmpty(inputSpellAddress) ? "Spell Address" : inputSpellAddress;
+        spellAddressText.text = string.IsNullOrEmpty(inputSpellAddress) ? "" : inputSpellAddress;
 
+        // Clear old spell UI
         foreach (GameObject currentSpell in GameObject.FindGameObjectsWithTag("SpellUI"))
             Destroy(currentSpell);
 
+        // Create entries for matching spells
         foreach (KeyValuePair<string, string> item in spellBook)
         {
             if (item.Key.StartsWith(inputSpellAddress))
             {
-                TextMeshProUGUI newSpell = Instantiate(spellTextPrefab);
-                newSpell.text = item.Value + "\n" + item.Key;
-                newSpell.transform.SetParent(spellBookPanel.transform, false);
+                SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
+
+                // Tag so it can be cleaned up easily
+                newEntry.gameObject.tag = "SpellUI";
+
+                // Set both texts (different fonts handled in prefab)
+                newEntry.SetText(item.Value, item.Key);
             }
         }
     }

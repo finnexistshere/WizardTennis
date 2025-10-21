@@ -121,7 +121,7 @@ MonoBehaviour:
   type: 1
   value: -0.2
   spellName: Fireball
-  spellAddress: LRU
+  spellAddress: aAB
   onHitBool: 0
   FloorVisualColor: {r: 1, g: 0.5641353, b: 0, a: 1}
   spellVisualPrefab: {fileID: 4549237697235292045, guid: de8332094fc41bd4480762e02c4946c4, type: 3}

@@ -181,8 +181,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Spell Address
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 28e2d54675e35af41bc04cc1067d3cb9, type: 2}
-  m_sharedMaterial: {fileID: -5053161182684626317, guid: 28e2d54675e35af41bc04cc1067d3cb9, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: acc47157fbccb724c90f73757339dab9, type: 2}
+  m_sharedMaterial: {fileID: 1982987182326735087, guid: acc47157fbccb724c90f73757339dab9, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -206,7 +206,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
+  m_fontSize: 25
   m_fontSizeBase: 30
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -1528,7 +1528,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spellBookPanel: {fileID: 1596896129}
   spellAddressText: {fileID: 3126104}
-  spellTextPrefab: {fileID: 3213267129712226829, guid: 72a54dee25628d34cb2de5d70d97484d, type: 3}
+  spellTextPrefab: {fileID: 2101806974530891495, guid: 72a54dee25628d34cb2de5d70d97484d, type: 3}
   parentObject: {fileID: 1178172288}
   baseEffectObject: {fileID: 1804403317}
   spellDuration: 5
