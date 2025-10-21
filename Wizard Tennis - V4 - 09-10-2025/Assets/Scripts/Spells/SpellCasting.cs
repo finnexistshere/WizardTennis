@@ -38,10 +38,15 @@ public class Spellcasting : MonoBehaviour
 
     public TennisAI TennisAi; // assign TennisAI in Inspector
 
+    public SpellFloorImage spellFloorImage;
+
     public SpellEffects SpellEffects; // assign SpellEffects in Inspector
+
+    private Color floorVisualColor;
 
     private void Awake()
     {
+
         spellBookPanel.SetActive(true);
         lastInputTime = -inputTimeout; // so it doesn't auto-clear at start
     }
@@ -105,6 +110,7 @@ public class Spellcasting : MonoBehaviour
 
                 currentActiveSpell = spellName;
             Debug.Log(spellName + " cast!");
+            spellFloorImage.ShowSpell(spellName, floorVisualColor);
 
             // Swap visual if prefab exists
             if (spellVisuals.ContainsKey(inputSpellAddress) && parentObject != null)
@@ -174,7 +180,7 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
-    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool)
+    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor)
     {
         if (!spellBook.ContainsKey(address))
         {
@@ -183,6 +189,7 @@ public class Spellcasting : MonoBehaviour
             if (visualPrefab != null)
                 spellVisuals[address] = visualPrefab;
             boolBook[name] = onHitBool;
+            floorVisualColor = FloorVisualColor;
         }
     }
 }
