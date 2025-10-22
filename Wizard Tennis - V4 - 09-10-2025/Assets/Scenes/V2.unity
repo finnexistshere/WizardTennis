@@ -1532,6 +1532,8 @@ MonoBehaviour:
   parentObject: {fileID: 1178172288}
   baseEffectObject: {fileID: 1804403317}
   spellDuration: 5
+  hitParticle: {fileID: 1977279299}
+  spellParticleColor: {fileID: 1977279300}
   inputTimeout: 2
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
@@ -2085,7 +2087,7 @@ GameObject:
   - component: {fileID: 212450838}
   - component: {fileID: 212450837}
   m_Layer: 5
-  m_Name: OpponentScore
+  m_Name: OpponentScoreText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6814,7 +6816,7 @@ GameObject:
   - component: {fileID: 983660001}
   - component: {fileID: 983660000}
   m_Layer: 5
-  m_Name: PlayerScore
+  m_Name: PlayerScoreText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8198,7 +8200,6 @@ GameObject:
   - component: {fileID: 1265070141}
   - component: {fileID: 1265070140}
   - component: {fileID: 1265070139}
-  - component: {fileID: 1265070142}
   m_Layer: 5
   m_Name: In-Game UI
   m_TagString: Untagged
@@ -8292,21 +8293,6 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
---- !u!114 &1265070142
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1265070137}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 11cf07068ce635746bb5697ab035e882, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerScoreText: {fileID: 983660000}
-  opponentScoreText: {fileID: 212450837}
-  winningScore: 5
 --- !u!1001 &1266879988
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8574,7 +8560,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8730164143838520366, guid: 0969430af3e17c444b1f282991c1e4bc, type: 3}
+      insertIndex: 1
+      addedObject: {fileID: 1977279300}
   m_SourcePrefab: {fileID: 100100000, guid: 0969430af3e17c444b1f282991c1e4bc, type: 3}
 --- !u!1 &1299915522
 GameObject:
@@ -9756,6 +9745,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1578197340}
+  - component: {fileID: 1578197341}
   m_Layer: 5
   m_Name: Score
   m_TagString: Untagged
@@ -9785,6 +9775,21 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1578197341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1578197339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11cf07068ce635746bb5697ab035e882, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerScoreText: {fileID: 983660000}
+  opponentScoreText: {fileID: 212450837}
+  winningScore: 5
 --- !u!1 &1594825190
 GameObject:
   m_ObjectHideFlags: 0
@@ -11460,6 +11465,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1963691252}
   m_CullTransparentMesh: 1
+--- !u!1 &1977279297 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8730164143838520366, guid: 0969430af3e17c444b1f282991c1e4bc, type: 3}
+  m_PrefabInstance: {fileID: 1294395869}
+  m_PrefabAsset: {fileID: 0}
+--- !u!198 &1977279299 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 3993389834919323058, guid: 0969430af3e17c444b1f282991c1e4bc, type: 3}
+  m_PrefabInstance: {fileID: 1294395869}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1977279300
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1977279297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 052a690fbf6069044a1cbd1edab1de00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetParticleSystem: {fileID: 1977279299}
 --- !u!1 &1988754009
 GameObject:
   m_ObjectHideFlags: 0

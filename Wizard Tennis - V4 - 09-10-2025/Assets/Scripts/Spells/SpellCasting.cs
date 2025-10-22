@@ -10,6 +10,7 @@ public class Spellcasting : MonoBehaviour
     public Dictionary<string, float> debuffBook = new Dictionary<string, float>();
     public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>();
     public Dictionary<string, bool> boolBook = new Dictionary<string, bool>();
+    public Dictionary<string, Color> spellColors = new Dictionary<string, Color>();
 
     // --- UI References ---
     [Header("UI References")]
@@ -26,6 +27,10 @@ public class Spellcasting : MonoBehaviour
     [Header("Spell Settings")]
     [Tooltip("Time in seconds before returning to the base ball and clearing effect")]
     public float spellDuration = 5f;
+
+    [Header("Particle Systems")]
+    public ParticleSystem hitParticle;
+    public SpellParticleColor spellParticleColor;
 
     [Tooltip("Time before spell input auto-clears if no further input is given")]
     public float inputTimeout = 2f;
@@ -121,7 +126,9 @@ public class Spellcasting : MonoBehaviour
             Debug.Log(spellName + " cast!");
             if (UIManager.Instance != null)
                 UIManager.Instance.UpdateSpellStatus(spellName);
-            spellFloorImage.ShowSpell(spellName, floorVisualColor);
+            Color spellColor = spellColors[inputSpellAddress];
+            spellFloorImage.ShowSpell(spellName, spellColor);
+            spellParticleColor.SetSpellColor(spellColor);
 
             // Swap visuals
             if (spellVisuals.ContainsKey(inputSpellAddress) && parentObject != null)
@@ -171,6 +178,8 @@ public class Spellcasting : MonoBehaviour
         if (baseEffect != null)
             baseEffect.SetActive(true);
 
+        spellParticleColor.ResetColor();
+
         if (!string.IsNullOrEmpty(currentActiveSpell))
         {
             TennisAi.ClearEffects();
@@ -208,10 +217,12 @@ public class Spellcasting : MonoBehaviour
         {
             spellBook[address] = name;
             debuffBook[address] = value;
+
             if (visualPrefab != null)
                 spellVisuals[address] = visualPrefab;
+
             boolBook[name] = onHitBool;
-            floorVisualColor = FloorVisualColor;
+            spellColors[address] = FloorVisualColor;
         }
     }
 }
