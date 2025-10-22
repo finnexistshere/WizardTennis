@@ -11,6 +11,7 @@ public class Spellcasting : MonoBehaviour
     public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>();
     public Dictionary<string, bool> boolBook = new Dictionary<string, bool>();
     public Dictionary<string, Color> spellColors = new Dictionary<string, Color>();
+    public Dictionary<string, AudioClip> spellAudio = new Dictionary<string, AudioClip>();
 
     // --- UI References ---
     [Header("UI References")]
@@ -34,6 +35,9 @@ public class Spellcasting : MonoBehaviour
 
     [Tooltip("Time before spell input auto-clears if no further input is given")]
     public float inputTimeout = 2f;
+
+    [Header("Audio Source")]
+    public AudioSource audioSource;
 
     // --- Spellcasting State ---
     public string inputSpellAddress = "";
@@ -129,6 +133,13 @@ public class Spellcasting : MonoBehaviour
             Color spellColor = spellColors[inputSpellAddress];
             spellFloorImage.ShowSpell(spellName, spellColor);
             spellParticleColor.SetSpellColor(spellColor);
+            if (spellAudio.TryGetValue(inputSpellAddress, out AudioClip clip) && clip != null)
+            {
+                if (audioSource != null)
+                    audioSource.PlayOneShot(clip);
+                else
+                    Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
+            }
 
             // Swap visuals
             if (spellVisuals.ContainsKey(inputSpellAddress) && parentObject != null)
@@ -211,7 +222,7 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
-    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor)
+    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor, AudioClip spellCastAudio)
     {
         if (!spellBook.ContainsKey(address))
         {
@@ -223,6 +234,7 @@ public class Spellcasting : MonoBehaviour
 
             boolBook[name] = onHitBool;
             spellColors[address] = FloorVisualColor;
+            spellAudio[address] = spellCastAudio;
         }
     }
 }

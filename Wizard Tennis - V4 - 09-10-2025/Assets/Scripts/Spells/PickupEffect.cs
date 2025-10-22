@@ -10,6 +10,7 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] private string spellAddress;
     [SerializeField] private bool onHitBool;
     [SerializeField] public Color FloorVisualColor;
+    [SerializeField] public AudioClip spellCastAudio;
 
     [Header("Visual Prefab")]
     [SerializeField] private GameObject spellVisualPrefab; // full ball visual prefab
@@ -35,7 +36,7 @@ public class PickupEffect : MonoBehaviour
         {
             Spellcasting spellcasting = other.GetComponent<Spellcasting>();
 
-            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, FloorVisualColor);
+            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, FloorVisualColor, spellCastAudio);
             if (spellcasting != null)
             {
                 if (!spellcasting.spellBook.ContainsKey(SpellAddress))

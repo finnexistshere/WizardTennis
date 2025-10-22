@@ -1535,6 +1535,7 @@ MonoBehaviour:
   hitParticle: {fileID: 1977279299}
   spellParticleColor: {fileID: 1977279300}
   inputTimeout: 2
+  audioSource: {fileID: 0}
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
   spellFloorImage: {fileID: 1076509792}
@@ -9866,7 +9867,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseProbability: 1
-  ball: {fileID: 0}
+  ball: {fileID: 1178172288}
 --- !u!114 &1594825195
 MonoBehaviour:
   m_ObjectHideFlags: 0
