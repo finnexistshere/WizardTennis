@@ -62,6 +62,8 @@ public class GameManager : MonoBehaviour
 
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
+
+        ScoreManager.Instance.LoadSavedScores();
     }
 
 
@@ -228,6 +230,9 @@ public class GameManager : MonoBehaviour
                 ballScript.serving = true;
         }
 
+        ScoreManager.Instance.LoadSavedScores();
+
+
         // Resume time in case it was paused
         Time.timeScale = 1f;
     }
@@ -251,9 +256,47 @@ public class GameManager : MonoBehaviour
     // ----- Next Round (button-triggered) -----
     public void NextRound()
     {
-        // Reload scene to reset positions, physics, etc.
+        // Keep the existing score manager and scores alive
+        Time.timeScale = 1f;
+
+        // Reload scene but keep persistent managers
+        SceneManager.sceneLoaded += OnSceneReloaded;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        ScoreManager.Instance.LoadSavedScores();
+
     }
+
+    public void RestartGame()
+    {
+        // Full reset (scores too)
+        if (ScoreManager.Instance != null)
+            ScoreManager.Instance.ResetScores();
+
+        Time.timeScale = 1f;
+        SceneManager.sceneLoaded += OnSceneReloaded;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        ScoreManager.Instance.LoadSavedScores();
+    }
+
+    private void OnSceneReloaded(Scene scene, LoadSceneMode mode)
+    {
+        SceneManager.sceneLoaded -= OnSceneReloaded;
+
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(false);
+        if (gameOverUI != null)
+            gameOverUI.SetActive(false);
+
+        Time.timeScale = 1f;
+        ResetRound();
+
+        // Refresh the score display
+        if (ScoreManager.Instance != null)
+            ScoreManager.Instance.LoadSavedScores();
+        ScoreManager.Instance.UpdateScoreUI();
+
+    }
+
 
     // ----- Final Game Over -----
     public void GameOver(string message)
@@ -267,14 +310,10 @@ public class GameManager : MonoBehaviour
     }
 
     // ----- Restart / Quit -----
-    public void RestartGame()
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    }
 
     public void QuitMenu()
     {
+        ScoreManager.Instance.ResetScores();
         SceneManager.LoadScene("Main Menu");
     }
 

@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class ScoreManager : MonoBehaviour
 {
@@ -20,7 +21,8 @@ public class ScoreManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject); // Preserve across scene reload
+            DontDestroyOnLoad(gameObject); // Keep manager alive
+            SceneManager.sceneLoaded += OnSceneLoaded; // Reconnect after reload
         }
         else
         {
@@ -28,8 +30,18 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
-    private void Start()
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // Reconnect UI after scene reload
+        var playerText = GameObject.Find("PlayerScoreText");
+        var opponentText = GameObject.Find("OpponentScoreText");
+
+        if (playerText)
+            playerScoreText = playerText.GetComponent<TextMeshProUGUI>();
+
+        if (opponentText)
+            opponentScoreText = opponentText.GetComponent<TextMeshProUGUI>();
+
         UpdateScoreUI();
     }
 
@@ -38,9 +50,12 @@ public class ScoreManager : MonoBehaviour
         if (scorer == "Player") playerScore++;
         else if (scorer == "Opponent") opponentScore++;
 
+        // Save current scores
+        GameData.PlayerScore = playerScore;
+        GameData.OpponentScore = opponentScore;
+
         UpdateScoreUI();
 
-        // Check match win condition
         if (playerScore >= winningScore)
         {
             GameManager.Instance.GameOverFinal("You Win the Match!");
@@ -51,7 +66,6 @@ public class ScoreManager : MonoBehaviour
         }
         else
         {
-            // Just show end-of-rally game over UI
             if (scorer == "Player")
                 GameManager.Instance.GameOverRound("Point for Player!");
             else
@@ -59,7 +73,7 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
-    private void UpdateScoreUI()
+    public void UpdateScoreUI()
     {
         if (playerScoreText != null)
             playerScoreText.text = playerScore.ToString();
@@ -68,10 +82,19 @@ public class ScoreManager : MonoBehaviour
             opponentScoreText.text = opponentScore.ToString();
     }
 
+    public void LoadSavedScores()
+    {
+        playerScore = GameData.PlayerScore;
+        opponentScore = GameData.OpponentScore;
+        UpdateScoreUI();
+    }
+
     public void ResetScores()
     {
         playerScore = 0;
         opponentScore = 0;
+        GameData.PlayerScore = 0;
+        GameData.OpponentScore = 0;
         UpdateScoreUI();
     }
 }
