@@ -19,6 +19,7 @@ public class SpellFloorImage : MonoBehaviour
     private SpriteRenderer spriteRenderer;
     private Coroutine effectRoutine;
     private bool isVisible;
+    private float spinAngle;                  // track spin independently
 
     void Awake()
     {
@@ -36,13 +37,18 @@ public class SpellFloorImage : MonoBehaviour
         if (follow != null)
         {
             transform.position = new Vector3(follow.transform.position.x, baseHeight, follow.transform.position.z);
-            transform.rotation = Quaternion.Euler(-90, 0, 0);
         }
 
-        // Optional: add spin when visible
+        // Spin only while visible
         if (isVisible)
         {
-            transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.Self);
+            spinAngle += spinSpeed * Time.deltaTime;
+            transform.rotation = Quaternion.Euler(-90, spinAngle, 0);
+        }
+        else
+        {
+            // Keep facing downward when invisible
+            transform.rotation = Quaternion.Euler(-90, 0, 0);
         }
     }
 
@@ -69,9 +75,7 @@ public class SpellFloorImage : MonoBehaviour
     private IEnumerator PlayEffect()
     {
         if (spriteRenderer == null)
-        {
             yield break;
-        }
 
         isVisible = true;
         spriteRenderer.enabled = true;
@@ -102,7 +106,11 @@ public class SpellFloorImage : MonoBehaviour
         {
             timer += Time.deltaTime;
             float t = Mathf.Clamp01(timer / fadeOutTime);
-            spriteRenderer.color = Color.Lerp(originalColor, new Color(originalColor.r, originalColor.g, originalColor.b, 0f), t);
+            spriteRenderer.color = Color.Lerp(
+                originalColor,
+                new Color(originalColor.r, originalColor.g, originalColor.b, 0f),
+                t
+            );
             yield return null;
         }
 
@@ -112,5 +120,6 @@ public class SpellFloorImage : MonoBehaviour
         transform.localScale = Vector3.zero;
         isVisible = false;
         effectRoutine = null;
+        spinAngle = 0f; // reset rotation angle
     }
 }

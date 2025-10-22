@@ -53,6 +53,6 @@ public class TennisAI : MonoBehaviour
     // I'm not sure if this is actually doing anything but I don't wanna risk breaking it
     private void UpdateSpellUI()
     {
-        UIManager.Instance?.UpdateSpellStatus(currentSpellName, buff);
+        // Keep this empty for compatability's sake
     }
 }

@@ -12,21 +12,16 @@ public class UIManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        // Set the Default values at Start
-        UpdateSpellStatus("None", 0f);
+        UpdateSpellStatus("None");
     }
 
-    public void UpdateSpellStatus(string spellName, float debuffValue)
+    public void UpdateSpellStatus(string spellName)
     {
         if (spellStatusText == null) return;
 
-        if (string.IsNullOrEmpty(spellName) || debuffValue == 0f)
-        {
+        if (string.IsNullOrEmpty(spellName) || spellName == "None")
             spellStatusText.text = "Current Spell: None";
-        }
         else
-        {
-            spellStatusText.text = $"Current Spell: {spellName} (Debuff: {debuffValue:F2})";
-        }
+            spellStatusText.text = $"Current Spell: {spellName}";
     }
 }

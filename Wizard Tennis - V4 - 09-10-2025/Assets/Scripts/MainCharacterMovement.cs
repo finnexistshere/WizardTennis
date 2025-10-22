@@ -37,7 +37,5 @@ public class MainCharacterMovement : MonoBehaviour
         debuffValue = value;
         spellName = spell;
         Debug.Log($"Debuff stored: {spell} ({value})");
-
-        UIManager.Instance?.UpdateSpellStatus(spellName, debuffValue);
     }
 }

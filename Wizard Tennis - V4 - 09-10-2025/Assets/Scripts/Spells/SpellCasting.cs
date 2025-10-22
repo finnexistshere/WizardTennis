@@ -6,10 +6,10 @@ using System.Collections.Generic;
 public class Spellcasting : MonoBehaviour
 {
     // --- Spell Dictionaries ---
-    public Dictionary<string, string> spellBook = new Dictionary<string, string>();        // address spell name
-    public Dictionary<string, float> debuffBook = new Dictionary<string, float>();         // address value
-    public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>(); // address prefab
-    public Dictionary<string, bool> boolBook = new Dictionary<string, bool>(); // dictionary that reads a spell bool value (bool value will tell whether the spell is cast immediately or when the player hits the ball)
+    public Dictionary<string, string> spellBook = new Dictionary<string, string>();
+    public Dictionary<string, float> debuffBook = new Dictionary<string, float>();
+    public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>();
+    public Dictionary<string, bool> boolBook = new Dictionary<string, bool>();
 
     // --- UI References ---
     [Header("UI References")]
@@ -19,8 +19,8 @@ public class Spellcasting : MonoBehaviour
 
     // --- Ball Visuals ---
     [Header("Ball Visual")]
-    public GameObject parentObject;     // object containing scripts and systems (do not replace)
-    public GameObject baseEffectObject; // child visual to be swapped
+    public GameObject parentObject;
+    public GameObject baseEffectObject;
     private GameObject currentVisualInstance;
 
     [Header("Spell Settings")]
@@ -32,27 +32,28 @@ public class Spellcasting : MonoBehaviour
 
     // --- Spellcasting State ---
     public string inputSpellAddress = "";
-    private string currentActiveSpell = ""; // track which spell is currently active
+    private string currentActiveSpell = "";
+    private float lastInputTime;
+    private bool isCasting = false; // prevents new spells while one is active
 
-    private float lastInputTime; // tracks when the last input happened
-
-    public TennisAI TennisAi; // assign TennisAI in Inspector
-
+    public TennisAI TennisAi;
     public SpellFloorImage spellFloorImage;
-
-    public SpellEffects SpellEffects; // assign SpellEffects in Inspector
+    public SpellEffects SpellEffects;
 
     private Color floorVisualColor;
 
     private void Awake()
     {
-
         spellBookPanel.SetActive(true);
-        lastInputTime = -inputTimeout; // so it doesn't auto-clear at start
+        lastInputTime = -inputTimeout;
     }
 
     private void Update()
     {
+        // Lock out all spell input while a spell is active
+        if (isCasting)
+            return;
+
         UpdateSpellBook();
 
         // Auto-clear if no input for `inputTimeout` seconds
@@ -79,7 +80,7 @@ public class Spellcasting : MonoBehaviour
     private void RegisterInput(string direction)
     {
         inputSpellAddress += direction;
-        lastInputTime = Time.time; // reset timeout timer
+        lastInputTime = Time.time;
         UpdateSpellBook();
     }
 
@@ -88,12 +89,20 @@ public class Spellcasting : MonoBehaviour
         if (spellBook.ContainsKey(inputSpellAddress))
         {
             string spellName = spellBook[inputSpellAddress];
+            if (isCasting)
+            {
+                Debug.Log("Spell blocked: another spell is still active.");
+                return;
+            }
 
-            // Disable base effect while spell is active
+            isCasting = true; // Lock new spellcasting
+            currentActiveSpell = spellName;
+
+            // Disable base effect
             if (baseEffectObject != null)
                 baseEffectObject.SetActive(false);
 
-            // Apply new buff/debuff
+            // Apply buff/debuff
             float value = debuffBook[inputSpellAddress];
             //TennisAi.ApplyBuff(value, spellName);
 
@@ -102,20 +111,27 @@ public class Spellcasting : MonoBehaviour
             if (boolBook[spellName])
             {
                 SpellEffects.plrHitSpell = true;
-            } else
+            }
+            else
             {
                 SpellEffects.plrHitSpell = false;
                 SpellEffects.castSpell();
             }
 
-                currentActiveSpell = spellName;
             Debug.Log(spellName + " cast!");
+            if (UIManager.Instance != null)
+                UIManager.Instance.UpdateSpellStatus(spellName);
             spellFloorImage.ShowSpell(spellName, floorVisualColor);
 
-            // Swap visual if prefab exists
+            // Swap visuals
             if (spellVisuals.ContainsKey(inputSpellAddress) && parentObject != null)
             {
                 SwapVisual(spellVisuals[inputSpellAddress], parentObject.transform, baseEffectObject);
+                StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
+            }
+            else
+            {
+                // Still reset even if no visual prefab
                 StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
             }
         }
@@ -159,28 +175,28 @@ public class Spellcasting : MonoBehaviour
         {
             TennisAi.ClearEffects();
             currentActiveSpell = "";
+
+            if (UIManager.Instance != null)
+                UIManager.Instance.UpdateSpellStatus("None");
         }
+
+        isCasting = false; // Unlock spellcasting
+        Debug.Log("Spellcasting unlocked.");
     }
 
     private void UpdateSpellBook()
     {
         spellAddressText.text = string.IsNullOrEmpty(inputSpellAddress) ? "" : inputSpellAddress;
 
-        // Clear old spell UI
         foreach (GameObject currentSpell in GameObject.FindGameObjectsWithTag("SpellUI"))
             Destroy(currentSpell);
 
-        // Create entries for matching spells
         foreach (KeyValuePair<string, string> item in spellBook)
         {
             if (item.Key.StartsWith(inputSpellAddress))
             {
                 SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
-
-                // Tag so it can be cleaned up easily
                 newEntry.gameObject.tag = "SpellUI";
-
-                // Set both texts (different fonts handled in prefab)
                 newEntry.SetText(item.Value, item.Key);
             }
         }
