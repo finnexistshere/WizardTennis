@@ -20,8 +20,10 @@ public class OppHitting : MonoBehaviour
     public SpellEffects SpellEffects;
 
     public CollisionTrackerBall CollisionTracker;
-    public bool reverse = false;
     public GameObject Player;
+
+    public float xPos;
+    public float zPos;
 
     void Start()
     {
@@ -48,55 +50,26 @@ public class OppHitting : MonoBehaviour
         {
             if (TennisAI.AttemptReturn() == true)
             {
-                if (SpellEffects.oppHitSpell)
-                {
-                    SpellEffects.castSpell();
-                }
 
                 // Change the position of the aimTarget to a random position on the Player court. This position is divided into sections (upcourt, downcourt, and centre, left, right)
                 float aimTargety = aimTarget.transform.position.y;
                 Vector3 plrPos = Player.transform.position;
-                float xPos;
-                float zPos;
-                if (reverse)
+                if (plrPos.x > 0)
                 {
-                    if (plrPos.x > 0)
-                    {
-                        xPos = 3;
-                    }
-                    else
-                    {
-                        xPos = -3;
-                    }
-
-                    if (plrPos.z > 6)
-                    {
-                        zPos = 3;
-                    }
-                    else
-                    {
-                        zPos = 10;
-                    }
+                    xPos = -3;
                 }
                 else
                 {
-                    if (plrPos.x > 0)
-                    {
-                        xPos = -3;
-                    }
-                    else
-                    {
-                        xPos = 3;
-                    }
+                    xPos = 3;
+                }
 
-                    if (plrPos.z > 6)
-                    {
-                        zPos = 10;
-                    }
-                    else
-                    {
-                        zPos = 3;
-                    }
+                if (plrPos.z > 6)
+                {
+                    zPos = 10;
+                }
+                else
+                {
+                    zPos = 3;
                 }
 
                 upForce = ogUpForce;
@@ -109,6 +82,11 @@ public class OppHitting : MonoBehaviour
 
                 particle.transform.position = other.transform.position;
                 particle.Play();
+
+                if (SpellEffects.oppHitSpell)
+                {
+                    SpellEffects.castSpell();
+                }
 
                 aimTarget.transform.position = new Vector3(xPos, aimTargety, zPos);
 

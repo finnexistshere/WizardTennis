@@ -53,8 +53,16 @@ public class SpellEffects : MonoBehaviour
         }
         else if (spellName == "Shadow")
         {
-            Opponent.GetComponent<OppHitting>().reverse = true;
-            resetOnOppHit = true;
+            if (!oppHitSpell)
+            {
+                oppHitSpell = true;
+            } else
+            {
+                OppHitting OppHitting = Opponent.GetComponent<OppHitting>();
+                OppHitting.xPos = Player.transform.position.x;
+                OppHitting.zPos = Player.transform.position.z;
+                resetOnOppHit = true;
+            }
         }
     }
 
@@ -75,7 +83,6 @@ public class SpellEffects : MonoBehaviour
         }
         else if (spellName == "Shadow")
         {
-            Opponent.GetComponent<OppHitting>().reverse = false;
             resetOnOppHit = false;
         }
         spellName = null;
