@@ -12,6 +12,7 @@ public class Spellcasting : MonoBehaviour
     public Dictionary<string, bool> boolBook = new Dictionary<string, bool>();
     public Dictionary<string, Color> spellColors = new Dictionary<string, Color>();
     public Dictionary<string, AudioClip> spellAudio = new Dictionary<string, AudioClip>();
+    public Dictionary<string, AudioClip> wizardAudio = new Dictionary<string, AudioClip>();
 
     // --- UI References ---
     [Header("UI References")]
@@ -36,8 +37,9 @@ public class Spellcasting : MonoBehaviour
     [Tooltip("Time before spell input auto-clears if no further input is given")]
     public float inputTimeout = 2f;
 
-    [Header("Audio Source")]
+    [Header("Audio")]
     public AudioSource audioSource;
+    public AudioClip SpellInputClick;
 
     // --- Spellcasting State ---
     public string inputSpellAddress = "";
@@ -88,6 +90,7 @@ public class Spellcasting : MonoBehaviour
 
     private void RegisterInput(string direction)
     {
+        audioSource.PlayOneShot(SpellInputClick);
         inputSpellAddress += direction;
         lastInputTime = Time.time;
         UpdateSpellBook();
@@ -137,6 +140,13 @@ public class Spellcasting : MonoBehaviour
             {
                 if (audioSource != null)
                     audioSource.PlayOneShot(clip);
+                else
+                    Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
+            }
+            if (wizardAudio.TryGetValue(inputSpellAddress, out AudioClip wizclip) && wizclip != null)
+            {
+                if (audioSource != null)
+                    audioSource.PlayOneShot(wizclip);
                 else
                     Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
             }
@@ -222,7 +232,7 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
-    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor, AudioClip spellCastAudio)
+    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor, AudioClip spellCastAudio, AudioClip wizardSpellSound)
     {
         if (!spellBook.ContainsKey(address))
         {
@@ -235,6 +245,7 @@ public class Spellcasting : MonoBehaviour
             boolBook[name] = onHitBool;
             spellColors[address] = FloorVisualColor;
             spellAudio[address] = spellCastAudio;
+            wizardAudio[address] = wizardSpellSound;
         }
     }
 }
