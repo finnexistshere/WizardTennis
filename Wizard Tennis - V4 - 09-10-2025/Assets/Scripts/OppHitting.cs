@@ -20,12 +20,19 @@ public class OppHitting : MonoBehaviour
     public SpellEffects SpellEffects;
 
     public CollisionTrackerBall CollisionTracker;
+    public bool reverse = false;
+    public GameObject Player;
 
     void Start()
     {
         targetPosition = transform.position; // make the 'targetPosition' equal to the opponent's current position
         aimTarget = GameObject.Find("OppAim");
         upForce = ogUpForce;
+    }
+
+    private void Awake()
+    {
+        Player = GameObject.Find("Player");
     }
 
     void Update()
@@ -48,21 +55,52 @@ public class OppHitting : MonoBehaviour
 
                 // Change the position of the aimTarget to a random position on the Player court. This position is divided into sections (upcourt, downcourt, and centre, left, right)
                 float aimTargety = aimTarget.transform.position.y;
-                int xRand = Random.Range(0, xCourtAim.Length);
-                int zRand = Random.Range(0, zCourtAim.Length);
-                if (xRand == 1)
+                Vector3 plrPos = Player.transform.position;
+                float xPos;
+                float zPos;
+                if (reverse)
                 {
-                    upForce = ogUpForce + 1.5f;
+                    if (plrPos.x > 0)
+                    {
+                        xPos = 3;
+                    }
+                    else
+                    {
+                        xPos = -3;
+                    }
+
+                    if (plrPos.z > 6)
+                    {
+                        zPos = 3;
+                    }
+                    else
+                    {
+                        zPos = 10;
+                    }
                 }
                 else
                 {
-                    upForce = ogUpForce;
+                    if (plrPos.x > 0)
+                    {
+                        xPos = -3;
+                    }
+                    else
+                    {
+                        xPos = 3;
+                    }
+
+                    if (plrPos.z > 6)
+                    {
+                        zPos = 10;
+                    }
+                    else
+                    {
+                        zPos = 3;
+                    }
                 }
-                /*if (zRand < 2)
-                {
-                    upForce += 2;
-                } else { upForce += 2f; }*/
-                if (other.transform.position.y < 3 && zRand != 2 && xRand != 1)
+
+                upForce = ogUpForce;
+                if (other.transform.position.y < 3 && zPos != 3 /*&& xRand != 1*/)
                 {
                     upForce += 1;
                 }
@@ -72,7 +110,7 @@ public class OppHitting : MonoBehaviour
                 particle.transform.position = other.transform.position;
                 particle.Play();
 
-                aimTarget.transform.position = new Vector3(xCourtAim[xRand], aimTargety, zCourtAim[zRand]);
+                aimTarget.transform.position = new Vector3(xPos, aimTargety, zPos);
 
                 // If you want more detailed comments regarding how the ball hitting works, check the PlayerHitting code
                 Vector3 dir = aimTarget.transform.position - transform.position;

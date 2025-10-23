@@ -14,6 +14,7 @@ public class SpellEffects : MonoBehaviour
 
     public GameObject Player;
     public GameObject Opponent;
+    public TennisAI TennisAI;
 
 
     public string spellName;
@@ -27,6 +28,7 @@ public class SpellEffects : MonoBehaviour
     {
         Player = GameObject.Find("Player");
         Opponent = GameObject.Find("Opponent");
+        TennisAI = GameObject.Find("Game Manager").GetComponent<TennisAI>();
     }
 
 
@@ -41,7 +43,17 @@ public class SpellEffects : MonoBehaviour
         }
         else if (spellName == "Ice")
         {
-            Opponent.GetComponent<OppHitting>().speed = 2f;
+            Opponent.GetComponent<OppHitting>().speed = 0f;
+            Invoke("resetSpellEffect", 0.5f);
+        }
+        else if (spellName == "Fireball")
+        {
+            TennisAI.ApplyBuff(-0.2f, spellName);
+            resetOnOppHit = true;
+        }
+        else if (spellName == "Shadow")
+        {
+            Opponent.GetComponent<OppHitting>().reverse = true;
             resetOnOppHit = true;
         }
     }
@@ -56,7 +68,18 @@ public class SpellEffects : MonoBehaviour
         else if (spellName == "Ice")
         {
             Opponent.GetComponent<OppHitting>().speed = 5;
+        }
+        else if (spellName ==  "Fireball")
+        {
             resetOnOppHit = false;
         }
+        else if (spellName == "Shadow")
+        {
+            Opponent.GetComponent<OppHitting>().reverse = false;
+            resetOnOppHit = false;
+        }
+        spellName = null;
+        plrHitSpell = false;
+        oppHitSpell = false;
     }
 }

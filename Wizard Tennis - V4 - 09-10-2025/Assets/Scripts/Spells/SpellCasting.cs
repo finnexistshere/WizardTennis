@@ -53,6 +53,9 @@ public class Spellcasting : MonoBehaviour
 
     private Color floorVisualColor;
 
+    public bool leftHandedMode = false; // false = arrows, true = WASD
+
+
     private void Awake()
     {
         spellBookPanel.SetActive(true);
@@ -61,13 +64,13 @@ public class Spellcasting : MonoBehaviour
 
     private void Update()
     {
-        // Lock out all spell input while a spell is active
+        // Lock out spell input while a spell is active
         if (isCasting)
             return;
 
         UpdateSpellBook();
 
-        // Auto-clear if no input for `inputTimeout` seconds
+        // Auto-clear input if timeout reached
         if (!string.IsNullOrEmpty(inputSpellAddress) && Time.time - lastInputTime >= inputTimeout)
         {
             Debug.Log("Input timeout reached, clearing input...");
@@ -76,16 +79,40 @@ public class Spellcasting : MonoBehaviour
         }
 
         // --- Spellcasting inputs ---
-        if (Input.GetKeyDown(KeyCode.LeftArrow)) { RegisterInput("a"); }
-        else if (Input.GetKeyDown(KeyCode.RightArrow)) { RegisterInput("A"); }
-        else if (Input.GetKeyDown(KeyCode.UpArrow)) { RegisterInput("B"); }
-        else if (Input.GetKeyDown(KeyCode.DownArrow)) { RegisterInput("b"); }
+        if (CheckSpellInput(out string direction))
+        {
+            RegisterInput(direction);
+        }
 
-        // Check only if a valid spell has been fully entered
+        // --- Check completed spell ---
         if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
         {
             CheckSpell();
         }
+    }
+
+    private bool CheckSpellInput(out string direction)
+    {
+        direction = "";
+
+        if (!leftHandedMode)
+        {
+            // Arrow keys
+            if (Input.GetKeyDown(KeyCode.LeftArrow)) direction = "a";
+            else if (Input.GetKeyDown(KeyCode.RightArrow)) direction = "A";
+            else if (Input.GetKeyDown(KeyCode.UpArrow)) direction = "B";
+            else if (Input.GetKeyDown(KeyCode.DownArrow)) direction = "b";
+        }
+        else
+        {
+            // WASD keys
+            if (Input.GetKeyDown(KeyCode.A)) direction = "a";
+            else if (Input.GetKeyDown(KeyCode.D)) direction = "A";
+            else if (Input.GetKeyDown(KeyCode.W)) direction = "B";
+            else if (Input.GetKeyDown(KeyCode.S)) direction = "b";
+        }
+
+        return !string.IsNullOrEmpty(direction);
     }
 
     private void RegisterInput(string direction)
@@ -244,6 +271,8 @@ public class Spellcasting : MonoBehaviour
         {
             SwapVisual(spellVisuals[inputSpellAddress], parentObject.transform, baseEffectObject);
             StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
+            // Remove this spell from the book after casting
+            RemoveSpell(inputSpellAddress);
         }
         else
         {
@@ -252,6 +281,29 @@ public class Spellcasting : MonoBehaviour
         }
     }
 
+    private void RemoveSpell(string address)
+    {
+        if (spellBook.ContainsKey(address))
+        {
+            string spellName = spellBook[address];
+
+            // Remove from all linked dictionaries safely
+            spellBook.Remove(address);
+            debuffBook.Remove(address);
+            spellVisuals.Remove(address);
+            spellColors.Remove(address);
+            spellAudio.Remove(address);
+            wizardAudio.Remove(address);
+
+            // boolBook is keyed by spell name instead of address
+            boolBook.Remove(spellName);
+
+            Debug.Log($"Removed spell '{spellName}' ({address}) from spell book.");
+        }
+
+        // Update UI after removal
+        UpdateSpellBook();
+    }
 
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor, AudioClip spellCastAudio, AudioClip wizardSpellSound)
     {

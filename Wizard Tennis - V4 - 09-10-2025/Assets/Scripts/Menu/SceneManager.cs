@@ -6,6 +6,7 @@ public class SceneChanger : MonoBehaviour
     [Header("UI Panels")]
     public GameObject MainMenu;
     public GameObject CreditsMenu;
+    public GameObject OptionsMenu;
 
     public void ChangeScene(string sceneName)
     {
@@ -25,5 +26,23 @@ public class SceneChanger : MonoBehaviour
     {
         MainMenu.SetActive(false);
         CreditsMenu.SetActive(true);
+    }
+
+    public void BackToMainFromCredits()
+    {
+        MainMenu.SetActive(true);
+        CreditsMenu.SetActive(false);
+    }
+
+    public void Options()
+    {
+        MainMenu.SetActive(false);
+        OptionsMenu.SetActive(true);
+    }
+
+    public void BacktoMainFromOptions()
+    {
+        MainMenu.SetActive(true);
+        OptionsMenu.SetActive(false);
     }
 }
