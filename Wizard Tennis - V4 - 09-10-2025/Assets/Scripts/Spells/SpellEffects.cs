@@ -32,6 +32,8 @@ public class SpellEffects : MonoBehaviour
 
     public void castSpell()
     {
+        Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
+
         if (spellName == "Lightning")
         {
             Player.GetComponent<MainCharacterMovement>().speed = 17;

@@ -110,12 +110,6 @@ public class Spellcasting : MonoBehaviour
             isCasting = true; // Lock new spellcasting
             currentActiveSpell = spellName;
 
-            // Disable base effect
-            if (baseEffectObject != null)
-                baseEffectObject.SetActive(false);
-
-            // Apply buff/debuff
-            float value = debuffBook[inputSpellAddress];
             //TennisAi.ApplyBuff(value, spellName);
 
             SpellEffects.spellName = spellBook[inputSpellAddress];
@@ -128,39 +122,6 @@ public class Spellcasting : MonoBehaviour
             {
                 SpellEffects.plrHitSpell = false;
                 SpellEffects.castSpell();
-            }
-
-            Debug.Log(spellName + " cast!");
-            if (UIManager.Instance != null)
-                UIManager.Instance.UpdateSpellStatus(spellName);
-            Color spellColor = spellColors[inputSpellAddress];
-            spellFloorImage.ShowSpell(spellName, spellColor);
-            spellParticleColor.SetSpellColor(spellColor);
-            if (spellAudio.TryGetValue(inputSpellAddress, out AudioClip clip) && clip != null)
-            {
-                if (audioSource != null)
-                    audioSource.PlayOneShot(clip);
-                else
-                    Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
-            }
-            if (wizardAudio.TryGetValue(inputSpellAddress, out AudioClip wizclip) && wizclip != null)
-            {
-                if (audioSource != null)
-                    audioSource.PlayOneShot(wizclip);
-                else
-                    Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
-            }
-
-            // Swap visuals
-            if (spellVisuals.ContainsKey(inputSpellAddress) && parentObject != null)
-            {
-                SwapVisual(spellVisuals[inputSpellAddress], parentObject.transform, baseEffectObject);
-                StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
-            }
-            else
-            {
-                // Still reset even if no visual prefab
-                StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
             }
         }
         else
@@ -231,6 +192,66 @@ public class Spellcasting : MonoBehaviour
             }
         }
     }
+
+    public void CastSpellNormal(string spellName)
+    {
+        bool found = false;
+        foreach (var spell in spellBook)
+        {
+            if (spell.Value == spellName)
+            {
+                inputSpellAddress = spell.Key;
+                Debug.Log($"Found {spell.Key}");
+                found = true;
+            }
+        }
+        if (found == false)
+        {
+            Debug.Log("Spell address could not be found fuck you");
+            return;
+        }
+
+        // Disable base effect
+        if (baseEffectObject != null)
+            baseEffectObject.SetActive(false);
+
+        // Apply buff/debuff
+        float value = debuffBook[inputSpellAddress];
+
+        Debug.Log(spellName + " cast!");
+        if (UIManager.Instance != null)
+            UIManager.Instance.UpdateSpellStatus(spellName);
+        Color spellColor = spellColors[inputSpellAddress];
+        spellFloorImage.ShowSpell(spellName, spellColor);
+        spellParticleColor.SetSpellColor(spellColor);
+        if (spellAudio.TryGetValue(inputSpellAddress, out AudioClip clip) && clip != null)
+        {
+            if (audioSource != null)
+                audioSource.PlayOneShot(clip);
+            else
+                Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
+        }
+        if (wizardAudio.TryGetValue(inputSpellAddress, out AudioClip wizclip) && wizclip != null)
+        {
+            if (audioSource != null)
+                audioSource.PlayOneShot(wizclip);
+            else
+                Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
+        }
+
+        // Swap visuals
+        if (spellVisuals.ContainsKey(inputSpellAddress) && parentObject != null)
+        {
+            SwapVisual(spellVisuals[inputSpellAddress], parentObject.transform, baseEffectObject);
+            StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
+        }
+        else
+        {
+            // Still reset even if no visual prefab
+            StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
+        }
+    }
+
 
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor, AudioClip spellCastAudio, AudioClip wizardSpellSound)
     {

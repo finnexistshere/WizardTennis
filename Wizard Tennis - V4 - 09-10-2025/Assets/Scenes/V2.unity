@@ -1381,6 +1381,7 @@ MonoBehaviour:
   ballSpeed: 2.5
   serving: 1
   SpellEffects: {fileID: 1594825195}
+  spellcasting: {fileID: 153926197}
   CollisionTracker: {fileID: 1786689992}
 --- !u!114 &153926191
 MonoBehaviour:
@@ -1535,7 +1536,8 @@ MonoBehaviour:
   hitParticle: {fileID: 1977279299}
   spellParticleColor: {fileID: 1977279300}
   inputTimeout: 2
-  audioSource: {fileID: 0}
+  audioSource: {fileID: 1136450470}
+  SpellInputClick: {fileID: 0}
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
   spellFloorImage: {fileID: 1076509792}

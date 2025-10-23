@@ -3,6 +3,10 @@ using UnityEngine.SceneManagement; // Required for scene management
 
 public class SceneChanger : MonoBehaviour
 {
+    [Header("UI Panels")]
+    public GameObject MainMenu;
+    public GameObject CreditsMenu;
+
     public void ChangeScene(string sceneName)
     {
         SceneManager.LoadScene(sceneName);
@@ -16,5 +20,10 @@ public class SceneChanger : MonoBehaviour
     {
         Application.Quit();
         Debug.Log("Application Quit Requested");
+    }
+    public void Credits()
+    {
+        MainMenu.SetActive(false);
+        CreditsMenu.SetActive(true);
     }
 }

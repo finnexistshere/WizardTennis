@@ -20,6 +20,8 @@ public class Ball : MonoBehaviour
 
     public SpellEffects SpellEffects;
 
+    public Spellcasting spellcasting;
+
     public CollisionTrackerBall CollisionTracker;
 
     void Start()
