@@ -1313,7 +1313,7 @@ CharacterController:
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0.25, z: 0}
 --- !u!136 &153926193
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1556,8 +1556,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   twoHandController: {fileID: 1545774662}
-  leftHandTarget: {fileID: 1082740015}
-  rightHandTarget: {fileID: 1052331161}
+  playerPos: {fileID: 153926196}
   ball: {fileID: 1786689990}
   rig: {fileID: 2138178914}
 --- !u!4 &155859997 stripped
@@ -16577,11 +16576,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3fef29261fda45942952b496e299da7f, type: 3}
   m_PrefabInstance: {fileID: 238395553}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &1052331161 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3259657771669556347, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}
-  m_PrefabInstance: {fileID: 6532999447849923146}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1060918505
 GameObject:
   m_ObjectHideFlags: 0
@@ -16654,11 +16648,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1060918505}
   m_CullTransparentMesh: 1
---- !u!4 &1082740015 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4686288798107124905, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}
-  m_PrefabInstance: {fileID: 6532999447849923146}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1083199354
 PrefabInstance:
   m_ObjectHideFlags: 0
