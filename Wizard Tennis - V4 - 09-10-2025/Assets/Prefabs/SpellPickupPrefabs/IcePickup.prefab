@@ -123,8 +123,10 @@ MonoBehaviour:
   value: -0.35
   spellName: Ice
   spellAddress: bAa
-  onHitBool: 0
+  onHitBool: 1
   FloorVisualColor: {r: 0, g: 0.9430566, b: 1, a: 1}
+  spellCastAudio: {fileID: 8300000, guid: b7d80ddddce274042bde9b73f8f377f4, type: 3}
+  wizardSpellSound: {fileID: 8300000, guid: 881ef427378ca74459b91e39029984fa, type: 3}
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
   audioClip: {fileID: 0}
 --- !u!96 &2732718826391848496
