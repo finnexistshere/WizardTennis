@@ -1447,7 +1447,7 @@ CapsuleCollider:
   m_Radius: 1
   m_Height: 2
   m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0.25, z: 0}
 --- !u!23 &153926194
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1542,6 +1542,7 @@ MonoBehaviour:
   TennisAi: {fileID: 1594825194}
   spellFloorImage: {fileID: 1076509792}
   SpellEffects: {fileID: 1594825195}
+  leftHandedMode: 0
 --- !u!114 &153926198
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9884,6 +9885,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Player: {fileID: 153926187}
   Opponent: {fileID: 2092549635}
+  TennisAI: {fileID: 0}
   spellName: 
   resetOnOppHit: 0
   resetOnPlrHit: 0
@@ -12211,6 +12213,8 @@ MonoBehaviour:
   TennisAI: {fileID: 1594825194}
   SpellEffects: {fileID: 1594825195}
   CollisionTracker: {fileID: 1786689992}
+  reverse: 0
+  Player: {fileID: 0}
 --- !u!136 &2092549637
 CapsuleCollider:
   m_ObjectHideFlags: 0
