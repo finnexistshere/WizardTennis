@@ -1,29 +1,27 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 public class Ball : MonoBehaviour
 {
-    public Transform aimTarget; // point on the opposite side
-    public float strength = 25;
+    public Transform aimTarget; // point on the opp side that the ball will aim towards
+    public float strength = 25; // strength of hit
     public float ogUpForce = 11;
-    private float upForce = 11;
+    private float upForce = 11; // upwards force of hit
     public float ballSpeed = 5;
 
-    private bool hitting = true;
-    public bool serving;
+    private bool hitting = true; // is the player currently hitting the ball
+    public bool serving; // is the player's next hit a serve
 
-    private bool nearBall = false;
-
-    [Header("Spawn Settings")]
-    public Transform ballSpawnPoint;  // Where the ball will spawn
-    public GameObject ballPrefab;      // Prefab for the ball
-
-    private static GameObject currentBall;  // Ensures only one ball exists
+    private bool nearBall = false; // only used when serving; detect if the player is near the ball when they press e
+    private GameObject ball;
 
     public SpellEffects SpellEffects;
+
     public Spellcasting spellcasting;
+
     public CollisionTrackerBall CollisionTracker;
 
     public int rallyCount = 0;
@@ -35,59 +33,70 @@ public class Ball : MonoBehaviour
 
     void Start()
     {
-        serving = true;
+        serving = true; // Making the player's first hit a serve
         upForce = ogUpForce;
-
-        // Only try to find the ball if one exists
-        if (currentBall == null)
-            currentBall = GameObject.FindWithTag("Ball");
+        ball = GameObject.FindWithTag("Ball");
     }
 
     void Update()
     {
-        // Press E: spawn ball if none exists
-        if (Input.GetKeyDown(KeyCode.E) && currentBall == null && ballPrefab != null && ballSpawnPoint != null)
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            currentBall = Instantiate(ballPrefab, ballSpawnPoint.position, ballSpawnPoint.rotation);
-            CollisionTracker = currentBall.GetComponent<CollisionTrackerBall>(); // get tracker
-            nearBall = true; // immediately allow serving
-        }
-
-        // Press E: serve if near ball
-        if (Input.GetKeyDown(KeyCode.E) && nearBall && serving)
-        {
-            if (currentBall != null)
+            if(nearBall && serving)
             {
-                Rigidbody rb = currentBall.GetComponent<Rigidbody>();
-                rb.useGravity = true;
-                rb.velocity = new Vector3(0, upForce, 0).normalized * strength / 2;
-                serving = false;
+                ball.GetComponent<Rigidbody>().useGravity = true; // Make the ball stop floating midair (will change this once mechanics are properly fleshed out)
+                ball.GetComponent<Rigidbody>().velocity = new Vector3(0, upForce, 0).normalized * strength / 2; // Send the ball straight upwards
+                serving = false; // Player is no longer serving
             }
         }
     }
 
+    /*public void OnHitBall(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            hitting = true;
+        } else if (context.canceled)
+        {
+            hitting = false;
+        }
+    }*/
+
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Ball"))
+        if (other.CompareTag("Ball")) // if we collide with the ball 
         {
             nearBall = true;
-
             if (hitting)
             {
                 if (SpellEffects.plrHitSpell)
+                {
                     SpellEffects.castSpell();
+                }
 
-                if (35.5 < transform.position.x) upForce = ogUpForce + 2;
-                else upForce = ogUpForce;
+                if (35.5 < transform.position.x)
+                {
+                    upForce = ogUpForce + 2;
+                }
+                else
+                {
+                    upForce = ogUpForce;
+                }
+                if (-6.25 < transform.position.z || transform.position.z < 6.25)
+                {
+                    upForce += 2;
+                }
 
-                if (-6.25 < transform.position.z || transform.position.z < 6.25) upForce += 2;
-
-                ParticleSystem particle = GameObject.FindGameObjectWithTag("Player Hit Particle").GetComponent<ParticleSystem>();
+                ParticleSystem particle = GameObject.FindGameObjectWithTag("Player Hit Particle").GetComponent<ParticleSystem>(); // Plays player hit particle
+                Debug.Log("Playing hit Particle");
                 particle.transform.position = other.transform.position;
                 particle.Play();
 
+
                 if (!serving)
                 {
+                    Debug.Log("Attempting Serve");
+                    //Vector3 dir = aimTarget.position - transform.position; // Use the aimTarget to get a new direction vector we can use to aim
                     Vector3 dir = aimTarget.position - transform.position;
                     ball.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0); // Apply a force to the ball in the direction made above with the strength modifier + some upwards force so it can get over the net
                     rallyCount++;
@@ -102,27 +111,24 @@ public class Ball : MonoBehaviour
                         }
                     }
                     this.GetComponent<UIManager>().UpdateRallyCount(rallyCount);
-                    other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
                 }
 
                 if (SpellEffects.resetOnPlrHit)
-                    SpellEffects.resetSpellEffect();
-
-                if (CollisionTracker != null)
                 {
-                    CollisionTracker.LastHitWizard = "Player";
-                    CollisionTracker.hasbounced = false;
+                    SpellEffects.resetSpellEffect();
                 }
+
+                CollisionTracker.LastHitWizard = "Player";
+                CollisionTracker.hasbounced = false;
             }
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Ball"))
+        if (other.CompareTag("Ball")) // if we collide with the ball 
+        {
             nearBall = false;
+        }
     }
-
-    // Optional: helper to let other scripts safely get the current ball
-    public static GameObject GetCurrentBall() => currentBall;
 }

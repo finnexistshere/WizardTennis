@@ -9,24 +9,17 @@ public class CollisionTrackerBall : MonoBehaviour
 
     private bool justOnce = true;
 
-    private void Awake()
-    {
-        // Auto-find GameManager if not set
-        if (gameManager == null)
-            gameManager = GameManager.Instance;
-    }
-
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            // LastHitWizard = "Player";
-            // hasbounced = false;
+            //LastHitWizard = "Player";
+            //hasbounced = false;
         }
         else if (other.CompareTag("Opponent"))
         {
-            // LastHitWizard = "Opponent";
-            // hasbounced = false;
+            //LastHitWizard = "Opponent";
+            //hasbounced = false;
         }
         else if (other.CompareTag("OutOfBounds"))
         {
@@ -35,8 +28,7 @@ public class CollisionTrackerBall : MonoBehaviour
                 HandleOutOfBounds();
                 hasbounced = false;
                 justOnce = false;
-            }
-            else
+            } else
             {
                 justOnce = true;
             }
@@ -62,6 +54,7 @@ public class CollisionTrackerBall : MonoBehaviour
         {
             //HandleBounceCheck();
         }
+
     }
 
     private void HandleOutOfBounds()
@@ -149,7 +142,7 @@ public class CollisionTrackerBall : MonoBehaviour
             }
             else if (LastHitWizard == "Opponent")
             {
-                ScoreManager.Instance.AddPoint("Opponent");
+                ScoreManager.Instance.AddPoint("Player");
                 gameManager.RoundOver("You lose! Your ball bounced before it went over!");
             }
         }
