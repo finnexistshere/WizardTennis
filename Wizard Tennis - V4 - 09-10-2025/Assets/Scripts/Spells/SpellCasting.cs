@@ -104,13 +104,20 @@ public class Spellcasting : MonoBehaviour
     {
         direction = "";
 
-        bool leftHanded = OptionsManager.Instance.leftHandedMode;
+        // Default: Arrow keys
+        KeyCode leftKey = KeyCode.LeftArrow;
+        KeyCode rightKey = KeyCode.RightArrow;
+        KeyCode upKey = KeyCode.UpArrow;
+        KeyCode downKey = KeyCode.DownArrow;
 
-        // Spell keys are the opposite of movement keys
-        KeyCode leftKey = leftHanded ? KeyCode.A : KeyCode.LeftArrow;
-        KeyCode rightKey = leftHanded ? KeyCode.D : KeyCode.RightArrow;
-        KeyCode upKey = leftHanded ? KeyCode.W : KeyCode.UpArrow;
-        KeyCode downKey = leftHanded ? KeyCode.S : KeyCode.DownArrow;
+        // If OptionsManager exists and left-handed mode is ON, use WASD for spells
+        if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
+        {
+            leftKey = KeyCode.A;
+            rightKey = KeyCode.D;
+            upKey = KeyCode.W;
+            downKey = KeyCode.S;
+        }
 
         if (Input.GetKeyDown(leftKey)) direction = "a";
         if (Input.GetKeyDown(rightKey)) direction = "A";
