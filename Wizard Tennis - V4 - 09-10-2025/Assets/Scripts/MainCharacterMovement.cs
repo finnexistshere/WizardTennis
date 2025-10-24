@@ -19,13 +19,20 @@ public class MainCharacterMovement : MonoBehaviour
         if (controller.isGrounded)
         {
             Vector3 input = Vector3.zero;
-            bool leftHanded = OptionsManager.Instance.leftHandedMode;
+            // Default movement keys (WASD)
+            KeyCode forward = KeyCode.W;
+            KeyCode backward = KeyCode.S;
+            KeyCode left = KeyCode.A;
+            KeyCode right = KeyCode.D;
 
-            // Movement keys are opposite of spell keys
-            KeyCode forward = leftHanded ? KeyCode.UpArrow : KeyCode.W;
-            KeyCode backward = leftHanded ? KeyCode.DownArrow : KeyCode.S;
-            KeyCode left = leftHanded ? KeyCode.LeftArrow : KeyCode.A;
-            KeyCode right = leftHanded ? KeyCode.RightArrow : KeyCode.D;
+            // If OptionsManager exists, swap keys for left-handed mode
+            if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
+            {
+                forward = KeyCode.UpArrow;
+                backward = KeyCode.DownArrow;
+                left = KeyCode.LeftArrow;
+                right = KeyCode.RightArrow;
+            }
 
             if (Input.GetKey(forward)) input.z += 1;
             if (Input.GetKey(backward)) input.z -= 1;

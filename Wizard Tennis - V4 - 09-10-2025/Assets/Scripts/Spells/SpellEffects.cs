@@ -64,6 +64,10 @@ public class SpellEffects : MonoBehaviour
                 resetOnOppHit = true;
             }
         }
+        else if (spellName == "Green")
+        {
+            Player.GetComponent<Ball>().green = true;
+        }
     }
 
 

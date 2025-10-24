@@ -9,6 +9,13 @@ public class CollisionTrackerBall : MonoBehaviour
 
     private bool justOnce = true;
 
+    private void Awake()
+    {
+        // Auto-find GameManager if not set
+        if (gameManager == null)
+            gameManager = GameManager.Instance;
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
@@ -142,7 +149,7 @@ public class CollisionTrackerBall : MonoBehaviour
             }
             else if (LastHitWizard == "Opponent")
             {
-                ScoreManager.Instance.AddPoint("Player");
+                ScoreManager.Instance.AddPoint("Opponent");
                 gameManager.RoundOver("You lose! Your ball bounced before it went over!");
             }
         }
