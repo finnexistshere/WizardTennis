@@ -60,6 +60,10 @@ public class Spellcasting : MonoBehaviour
     {
         spellBookPanel.SetActive(true);
         lastInputTime = -inputTimeout;
+
+        // Read left-handed mode from OptionsManager on spawn
+        if (OptionsManager.Instance != null)
+            SetLeftHandedMode(OptionsManager.Instance.leftHandedMode);
     }
 
     private void Update()
@@ -90,27 +94,28 @@ public class Spellcasting : MonoBehaviour
             CheckSpell();
         }
     }
+    // --- Update left-handed mode ---
+    public void SetLeftHandedMode(bool enabled)
+    {
+        leftHandedMode = enabled;
+    }
 
     private bool CheckSpellInput(out string direction)
     {
         direction = "";
 
-        if (!leftHandedMode)
-        {
-            // Arrow keys
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) direction = "a";
-            else if (Input.GetKeyDown(KeyCode.RightArrow)) direction = "A";
-            else if (Input.GetKeyDown(KeyCode.UpArrow)) direction = "B";
-            else if (Input.GetKeyDown(KeyCode.DownArrow)) direction = "b";
-        }
-        else
-        {
-            // WASD keys
-            if (Input.GetKeyDown(KeyCode.A)) direction = "a";
-            else if (Input.GetKeyDown(KeyCode.D)) direction = "A";
-            else if (Input.GetKeyDown(KeyCode.W)) direction = "B";
-            else if (Input.GetKeyDown(KeyCode.S)) direction = "b";
-        }
+        bool leftHanded = OptionsManager.Instance.leftHandedMode;
+
+        // Spell keys are the opposite of movement keys
+        KeyCode leftKey = leftHanded ? KeyCode.A : KeyCode.LeftArrow;
+        KeyCode rightKey = leftHanded ? KeyCode.D : KeyCode.RightArrow;
+        KeyCode upKey = leftHanded ? KeyCode.W : KeyCode.UpArrow;
+        KeyCode downKey = leftHanded ? KeyCode.S : KeyCode.DownArrow;
+
+        if (Input.GetKeyDown(leftKey)) direction = "a";
+        if (Input.GetKeyDown(rightKey)) direction = "A";
+        if (Input.GetKeyDown(upKey)) direction = "B";
+        if (Input.GetKeyDown(downKey)) direction = "b";
 
         return !string.IsNullOrEmpty(direction);
     }

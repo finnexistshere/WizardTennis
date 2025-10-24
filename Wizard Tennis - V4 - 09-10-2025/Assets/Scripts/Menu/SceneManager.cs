@@ -1,5 +1,7 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // Required for scene management
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using TMPro;
 
 public class SceneChanger : MonoBehaviour
 {
@@ -7,6 +9,11 @@ public class SceneChanger : MonoBehaviour
     public GameObject MainMenu;
     public GameObject CreditsMenu;
     public GameObject OptionsMenu;
+
+    [Header("Options Menu UI References")]
+    public Slider volumeSlider;
+    public Toggle leftHandedToggle;
+    public TextMeshProUGUI modeLabel;
 
     public void ChangeScene(string sceneName)
     {
@@ -17,11 +24,13 @@ public class SceneChanger : MonoBehaviour
     {
         SceneManager.LoadScene(sceneIndex);
     }
+
     public void ExitApplication()
     {
         Application.Quit();
         Debug.Log("Application Quit Requested");
     }
+
     public void Credits()
     {
         MainMenu.SetActive(false);
@@ -38,11 +47,19 @@ public class SceneChanger : MonoBehaviour
     {
         MainMenu.SetActive(false);
         OptionsMenu.SetActive(true);
+
+        // Hook the UI to OptionsManager
+        if (OptionsManager.Instance != null)
+        {
+            OptionsManager.Instance.OnOptionsMenuOpened(volumeSlider, leftHandedToggle, modeLabel);
+        }
     }
 
-    public void BacktoMainFromOptions()
+    public void BackToMainFromOptions()
     {
         MainMenu.SetActive(true);
         OptionsMenu.SetActive(false);
+
+        // You can optionally re-hook or just leave the references
     }
 }

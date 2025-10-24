@@ -1,20 +1,22 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement;
-using System.Collections;
 
 public class OptionsManager : MonoBehaviour
 {
     public static OptionsManager Instance;
 
-    [Header("UI References")]
-    [SerializeField] private Slider volumeSlider;
-    [SerializeField] private Toggle leftHandedToggle;
-    [SerializeField] private TextMeshProUGUI modeLabel;
+    [Header("Current Settings")]
+    [SerializeField] private float volume = 0.75f;
+    [SerializeField] public bool leftHandedMode = false;
 
-    public bool leftHandedMode { get; private set; }
-    private float currentVolume = 0.75f;
+    public float Volume => volume;
+    public bool LeftHandedMode => leftHandedMode;
+
+    // These are temporary references, assigned when menu opens
+    private Slider volumeSlider;
+    private Toggle leftHandedToggle;
+    private TextMeshProUGUI modeLabel;
 
     private void Awake()
     {
@@ -24,51 +26,22 @@ public class OptionsManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
         LoadSettings();
-
-        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    private void Start()
+    /// <summary>
+    /// Call this whenever the options menu is opened in the scene.
+    /// Pass the UI references from the scene.
+    /// </summary>
+    public void OnOptionsMenuOpened(Slider slider, Toggle toggle, TextMeshProUGUI label)
     {
-        // Try hooking up UI immediately if active
-        HookUIIfActive();
-    }
-
-    private void OnDestroy()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        UnhookUI();
-    }
-
-    // --- Scene Management ---
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        HookUIIfActive();
-    }
-
-    private void HookUIIfActive()
-    {
-        // Only try if Options GameObject is active
-        if (!gameObject.activeInHierarchy) return;
-
-        StartCoroutine(FindAndHookUI());
-    }
-
-    private IEnumerator FindAndHookUI()
-    {
-        yield return null; // wait one frame
-        yield return new WaitForSeconds(0.05f); // small delay to ensure UI exists
-
-        if (volumeSlider == null)
-            volumeSlider = FindObjectOfType<Slider>(true);
-        if (leftHandedToggle == null)
-            leftHandedToggle = FindObjectOfType<Toggle>(true);
-        if (modeLabel == null)
-            modeLabel = FindObjectOfType<TextMeshProUGUI>(true);
+        volumeSlider = slider;
+        leftHandedToggle = toggle;
+        modeLabel = label;
 
         HookUI();
     }
@@ -78,7 +51,7 @@ public class OptionsManager : MonoBehaviour
         if (volumeSlider != null)
         {
             volumeSlider.onValueChanged.RemoveAllListeners();
-            volumeSlider.value = currentVolume;
+            volumeSlider.value = volume;
             volumeSlider.onValueChanged.AddListener(SetVolume);
         }
 
@@ -92,30 +65,27 @@ public class OptionsManager : MonoBehaviour
         UpdateUILabel();
     }
 
-    private void UnhookUI()
-    {
-        if (volumeSlider != null)
-            volumeSlider.onValueChanged.RemoveAllListeners();
-        if (leftHandedToggle != null)
-            leftHandedToggle.onValueChanged.RemoveAllListeners();
-    }
-
-    // --- Volume ---
     public void SetVolume(float value)
     {
-        currentVolume = Mathf.Clamp01(value);
-        AudioListener.volume = currentVolume;
-        PlayerPrefs.SetFloat("Volume", currentVolume);
+        volume = Mathf.Clamp01(value);
+        AudioListener.volume = volume;
+        PlayerPrefs.SetFloat("Volume", volume);
         PlayerPrefs.Save();
+
+        if (volumeSlider != null && volumeSlider.value != volume)
+            volumeSlider.value = volume;
     }
 
-    // --- Left-Handed Mode ---
     public void SetLeftHandedMode(bool enabled)
     {
         leftHandedMode = enabled;
         PlayerPrefs.SetInt("LeftHandedMode", leftHandedMode ? 1 : 0);
         PlayerPrefs.Save();
+
         UpdateUILabel();
+
+        if (leftHandedToggle != null && leftHandedToggle.isOn != leftHandedMode)
+            leftHandedToggle.isOn = leftHandedMode;
     }
 
     private void UpdateUILabel()
@@ -124,11 +94,10 @@ public class OptionsManager : MonoBehaviour
             modeLabel.text = leftHandedMode ? "Left-Handed Mode: ON" : "Left-Handed Mode: OFF";
     }
 
-    // --- Load saved settings ---
     private void LoadSettings()
     {
-        currentVolume = PlayerPrefs.GetFloat("Volume", 0.75f);
+        volume = PlayerPrefs.GetFloat("Volume", 0.75f);
         leftHandedMode = PlayerPrefs.GetInt("LeftHandedMode", 0) == 1;
-        AudioListener.volume = currentVolume;
+        AudioListener.volume = volume;
     }
 }

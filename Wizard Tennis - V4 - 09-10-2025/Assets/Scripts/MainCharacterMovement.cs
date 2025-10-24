@@ -7,23 +7,35 @@ public class MainCharacterMovement : MonoBehaviour
     public float gravity = 20.0f;
     private Vector3 moveDirection = Vector3.zero;
 
-    public TennisAI TennisAi;
+    private CharacterController controller;
 
-    // Store current pickup debuff value and spell name
-    private float debuffValue = 0f;
-    private string spellName = "";
+    private void Awake()
+    {
+        controller = GetComponent<CharacterController>();
+    }
 
     void Update()
     {
-        CharacterController controller = GetComponent<CharacterController>();
-        // Basic movement, this can be fleshed out with a Jump buffer etc.
         if (controller.isGrounded)
         {
-            moveDirection = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-            moveDirection = transform.TransformDirection(moveDirection);
-            moveDirection *= speed;
+            Vector3 input = Vector3.zero;
+            bool leftHanded = OptionsManager.Instance.leftHandedMode;
 
-            if (Input.GetButton("Jump"))
+            // Movement keys are opposite of spell keys
+            KeyCode forward = leftHanded ? KeyCode.UpArrow : KeyCode.W;
+            KeyCode backward = leftHanded ? KeyCode.DownArrow : KeyCode.S;
+            KeyCode left = leftHanded ? KeyCode.LeftArrow : KeyCode.A;
+            KeyCode right = leftHanded ? KeyCode.RightArrow : KeyCode.D;
+
+            if (Input.GetKey(forward)) input.z += 1;
+            if (Input.GetKey(backward)) input.z -= 1;
+            if (Input.GetKey(right)) input.x += 1;
+            if (Input.GetKey(left)) input.x -= 1;
+
+            moveDirection = transform.TransformDirection(input.normalized * speed);
+
+            // Jump is always Space
+            if (Input.GetKey(KeyCode.Space))
                 moveDirection.y = jumpSpeed;
         }
 
@@ -31,11 +43,4 @@ public class MainCharacterMovement : MonoBehaviour
         controller.Move(moveDirection * Time.deltaTime);
     }
 
-    // Call this method from the pickup effect to set the debuff value and spell name
-    public void SetDebuff(float value, string spell)
-    {
-        debuffValue = value;
-        spellName = spell;
-        Debug.Log($"Debuff stored: {spell} ({value})");
-    }
 }
