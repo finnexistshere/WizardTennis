@@ -39,8 +39,25 @@ public class OppHitting : MonoBehaviour
 
     void Update()
     {
-        // I updated this to move on the X axis instead so it works with the V2 map - Ed
-        targetPosition.x = ball.position.x; // update the targetPosition to the ball's x position so the bot only moves on the x axis
+        // If ball reference is missing, try to find it
+        if (ball == null)
+        {
+            GameObject ballObj = GameObject.FindWithTag("Ball");
+            if (ballObj != null)
+            {
+                ball = ballObj.transform;
+
+                // Also grab the CollisionTrackerBall component
+                CollisionTracker = ballObj.GetComponent<CollisionTrackerBall>();
+            }
+            else
+            {
+                return; // Exit early if no ball exists yet
+            }
+        }
+
+        // Move opponent on X axis toward the ball
+        targetPosition.x = ball.position.x;
         transform.position = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
     }
 
