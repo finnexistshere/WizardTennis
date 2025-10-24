@@ -16,8 +16,6 @@ public class ScoreManager : MonoBehaviour
     private int playerScore = 0;
     private int opponentScore = 0;
 
-    public int greenPoints;
-
     private void Awake()
     {
         if (Instance == null)
@@ -49,8 +47,8 @@ public class ScoreManager : MonoBehaviour
 
     public void AddPoint(string scorer)
     {
-        if (scorer == "Player") playerScore = playerScore + 1 + greenPoints;
-        else if (scorer == "Opponent") opponentScore = opponentScore + 1 + greenPoints;
+        if (scorer == "Player") playerScore++;
+        else if (scorer == "Opponent") opponentScore++;
 
         // Save current scores
         GameData.PlayerScore = playerScore;

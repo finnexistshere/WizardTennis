@@ -6,8 +6,6 @@ public class UIManager : MonoBehaviour
     public static UIManager Instance;
 
     [SerializeField] private TextMeshProUGUI spellStatusText;
-    [SerializeField] private TextMeshProUGUI rallyCountText;
-    [SerializeField] private TextMeshProUGUI greenPointsText;
 
     private void Awake()
     {
@@ -25,19 +23,5 @@ public class UIManager : MonoBehaviour
             spellStatusText.text = "Current Spell: None";
         else
             spellStatusText.text = $"Current Spell: {spellName}";
-    }
-
-    public void UpdateRallyCount(int rallyCount)
-    {
-        if (rallyCountText == null) return;
-
-        rallyCountText.text = $"Rally Count: {rallyCount}";
-    }
-
-    public void UpdateGreenPoints(int points)
-    {
-        if (greenPointsText == null) return;
-
-        greenPointsText.text = $"Green Points: {points}";
     }
 }
