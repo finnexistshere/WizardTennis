@@ -94,6 +94,10 @@ public class OppHitting : MonoBehaviour
                 Vector3 dir = aimTarget.transform.position - transform.position;
                 other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
 
+                Player.GetComponent<Ball>().rallyCount++;
+                
+                Player.GetComponent<UIManager>().UpdateRallyCount(Player.GetComponent<Ball>().rallyCount);
+
                 if (SpellEffects.resetOnOppHit)
                 {
                     SpellEffects.resetSpellEffect();

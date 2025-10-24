@@ -63,6 +63,9 @@ public class SpellEffects : MonoBehaviour
                 OppHitting.zPos = Player.transform.position.z;
                 resetOnOppHit = true;
             }
+        } else if (spellName == "Green")
+        {
+            Player.GetComponent<Ball>().green = true;
         }
     }
 

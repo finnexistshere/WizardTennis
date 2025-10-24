@@ -24,6 +24,13 @@ public class Ball : MonoBehaviour
 
     public CollisionTrackerBall CollisionTracker;
 
+    public int rallyCount = 0;
+    public int greenRallyCount = 0;
+    public bool green = false;
+    public int greenPoints = 0;
+    
+    public ScoreManager scoreManager;
+
     void Start()
     {
         serving = true; // Making the player's first hit a serve
@@ -92,6 +99,18 @@ public class Ball : MonoBehaviour
                     //Vector3 dir = aimTarget.position - transform.position; // Use the aimTarget to get a new direction vector we can use to aim
                     Vector3 dir = aimTarget.position - transform.position;
                     ball.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0); // Apply a force to the ball in the direction made above with the strength modifier + some upwards force so it can get over the net
+                    rallyCount++;
+                    if (green)
+                    {
+                        greenRallyCount++;
+                        if (greenRallyCount%4 == 0)
+                        {
+                            greenPoints++;
+                            this.GetComponent<UIManager>().UpdateGreenPoints(greenPoints);
+                            scoreManager.greenPoints = greenPoints;
+                        }
+                    }
+                    this.GetComponent<UIManager>().UpdateRallyCount(rallyCount);
                 }
 
                 if (SpellEffects.resetOnPlrHit)
