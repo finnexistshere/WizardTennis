@@ -22,6 +22,10 @@ public class OppHitting : MonoBehaviour
     public CollisionTrackerBall CollisionTracker;
     public GameObject Player;
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip hitSound;
+
     public float xPos;
     public float zPos;
 
@@ -99,6 +103,7 @@ public class OppHitting : MonoBehaviour
 
                 particle.transform.position = other.transform.position;
                 particle.Play();
+                audioSource.PlayOneShot(hitSound);
 
                 if (SpellEffects.oppHitSpell)
                 {

@@ -23,6 +23,10 @@ public class Ball : MonoBehaviour
     public GameObject ballPrefab;      // Prefab for the ball
     private static GameObject currentBall;  // Ensures only one ball exists
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip hitSound;
+
     public Spellcasting spellcasting;
 
     public CollisionTrackerBall CollisionTracker;
@@ -87,6 +91,7 @@ public class Ball : MonoBehaviour
                 particle.transform.position = other.transform.position;
                 particle.Play();
 
+                audioSource.PlayOneShot(hitSound);
 
                 if (!serving)
                 {

@@ -40,6 +40,7 @@ public class Spellcasting : MonoBehaviour
     [Header("Audio")]
     public AudioSource audioSource;
     public AudioClip SpellInputClick;
+    public AudioClip spellRegisterSound;
 
     // --- Spellcasting State ---
     public string inputSpellAddress = "";
@@ -147,6 +148,7 @@ public class Spellcasting : MonoBehaviour
 
             isCasting = true; // Lock new spellcasting
             currentActiveSpell = spellName;
+            audioSource.PlayOneShot(spellRegisterSound); // Feedback to the player to confirm they cast a spell
 
             //TennisAi.ApplyBuff(value, spellName);
 
@@ -161,6 +163,7 @@ public class Spellcasting : MonoBehaviour
                 SpellEffects.plrHitSpell = false;
                 SpellEffects.castSpell();
             }
+            RemoveSpell(inputSpellAddress);
         }
         else
         {

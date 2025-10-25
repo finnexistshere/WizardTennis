@@ -75,7 +75,7 @@ public class SpellEffects : MonoBehaviour
     {
         if (spellName == "Lightning")
         {
-            Player.GetComponent<MainCharacterMovement>().speed = 10;
+            Player.GetComponent<MainCharacterMovement>().speed = 7;
         }
         else if (spellName == "Ice")
         {
