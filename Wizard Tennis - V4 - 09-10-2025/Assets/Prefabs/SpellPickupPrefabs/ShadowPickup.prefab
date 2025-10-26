@@ -125,7 +125,7 @@ MonoBehaviour:
   spellAddress: bbb
   onHitBool: 0
   FloorVisualColor: {r: 0.48546308, g: 0, b: 0.5471698, a: 1}
-  spellCastAudio: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  spellCastAudio: {fileID: 8300000, guid: 61e69c06e68fca74386cff04066b0e1b, type: 3}
   wizardSpellSound: {fileID: 8300000, guid: b57cf6f1e7d0645499ea9cb68ea4fdb1, type: 3}
   spellVisualPrefab: {fileID: 4549237697235292045, guid: a7f6afc188cd81d498f7f718f966c46d, type: 3}
   audioClip: {fileID: 0}

@@ -1387,7 +1387,12 @@ MonoBehaviour:
   ballSpawnPoint: {fileID: 1945201662}
   ballPrefab: {fileID: 2090367122172826449, guid: 821592db6c51d724797d43bbea253cb2, type: 3}
   audioSource: {fileID: 1136450470}
-  hitSound: {fileID: 8300000, guid: 0e33bdbbcffa992489cf19a9b005c158, type: 3}
+  hitsounds:
+  - {fileID: 8300000, guid: 0e33bdbbcffa992489cf19a9b005c158, type: 3}
+  - {fileID: 8300000, guid: 8aa61c2706d7c674ba5ab979538b7002, type: 3}
+  pitchJitter: 0.07
+  volumeJitter: 0.12
+  minInterval: 0.08
   spellcasting: {fileID: 153926197}
   CollisionTracker: {fileID: 0}
   rallyCount: 0
@@ -1548,9 +1553,9 @@ MonoBehaviour:
   hitParticle: {fileID: 1977279299}
   spellParticleColor: {fileID: 1977279300}
   inputTimeout: 2
-  audioSource: {fileID: 1136450470}
-  SpellInputClick: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
-  spellRegisterSound: {fileID: 8300000, guid: c34692d8361f4eb43b256d8c9e8f3049, type: 3}
+  audioSource: {fileID: 0}
+  SpellInputClick: {fileID: 0}
+  spellRegisterSound: {fileID: 0}
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
   spellFloorImage: {fileID: 1076509792}
@@ -1713,6 +1718,9 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 0536167c229dcc041ae98a78b44bb821, type: 3}
   - {fileID: 8300000, guid: a5b4b3ad1545bd34587e906d0c6c31c2, type: 3}
   stepDistance: 1.7
+  minInterval: 0.08
+  pitchJitter: 0.09
+  volumeJitter: 0.06
 --- !u!1 &168140766
 GameObject:
   m_ObjectHideFlags: 0
@@ -7945,11 +7953,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b3d557593e112f9449389cd7ce880469, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.78800005
+      value: -1.28
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b3d557593e112f9449389cd7ce880469, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.19
+      value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: b3d557593e112f9449389cd7ce880469, type: 3}
       propertyPath: m_LocalRotation.w
@@ -12650,7 +12658,12 @@ MonoBehaviour:
   CollisionTracker: {fileID: 0}
   Player: {fileID: 153926187}
   audioSource: {fileID: 1136450470}
-  hitSound: {fileID: 8300000, guid: 0e33bdbbcffa992489cf19a9b005c158, type: 3}
+  hitsounds:
+  - {fileID: 8300000, guid: 0e33bdbbcffa992489cf19a9b005c158, type: 3}
+  - {fileID: 8300000, guid: 8aa61c2706d7c674ba5ab979538b7002, type: 3}
+  pitchJitter: 0.07
+  volumeJitter: 0.12
+  minInterval: 0.08
   xPos: 0
   zPos: 0
 --- !u!136 &2092549637
