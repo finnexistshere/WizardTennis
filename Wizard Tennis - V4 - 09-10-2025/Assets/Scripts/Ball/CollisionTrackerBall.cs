@@ -65,7 +65,7 @@ public class CollisionTrackerBall : MonoBehaviour
         {
             // Ball didn’t bounce before going out
             if (LastHitWizard == "Player")
-                AwardPoint("Opponent", "Opponent Wins! You hit it out!");
+                AwardPoint("Player", "Player Wins! Opponent missed!");
             else if (LastHitWizard == "Opponent")
                 AwardPoint("Player", "Player Wins! Opponent hit it out!");
         }
@@ -86,7 +86,7 @@ public class CollisionTrackerBall : MonoBehaviour
             if (LastHitWizard == "Player")
                 AwardPoint("Opponent", "You're really bad at Tennis!");
             else if (LastHitWizard == "Opponent")
-                AwardPoint("Player", "Player Wins! Opponent hit it out!");
+                AwardPoint("Opponent", "Opponent Wins! You missed!");
         }
         else
         {
@@ -113,7 +113,7 @@ public class CollisionTrackerBall : MonoBehaviour
             if (LastHitWizard == "Player")
                 AwardPoint("Opponent", "The AI is stupid and couldn't hit the ball properly");
             else if (LastHitWizard == "Opponent")
-                AwardPoint("Opponent", "You lose! Your ball bounced before it went over!");
+                AwardPoint("Opponent", "You lose! Your ball bounced too many times!");
         }
         else
         {

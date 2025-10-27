@@ -33,6 +33,7 @@ public class GameManager : MonoBehaviour
     public TextMeshProUGUI WinLoseText;
     public TextMeshProUGUI tutorialText;
 
+
     private bool isPaused = false;
     public PlayerInput playerInput;
 
@@ -141,6 +142,7 @@ public class GameManager : MonoBehaviour
         bool validPositionFound = false;
         int attempts = 0;
 
+        // Find a valid spawn position
         while (!validPositionFound && attempts < 20)
         {
             attempts++;
@@ -163,12 +165,50 @@ public class GameManager : MonoBehaviour
 
         if (!validPositionFound) return;
 
-        GameObject prefab = pickupPrefabs[Random.Range(0, pickupPrefabs.Count)];
-        if (!spellcasting.spellBook.ContainsKey(prefab.GetComponent<PickupEffect>().SpellAddress))
+        // Choose prefab using weighted probability
+        GameObject prefab = GetWeightedPickup();
+        if (prefab == null) return;
+
+        var pickupEffect = prefab.GetComponent<PickupEffect>();
+        if (pickupEffect == null) return;
+
+        // Prevent spawning spells the player already owns
+        if (!spellcasting.spellBook.ContainsKey(pickupEffect.SpellAddress))
         {
             GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
             activePickups.Add(newPickup);
         }
+    }
+
+    private GameObject GetWeightedPickup()
+    {
+        float totalWeight = 0f;
+        foreach (GameObject prefab in pickupPrefabs)
+        {
+            var effect = prefab.GetComponent<PickupEffect>();
+            if (effect != null)
+                totalWeight += Mathf.Max(0, effect.spawnWeight);
+        }
+
+        if (totalWeight <= 0f)
+            return null;
+
+        float randomPoint = Random.value * totalWeight;
+
+        foreach (GameObject prefab in pickupPrefabs)
+        {
+            var effect = prefab.GetComponent<PickupEffect>();
+            if (effect == null) continue;
+
+            float weight = Mathf.Max(0, effect.spawnWeight);
+            if (randomPoint < weight)
+                return prefab;
+
+            randomPoint -= weight;
+        }
+
+        // Fallback
+        return pickupPrefabs[Random.Range(0, pickupPrefabs.Count)];
     }
 
     // ----- Pause / Resume -----
