@@ -119,7 +119,7 @@ public class Ball : MonoBehaviour
                 if (CollisionTracker != null)
                 {
                     CollisionTracker.LastHitWizard = "Player";
-                    CollisionTracker.hasbounced = false;
+                    CollisionTracker.hasBounced = false;
                 }
             }
         }

@@ -126,7 +126,7 @@ public class OppHitting : MonoBehaviour
                 }
 
                 CollisionTracker.LastHitWizard = "Opponent";
-                CollisionTracker.hasbounced = false;
+                CollisionTracker.hasBounced = false;
             }
         }
     }
