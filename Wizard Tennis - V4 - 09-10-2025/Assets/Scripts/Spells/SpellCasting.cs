@@ -140,6 +140,7 @@ public class Spellcasting : MonoBehaviour
         if (spellBook.ContainsKey(inputSpellAddress))
         {
             string spellName = spellBook[inputSpellAddress];
+
             if (isCasting)
             {
                 Debug.Log("Spell blocked: another spell is still active.");
@@ -148,11 +149,10 @@ public class Spellcasting : MonoBehaviour
 
             isCasting = true; // Lock new spellcasting
             currentActiveSpell = spellName;
-            audioSource.PlayOneShot(spellRegisterSound); // Feedback to the player to confirm they cast a spell
 
-            //TennisAi.ApplyBuff(value, spellName);
+            audioSource.PlayOneShot(spellRegisterSound); // Feedback
 
-            SpellEffects.spellName = spellBook[inputSpellAddress];
+            SpellEffects.spellName = spellName;
 
             if (boolBook[spellName])
             {
@@ -163,7 +163,9 @@ public class Spellcasting : MonoBehaviour
                 SpellEffects.plrHitSpell = false;
                 SpellEffects.castSpell();
             }
-            RemoveSpell(inputSpellAddress);
+
+            // Start visual/audio reset coroutine and pass the spell address for deferred removal
+            StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject, inputSpellAddress));
         }
         else
         {
@@ -174,21 +176,58 @@ public class Spellcasting : MonoBehaviour
         UpdateSpellBook();
     }
 
-    private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
+    public void CastSpellNormal(string spellName)
     {
-        if (currentVisualInstance != null)
-            Destroy(currentVisualInstance);
+        bool found = false;
+        string spellAddress = "";
 
-        if (baseEffect != null)
-            baseEffect.SetActive(false);
+        foreach (var spell in spellBook)
+        {
+            if (spell.Value == spellName)
+            {
+                spellAddress = spell.Key;
+                found = true;
+                break;
+            }
+        }
 
-        currentVisualInstance = Instantiate(newPrefab, parentTransform);
-        currentVisualInstance.transform.localPosition = Vector3.zero;
-        currentVisualInstance.transform.localRotation = Quaternion.identity;
-        currentVisualInstance.transform.localScale = Vector3.one;
+        if (!found)
+        {
+            Debug.LogWarning($"Spell '{spellName}' not found in spell book.");
+            return;
+        }
+
+        // Disable base effect
+        if (baseEffectObject != null)
+            baseEffectObject.SetActive(false);
+
+        // Apply buff/debuff
+        float value = debuffBook[spellAddress];
+
+        Debug.Log($"{spellName} cast!");
+        if (UIManager.Instance != null)
+            UIManager.Instance.UpdateSpellStatus(spellName);
+
+        Color spellColor = spellColors[spellAddress];
+        spellFloorImage.ShowSpell(spellName, spellColor);
+        spellParticleColor.SetSpellColor(spellColor);
+
+        if (spellAudio.TryGetValue(spellAddress, out AudioClip clip) && clip != null)
+            audioSource?.PlayOneShot(clip);
+
+        if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizclip) && wizclip != null)
+            audioSource?.PlayOneShot(wizclip);
+
+        // Swap visuals
+        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
+            SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
+
+        // Start coroutine with deferred removal
+        StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject, spellAddress));
     }
 
-    private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect)
+    // --- Updated ResetVisualAfterDelay ---
+    private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
     {
         yield return new WaitForSeconds(delay);
 
@@ -212,8 +251,26 @@ public class Spellcasting : MonoBehaviour
                 UIManager.Instance.UpdateSpellStatus("None");
         }
 
-        isCasting = false; // Unlock spellcasting
+        // Remove spell AFTER all effects
+        RemoveSpell(spellAddress);
+
+        isCasting = false;
         Debug.Log("Spellcasting unlocked.");
+    }
+
+
+    private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
+    {
+        if (currentVisualInstance != null)
+            Destroy(currentVisualInstance);
+
+        if (baseEffect != null)
+            baseEffect.SetActive(false);
+
+        currentVisualInstance = Instantiate(newPrefab, parentTransform);
+        currentVisualInstance.transform.localPosition = Vector3.zero;
+        currentVisualInstance.transform.localRotation = Quaternion.identity;
+        currentVisualInstance.transform.localScale = Vector3.one;
     }
 
     private void UpdateSpellBook()
@@ -231,67 +288,6 @@ public class Spellcasting : MonoBehaviour
                 newEntry.gameObject.tag = "SpellUI";
                 newEntry.SetText(item.Value, item.Key);
             }
-        }
-    }
-
-    public void CastSpellNormal(string spellName)
-    {
-        bool found = false;
-        foreach (var spell in spellBook)
-        {
-            if (spell.Value == spellName)
-            {
-                inputSpellAddress = spell.Key;
-                Debug.Log($"Found {spell.Key}");
-                found = true;
-            }
-        }
-        if (found == false)
-        {
-            Debug.Log("Spell address could not be found fuck you");
-            return;
-        }
-
-        // Disable base effect
-        if (baseEffectObject != null)
-            baseEffectObject.SetActive(false);
-
-        // Apply buff/debuff
-        float value = debuffBook[inputSpellAddress];
-
-        Debug.Log(spellName + " cast!");
-        if (UIManager.Instance != null)
-            UIManager.Instance.UpdateSpellStatus(spellName);
-        Color spellColor = spellColors[inputSpellAddress];
-        spellFloorImage.ShowSpell(spellName, spellColor);
-        spellParticleColor.SetSpellColor(spellColor);
-        if (spellAudio.TryGetValue(inputSpellAddress, out AudioClip clip) && clip != null)
-        {
-            if (audioSource != null)
-                audioSource.PlayOneShot(clip);
-            else
-                Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
-        }
-        if (wizardAudio.TryGetValue(inputSpellAddress, out AudioClip wizclip) && wizclip != null)
-        {
-            if (audioSource != null)
-                audioSource.PlayOneShot(wizclip);
-            else
-                Debug.LogWarning("[Spellcasting] Missing AudioSource reference!");
-        }
-
-        // Swap visuals
-        if (spellVisuals.ContainsKey(inputSpellAddress) && parentObject != null)
-        {
-            SwapVisual(spellVisuals[inputSpellAddress], parentObject.transform, baseEffectObject);
-            StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
-            // Remove this spell from the book after casting
-            RemoveSpell(inputSpellAddress);
-        }
-        else
-        {
-            // Still reset even if no visual prefab
-            StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject));
         }
     }
 
