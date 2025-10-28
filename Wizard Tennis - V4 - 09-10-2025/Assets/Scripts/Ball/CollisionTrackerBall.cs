@@ -1,161 +1,140 @@
-using System;
 using UnityEngine;
 
 public class CollisionTrackerBall : MonoBehaviour
 {
-    public string LastHitWizard = "";
+    [Header("References")]
     public GameManager gameManager;
-    public bool hasbounced = false;
 
-    private bool justOnce = true;
+    [Header("State")]
+    public string LastHitWizard = "";
+    public bool hasBounced = false;
+
+    private bool canTrigger = true;
 
     private void Awake()
     {
-        // Auto-find GameManager if not set
+        // Auto-assign GameManager if not set
         if (gameManager == null)
             gameManager = GameManager.Instance;
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
-        {
-            //LastHitWizard = "Player";
-            //hasbounced = false;
-        }
-        else if (other.CompareTag("Opponent"))
-        {
-            //LastHitWizard = "Opponent";
-            //hasbounced = false;
-        }
-        else if (other.CompareTag("OutOfBounds"))
-        {
-            if (justOnce)
-            {
-                HandleOutOfBounds();
-                hasbounced = false;
-                justOnce = false;
-            } else
-            {
-                justOnce = true;
-            }
-        }
-        else if (other.CompareTag("OutOfBoundsSide2"))
-        {
-            if (justOnce)
-            {
-                HandleOutOfBoundsSide2();
-                hasbounced = false;
-                justOnce = false;
-            }
-            else
-            {
-                justOnce = true;
-            }
-        }
-        else if (other.CompareTag("Net"))
-        {
-            HandleNetHit();
-        }
-        else if (other.CompareTag("BounceCheck"))
-        {
-            //HandleBounceCheck();
-        }
+        string tag = other.tag;
 
+        switch (tag)
+        {
+            case "Player":
+            case "Opponent":
+                // In case you want to reset bounce or mark last hitter
+                // LastHitWizard = tag;
+                // hasBounced = false;
+                break;
+
+            case "OutOfBounds":
+                if (canTrigger)
+                {
+                    HandleOutOfBounds();
+                    ResetBounceTrigger();
+                }
+                ToggleTriggerGate();
+                break;
+
+            case "OutOfBoundsSide2":
+                if (canTrigger)
+                {
+                    HandleOutOfBoundsSide2();
+                    ResetBounceTrigger();
+                }
+                ToggleTriggerGate();
+                break;
+
+            case "Net":
+                HandleNetHit();
+                break;
+
+            case "BounceCheck":
+                // HandleBounceCheck();
+                break;
+        }
     }
 
     private void HandleOutOfBounds()
     {
-        if (!hasbounced)
+        if (!hasBounced)
         {
+            // Ball didn’t bounce before going out
             if (LastHitWizard == "Player")
-            {
-                ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("Opponent Wins! You hit it out!");
-            }
+                AwardPoint("Player", "Player Wins! Opponent missed!");
             else if (LastHitWizard == "Opponent")
-            {
-                ScoreManager.Instance.AddPoint("Player");
-                gameManager.RoundOver("Player Wins! Opponent hit it out!");
-            }
+                AwardPoint("Player", "Player Wins! Opponent hit it out!");
         }
         else
         {
+            // Ball bounced once before going out
             if (LastHitWizard == "Player")
-            {
-                ScoreManager.Instance.AddPoint("Player");
-                gameManager.RoundOver("You Win! Opponent Missed!");
-            }
+                AwardPoint("Player", "You Win! Opponent Missed!");
             else if (LastHitWizard == "Opponent")
-            {
-                ScoreManager.Instance.AddPoint("Player");
-                gameManager.RoundOver("Opponent messed up, Player wins the point!");
-            }
+                AwardPoint("Player", "Opponent messed up, Player wins the point!");
         }
     }
 
     private void HandleOutOfBoundsSide2()
     {
-        if (!hasbounced)
+        if (!hasBounced)
         {
             if (LastHitWizard == "Player")
-            {
-                ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("You're really bad at Tennis!");
-            }
+                AwardPoint("Opponent", "You're really bad at Tennis!");
             else if (LastHitWizard == "Opponent")
-            {
-                ScoreManager.Instance.AddPoint("Player");
-                gameManager.RoundOver("Player Wins! Opponent hit it out!");
-            }
+                AwardPoint("Opponent", "Opponent Wins! You missed!");
         }
         else
         {
             if (LastHitWizard == "Player")
-            {
-                ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("Maybe pick a different sport champ - Player lose");
-            }
+                AwardPoint("Opponent", "Maybe pick a different sport champ - Player lose");
             else if (LastHitWizard == "Opponent")
-            {
-                ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("Opponent wins! You Missed!");
-            }
+                AwardPoint("Opponent", "Opponent wins! You Missed!");
         }
     }
 
     private void HandleNetHit()
     {
         if (LastHitWizard == "Player")
-        {
-            ScoreManager.Instance.AddPoint("Opponent");
-            gameManager.RoundOver("Try not to aim for the Net - Player lose");
-        }
+            AwardPoint("Opponent", "Try not to aim for the Net - Player lose");
         else if (LastHitWizard == "Opponent")
-        {
-            ScoreManager.Instance.AddPoint("Player");
-            gameManager.RoundOver("The AI is stupid and hit the net - Player win");
-        }
+            AwardPoint("Player", "The AI is stupid and hit the net - Player win");
     }
 
     public void HandleBounceCheck()
     {
-        if (hasbounced)
+        if (hasBounced)
         {
+            // Double bounce = lose point
             if (LastHitWizard == "Player")
-            {
-                ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("The AI is stupid and couldn't hit the ball properly");
-            }
+                AwardPoint("Opponent", "The AI is stupid and couldn't hit the ball properly");
             else if (LastHitWizard == "Opponent")
-            {
-                ScoreManager.Instance.AddPoint("Opponent");
-                gameManager.RoundOver("You lose! Your ball bounced before it went over!");
-            }
+                AwardPoint("Opponent", "You lose! Your ball bounced too many times!");
         }
         else
         {
-            hasbounced = true;
+            hasBounced = true;
         }
+    }
+
+    // --- Utility Methods ---
+    private void AwardPoint(string winner, string message)
+    {
+        ScoreManager.Instance.AddPoint(winner);
+        gameManager.RoundOver(message);
+    }
+
+    private void ResetBounceTrigger()
+    {
+        hasBounced = false;
+    }
+
+    private void ToggleTriggerGate()
+    {
+        canTrigger = !canTrigger;
     }
 }

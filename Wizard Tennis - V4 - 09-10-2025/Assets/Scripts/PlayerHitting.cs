@@ -28,9 +28,9 @@ public class Ball : MonoBehaviour
     public AudioClip[] hitsounds;
     [Range(0f, 0.5f)] public float pitchJitter = 0.07f;
     [Range(0f, 0.5f)] public float volumeJitter = 0.12f;
-public float minInterval = 0.08f;     // Prevents rapid double-fires on multi-collider entries
+    public float minInterval = 0.08f;     // Prevents rapid double-fires on multi-collider entries
 
-private float _lastHitSfxTime = -999f;
+    private float _lastHitSfxTime = -999f;
 
     private void PlayHitsound(Vector3 contactPoint)
     {
@@ -55,6 +55,7 @@ private float _lastHitSfxTime = -999f;
         audioSource.pitch = basePitch;
         audioSource.PlayOneShot(hitsounds[index], baseVol);
     }
+
 
     public Spellcasting spellcasting;
 
@@ -150,7 +151,7 @@ private float _lastHitSfxTime = -999f;
                 if (CollisionTracker != null)
                 {
                     CollisionTracker.LastHitWizard = "Player";
-                    CollisionTracker.hasbounced = false;
+                    CollisionTracker.hasBounced = false;
                 }
             }
         }

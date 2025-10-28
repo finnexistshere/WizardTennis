@@ -13,6 +13,9 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] public AudioClip spellCastAudio;
     [SerializeField] public AudioClip wizardSpellSound;
 
+    [Header("Spawn Settings")]
+    [Range(0f, 1f)] public float spawnWeight = 0.2f;
+
     [Header("Visual Prefab")]
     [SerializeField] private GameObject spellVisualPrefab; // full ball visual prefab
 

@@ -55,6 +55,7 @@ public class OppHitting : MonoBehaviour
         audioSource.PlayOneShot(hitsounds[index], baseVol);
     }
 
+
     public float xPos;
     public float zPos;
 
@@ -158,7 +159,7 @@ public class OppHitting : MonoBehaviour
                 }
 
                 CollisionTracker.LastHitWizard = "Opponent";
-                CollisionTracker.hasbounced = false;
+                CollisionTracker.hasBounced = false;
             }
         }
     }
