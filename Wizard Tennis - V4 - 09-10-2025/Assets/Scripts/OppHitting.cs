@@ -24,7 +24,37 @@ public class OppHitting : MonoBehaviour
 
     [Header("Audio")]
     public AudioSource audioSource;
-    public AudioClip hitSound;
+    public AudioClip[] hitsounds;
+    [Range(0f, 0.5f)] public float pitchJitter = 0.07f;
+    [Range(0f, 0.5f)] public float volumeJitter = 0.12f;
+    public float minInterval = 0.08f;     // Prevents rapid double-fires on multi-collider entries
+
+    private float _lastHitSfxTime = -999f;
+
+    private void PlayHitsound(Vector3 contactPoint)
+    {
+        if (audioSource == null) return;
+        if (hitsounds == null || hitsounds.Length == 0) return;
+
+        // Anti-spam: ignore if we just played a hit very recently
+        if (Time.time - _lastHitSfxTime < minInterval) return;
+        _lastHitSfxTime = Time.time;
+
+        // Pick a random clip
+        int index = (hitsounds.Length == 1) ? 0 : Random.Range(0, hitsounds.Length);
+
+        // Optional: move the source to the contact point for better spatialization
+        audioSource.transform.position = contactPoint;
+
+        // Subtle variation for natural feel
+        float basePitch = 1f + Random.Range(-pitchJitter, pitchJitter);
+        float baseVol = 1f + Random.Range(-volumeJitter, volumeJitter);
+        baseVol = Mathf.Clamp01(baseVol); // keep in [0,1]
+
+        audioSource.pitch = basePitch;
+        audioSource.PlayOneShot(hitsounds[index], baseVol);
+    }
+
 
     public float xPos;
     public float zPos;
@@ -103,7 +133,10 @@ public class OppHitting : MonoBehaviour
 
                 particle.transform.position = other.transform.position;
                 particle.Play();
-                audioSource.PlayOneShot(hitSound);
+
+                //Contact point for audio Spatialization
+                Vector3 contactPoint = other.ClosestPoint(transform.position);
+                PlayHitsound(contactPoint);
 
                 if (SpellEffects.oppHitSpell)
                 {
