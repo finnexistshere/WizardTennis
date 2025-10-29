@@ -1523,7 +1523,7 @@ MonoBehaviour:
   serving: 1
   SpellEffects: {fileID: 1594825195}
   ballSpawnPoint: {fileID: 1945201662}
-  ballPrefab: {fileID: 2090367122172826449, guid: 821592db6c51d724797d43bbea253cb2, type: 3}
+  ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
   audioSource: {fileID: 1580895398}
   hitsounds:
   - {fileID: 8300000, guid: 820b22098d554f7469ab14c7d191ccf8, type: 3}
