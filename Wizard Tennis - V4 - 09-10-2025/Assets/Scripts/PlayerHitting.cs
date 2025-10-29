@@ -86,6 +86,7 @@ public class Ball : MonoBehaviour
             currentBall = Instantiate(ballPrefab, ballSpawnPoint.position, ballSpawnPoint.rotation);
             CollisionTracker = currentBall.GetComponent<CollisionTrackerBall>(); // get tracker
             nearBall = true; // immediately allow serving
+            GameManager.Instance.UnlockPickupSpawning();
         }
 
         // Press E: serve if near ball

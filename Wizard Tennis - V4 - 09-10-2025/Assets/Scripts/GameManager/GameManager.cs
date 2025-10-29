@@ -31,7 +31,7 @@ public class GameManager : MonoBehaviour
     public GameObject pauseMenuUI;
     public GameObject gameOverUI;
     public TextMeshProUGUI WinLoseText;
-    public TextMeshProUGUI tutorialText;
+    public GameObject tutorialPanel;
 
 
     private bool isPaused = false;
@@ -39,10 +39,32 @@ public class GameManager : MonoBehaviour
 
     private BallSpawner ballSpawner;
 
+    private bool pickupsUnlocked = false;
+
+    /// <summary>
+    /// Locks all pickup spawning (used by default at game start).
+    /// </summary>
+    public void LockPickupSpawning()
+    {
+        pickupsUnlocked = false;
+    }
+
+    /// <summary>
+    /// Unlocks pickup spawning so new pickups can appear.
+    /// Call this from another script when you’re ready.
+    /// </summary>
+    public void UnlockPickupSpawning()
+    {
+        pickupsUnlocked = true;
+        spawnTimer = spawnInterval; // reset timer so first spawn happens normally
+    }
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        LockPickupSpawning();
 
         Time.timeScale = 1f;
 
@@ -87,11 +109,11 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (tutorialText.gameObject.activeSelf)
+        if (tutorialPanel.gameObject.activeSelf)
         {
             if (Input.GetKeyDown(KeyCode.E))
                     {
-                tutorialText.gameObject.SetActive(false);
+                tutorialPanel.gameObject.SetActive(false);
                     }
         }
 
@@ -100,11 +122,15 @@ public class GameManager : MonoBehaviour
         activePickups.RemoveAll(p => p == null);
 
         // Spawn new pickups if timer elapsed
-        spawnTimer -= Time.deltaTime;
-        if (spawnTimer <= 0f && activePickups.Count < maxActivePickups)
+        // Only spawn if pickups are unlocked
+        if (pickupsUnlocked)
         {
-            SpawnPickup();
-            spawnTimer = spawnInterval;
+            spawnTimer -= Time.deltaTime;
+            if (spawnTimer <= 0f && activePickups.Count < maxActivePickups)
+            {
+                SpawnPickup();
+                spawnTimer = spawnInterval;
+            }
         }
     }
 

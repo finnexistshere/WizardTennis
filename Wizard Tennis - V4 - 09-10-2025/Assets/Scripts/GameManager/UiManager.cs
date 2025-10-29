@@ -21,14 +21,21 @@ public class UIManager : MonoBehaviour
         UpdateSpellStatus("None");
     }
 
-    public void UpdateSpellStatus(string spellName)
+    public void UpdateSpellStatus(string spellName, Color? spellColor = null)
     {
         if (spellStatusText == null) return;
 
         if (string.IsNullOrEmpty(spellName) || spellName == "None")
-            spellStatusText.text = "Current Spell: None";
+        {
+            spellStatusText.text = "None";
+            spellStatusText.color = Color.white; // Reset to neutral color
+        }
         else
-            spellStatusText.text = $"Current Spell: {spellName}";
+        {
+            spellStatusText.text = $"{spellName}";
+            if (spellColor.HasValue)
+                spellStatusText.color = spellColor.Value;
+        }
     }
 
     public void UpdateRallyCount(int rallyCount)

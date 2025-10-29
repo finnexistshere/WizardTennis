@@ -235,7 +235,10 @@ public class Spellcasting : MonoBehaviour
 
         Debug.Log($"{spellName} cast!");
         if (UIManager.Instance != null)
-            UIManager.Instance.UpdateSpellStatus(spellName);
+        {
+            Color uiSpellColor = spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white;
+            UIManager.Instance.UpdateSpellStatus(spellName, uiSpellColor);
+        }
 
         Color spellColor = spellColors[spellAddress];
         spellFloorImage.ShowSpell(spellName, spellColor);
@@ -277,7 +280,7 @@ public class Spellcasting : MonoBehaviour
             currentActiveSpell = "";
 
             if (UIManager.Instance != null)
-                UIManager.Instance.UpdateSpellStatus("None");
+                UIManager.Instance.UpdateSpellStatus("None", Color.white);
         }
 
         // Remove spell AFTER all effects

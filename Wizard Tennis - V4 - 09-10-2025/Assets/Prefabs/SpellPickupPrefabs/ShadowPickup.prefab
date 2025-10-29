@@ -132,6 +132,8 @@ MonoBehaviour:
   spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: a7f6afc188cd81d498f7f718f966c46d, type: 3}
   audioClip: {fileID: 0}
+  fadeInDuration: 3
+  destroyAfterFadeIn: 0
 --- !u!96 &-4356573149818784447
 TrailRenderer:
   serializedVersion: 3
