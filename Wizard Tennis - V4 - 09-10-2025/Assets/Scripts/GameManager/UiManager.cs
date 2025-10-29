@@ -42,7 +42,7 @@ public class UIManager : MonoBehaviour
     {
         if (rallyCountText == null) return;
 
-        rallyCountText.text = $"{rallyCount}";
+        rallyCountText.text = $"x{rallyCount}";
         rallyCountText.color = GetColorForValue(rallyCount);
 
         // Cancel any ongoing animation so multiple updates don't overlap
