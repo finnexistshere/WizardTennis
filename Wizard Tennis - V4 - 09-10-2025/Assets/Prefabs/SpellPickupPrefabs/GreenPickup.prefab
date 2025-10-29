@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 6194768215632921523}
   - component: {fileID: 8079211895241444924}
   - component: {fileID: 6661040666352527063}
+  - component: {fileID: 491201789386958156}
   m_Layer: 0
   m_Name: GreenPickup
   m_TagString: Untagged
@@ -130,6 +131,21 @@ MonoBehaviour:
   spawnWeight: 0.05
   spellVisualPrefab: {fileID: 0}
   audioClip: {fileID: 0}
+--- !u!114 &491201789386958156
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8121200742715402744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9959ef68e0ebc7e48878ba6a28116795, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rotationSpeed: 60
+  bobHeight: 0.25
+  bobSpeed: 2
 --- !u!1001 &8766142631138627104
 PrefabInstance:
   m_ObjectHideFlags: 0

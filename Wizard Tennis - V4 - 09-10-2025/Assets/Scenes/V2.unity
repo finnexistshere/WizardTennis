@@ -1395,7 +1395,7 @@ MonoBehaviour:
   serving: 1
   SpellEffects: {fileID: 1594825195}
   ballSpawnPoint: {fileID: 1945201662}
-  ballPrefab: {fileID: 2090367122172826449, guid: 821592db6c51d724797d43bbea253cb2, type: 3}
+  ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
   audioSource: {fileID: 1136450470}
   hitSound: {fileID: 8300000, guid: 0e33bdbbcffa992489cf19a9b005c158, type: 3}
   spellcasting: {fileID: 153926197}

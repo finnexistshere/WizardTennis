@@ -55,46 +55,75 @@ public class Spellcasting : MonoBehaviour
     private Color floorVisualColor;
 
     public bool leftHandedMode = false; // false = arrows, true = WASD
-
-
-    private void Awake()
-    {
-        spellBookPanel.SetActive(true);
-        lastInputTime = -inputTimeout;
-
-        // Read left-handed mode from OptionsManager on spawn
-        if (OptionsManager.Instance != null)
-            SetLeftHandedMode(OptionsManager.Instance.leftHandedMode);
-    }
+    private GameObject currentBall;
+    private float ballCheckInterval = 0.5f;
+    private float nextBallCheckTime = 0f;
 
     private void Update()
     {
-        // Lock out spell input while a spell is active
+        // Regular spell logic
+        if (Time.time >= nextBallCheckTime)
+        {
+            nextBallCheckTime = Time.time + ballCheckInterval;
+            TryFindAndLinkBall();
+        }
+
         if (isCasting)
             return;
 
         UpdateSpellBook();
 
-        // Auto-clear input if timeout reached
         if (!string.IsNullOrEmpty(inputSpellAddress) && Time.time - lastInputTime >= inputTimeout)
         {
-            Debug.Log("Input timeout reached, clearing input...");
             inputSpellAddress = "";
             UpdateSpellBook();
         }
 
-        // --- Spellcasting inputs ---
         if (CheckSpellInput(out string direction))
-        {
             RegisterInput(direction);
+
+        if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
+            CheckSpell();
+    }
+
+    private void TryFindAndLinkBall()
+    {
+        // Skip if already linked and valid
+        if (currentBall != null)
+        {
+            if (currentBall.activeInHierarchy)
+                return;
+            else
+                currentBall = null;
         }
 
-        // --- Check completed spell ---
-        if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
+        GameObject ballObj = GameObject.FindWithTag("Ball");
+        if (ballObj == null)
         {
-            CheckSpell();
+            Debug.Log("[Spellcasting] No Ball found with tag 'Ball'.");
+            return;
         }
+
+        currentBall = ballObj;
+
+        // --- Assign visuals ---
+        parentObject = ballObj;
+
+        // Find the visual child named "sm_Ball"
+        Transform visualChild = ballObj.transform.Find("sm_Ball");
+        if (visualChild != null)
+        {
+            baseEffectObject = visualChild.gameObject;
+            Debug.Log("[Spellcasting] Linked Ball visuals: " + baseEffectObject.name);
+        }
+        else
+        {
+            Debug.LogWarning("[Spellcasting] Could not find child named 'sm_Ball' under Ball prefab.");
+        }
+
+        Debug.Log("[Spellcasting] Connected to active Ball GameObject.");
     }
+
     // --- Update left-handed mode ---
     public void SetLeftHandedMode(bool enabled)
     {
@@ -264,8 +293,7 @@ public class Spellcasting : MonoBehaviour
         if (currentVisualInstance != null)
             Destroy(currentVisualInstance);
 
-        if (baseEffect != null)
-            baseEffect.SetActive(false);
+        baseEffect.SetActive(false);
 
         currentVisualInstance = Instantiate(newPrefab, parentTransform);
         currentVisualInstance.transform.localPosition = Vector3.zero;
