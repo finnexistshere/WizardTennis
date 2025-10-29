@@ -284,6 +284,7 @@ PlayerSettings:
   AndroidMinifyDebug: 0
   AndroidValidateAppBundleSize: 1
   AndroidAppBundleSizeToValidate: 150
+<<<<<<<< HEAD:Wizard Tennis - V4 - 09-10-2025/ProjectSettings/ProjectSettings.asset
   m_BuildTargetIcons:
   - m_BuildTarget: 
     m_Icons:
@@ -292,6 +293,9 @@ PlayerSettings:
       m_Width: 128
       m_Height: 128
       m_Kind: 0
+========
+  m_BuildTargetIcons: []
+>>>>>>>> BASE-GAME-V4:Wizard Tennis/ProjectSettings/ProjectSettings.asset
   m_BuildTargetPlatformIcons:
   - m_BuildTarget: Android
     m_Icons:
