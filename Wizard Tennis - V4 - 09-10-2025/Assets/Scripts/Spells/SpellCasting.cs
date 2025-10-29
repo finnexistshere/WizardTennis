@@ -212,11 +212,19 @@ public class Spellcasting : MonoBehaviour
         spellFloorImage.ShowSpell(spellName, spellColor);
         spellParticleColor.SetSpellColor(spellColor);
 
-        if (spellAudio.TryGetValue(spellAddress, out AudioClip clip) && clip != null)
-            audioSource?.PlayOneShot(clip);
-
         if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizclip) && wizclip != null)
-            audioSource?.PlayOneShot(wizclip);
+        {
+            AudioClip spellClip = null;
+            spellAudio.TryGetValue(spellAddress, out spellClip);
+
+            // Wait 1 second after the voice line before playing the spell sound
+            StartCoroutine(PlaySpellSequence(wizclip, spellClip, 1f));
+        }
+        else if (spellAudio.TryGetValue(spellAddress, out AudioClip spellClipOnly) && spellClipOnly != null)
+        {
+            // If no wizard voice line exists, play the spell sound immediately
+            audioSource?.PlayOneShot(spellClipOnly);
+        }
 
         // Swap visuals
         if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
@@ -330,5 +338,16 @@ public class Spellcasting : MonoBehaviour
             spellAudio[address] = spellCastAudio;
             wizardAudio[address] = wizardSpellSound;
         }
+    
+   }
+    private IEnumerator PlaySpellSequence(AudioClip wizardClip, AudioClip spellClip, float delay)
+    {
+        if (wizardClip != null)
+            audioSource.PlayOneShot(wizardClip);
+
+        yield return new WaitForSeconds(1);
+
+        if (spellClip != null)
+            audioSource.PlayOneShot(spellClip);
     }
 }
