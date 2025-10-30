@@ -23,6 +23,10 @@ public class SpellEffects : MonoBehaviour
     public bool oppHitSpell;
     public bool plrHitSpell;
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip[] ouchVoicelines;
+
 
     private void Awake()
     {
@@ -34,8 +38,6 @@ public class SpellEffects : MonoBehaviour
 
     public void castSpell()
     {
-        Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
-
         if (spellName == "Lightning")
         {
             Player.GetComponent<MainCharacterMovement>().speed = 17;
@@ -44,12 +46,16 @@ public class SpellEffects : MonoBehaviour
         else if (spellName == "Ice")
         {
             Opponent.GetComponent<OppHitting>().speed = 0f;
+            Player.GetComponent<Ball>().xPos = 0f;
             Invoke("resetSpellEffect", 0.5f);
         }
         else if (spellName == "Fireball")
         {
             TennisAI.ApplyBuff(-0.2f, spellName);
             resetOnOppHit = true;
+
+            //Coroutine for checking of the fireball hits for AudioClip
+            StartCoroutine(FireballHitCheck());
         }
         else if (spellName == "Shadow")
         {
@@ -58,6 +64,7 @@ public class SpellEffects : MonoBehaviour
                 oppHitSpell = true;
             } else
             {
+                Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
                 OppHitting OppHitting = Opponent.GetComponent<OppHitting>();
                 OppHitting.xPos = Player.transform.position.x;
                 OppHitting.zPos = Player.transform.position.z;
@@ -67,6 +74,11 @@ public class SpellEffects : MonoBehaviour
         else if (spellName == "Green")
         {
             Player.GetComponent<Ball>().green = true;
+        }
+
+        if (!oppHitSpell)
+        {
+            Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
         }
     }
 
@@ -92,5 +104,19 @@ public class SpellEffects : MonoBehaviour
         spellName = null;
         plrHitSpell = false;
         oppHitSpell = false;
+    }
+
+    private IEnumerator FireballHitCheck()
+    {
+        // Wait until the opponent is hit
+        yield return new WaitUntil(() => resetOnOppHit == false);
+
+        // When the fireball is successful and goes through the opponent, play the ouch line
+        if (ouchVoicelines != null && ouchVoicelines.Length > 0 && audioSource != null)
+        {
+            int index = Random.Range(0, ouchVoicelines.Length);
+            audioSource.pitch = 1f;
+            audioSource.PlayOneShot(ouchVoicelines[index]);
+        }
     }
 }
