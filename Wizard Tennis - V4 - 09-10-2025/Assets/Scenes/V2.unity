@@ -1367,9 +1367,8 @@ MonoBehaviour:
   strength: 15
   ogUpForce: 5
   ballSpeed: 2.5
-  OppIKRig: {fileID: 1207922161}
-  PlayerIKRig: {fileID: 153926200}
   serving: 1
+  OppIKRig: {fileID: 1207922161}
   SpellEffects: {fileID: 1594825195}
   ballSpawnPoint: {fileID: 1945201662}
   ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
@@ -11352,8 +11351,7 @@ MonoBehaviour:
   resetOnPlrHit: 0
   oppHitSpell: 0
   plrHitSpell: 0
-  audioSource: {fileID: 0}
-  ouchVoicelines: []
+  spellHit: 0
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0
