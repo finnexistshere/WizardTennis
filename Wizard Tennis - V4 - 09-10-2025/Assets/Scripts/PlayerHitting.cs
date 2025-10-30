@@ -35,6 +35,8 @@ public class Ball : MonoBehaviour
     public GameObject Opponent;
     public float xPos;
 
+    public GameObject servingBarriers;
+
     private void PlayHitsound(Vector3 contactPoint)
     {
         if (audioSource == null) return;
@@ -84,6 +86,7 @@ public class Ball : MonoBehaviour
     private void Awake()
     {
         Opponent = GameObject.Find("Opponent");
+        servingBarriers = GameObject.Find("ServingBarriers");
     }
 
     void Update()
@@ -113,6 +116,7 @@ public class Ball : MonoBehaviour
                 rb.useGravity = true;
                 rb.velocity = new Vector3(0, upForce, 0).normalized * strength / 2;
                 serving = false;
+                servingBarriers.SetActive(false);
             }
         }
     }
@@ -144,7 +148,7 @@ public class Ball : MonoBehaviour
                     xPos = 2f;
                 }
 
-                if (transform.position.z < 5) xPos = 0f;
+                if (transform.position.z < 5 || transform.position.x < -5 || transform.position.x > 5) xPos = 0f;
 
                 if (SpellEffects.plrHitSpell) SpellEffects.castSpell();
 
