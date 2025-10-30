@@ -253,7 +253,7 @@ public class Spellcasting : MonoBehaviour
         // Swap visuals
         if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
             SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
-
+        SpellEffects.spellHit = true;
         // Start coroutine with deferred removal
         StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject, spellAddress));
     }

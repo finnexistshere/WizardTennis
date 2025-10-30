@@ -37,6 +37,8 @@ public class Ball : MonoBehaviour
 
     public GameObject servingBarriers;
 
+    private Camera cam;
+
     private void PlayHitsound(Vector3 contactPoint)
     {
         if (audioSource == null) return;
@@ -85,6 +87,7 @@ public class Ball : MonoBehaviour
 
     private void Awake()
     {
+        cam = GameObject.Find("Main Camera").GetComponent<Camera>();
         Opponent = GameObject.Find("Opponent");
         servingBarriers = GameObject.Find("ServingBarriers");
     }
@@ -125,9 +128,11 @@ public class Ball : MonoBehaviour
 
     IEnumerator HitSlowdown()
     {
+        cam.fieldOfView = 60.5f;
         Time.timeScale = 0.1f;
         yield return new WaitForSeconds(0.01f);
         Time.timeScale = 1;
+        cam.fieldOfView = 60;
     }
     
 
@@ -199,8 +204,10 @@ public class Ball : MonoBehaviour
                     CollisionTracker.LastHitWizard = "Player";
                     CollisionTracker.hasBounced = false;
                 }
-
-                StartCoroutine(HitSlowdown());
+                if (SpellEffects.spellHit == true)
+                {
+                    StartCoroutine(HitSlowdown());
+                }
             }
         }
     }

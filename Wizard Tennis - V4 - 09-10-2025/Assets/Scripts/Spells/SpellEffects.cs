@@ -23,6 +23,8 @@ public class SpellEffects : MonoBehaviour
     public bool oppHitSpell;
     public bool plrHitSpell;
 
+    public bool spellHit;
+
 
     private void Awake()
     {
@@ -67,6 +69,7 @@ public class SpellEffects : MonoBehaviour
         else if (spellName == "Green")
         {
             Player.GetComponent<Ball>().green = true;
+            Invoke("resetSpellEffect", 1f);
         }
 
         if (!oppHitSpell)
@@ -97,5 +100,6 @@ public class SpellEffects : MonoBehaviour
         spellName = null;
         plrHitSpell = false;
         oppHitSpell = false;
+        spellHit = false;
     }
 }
