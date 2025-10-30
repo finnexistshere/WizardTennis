@@ -23,6 +23,10 @@ public class SpellEffects : MonoBehaviour
     public bool oppHitSpell;
     public bool plrHitSpell;
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip[] ouchVoicelines;
+
 
     private void Awake()
     {
@@ -49,6 +53,9 @@ public class SpellEffects : MonoBehaviour
         {
             TennisAI.ApplyBuff(-0.2f, spellName);
             resetOnOppHit = true;
+
+            //Coroutine for checking of the fireball hits for AudioClip
+            StartCoroutine(FireballHitCheck());
         }
         else if (spellName == "Shadow")
         {
@@ -97,5 +104,19 @@ public class SpellEffects : MonoBehaviour
         spellName = null;
         plrHitSpell = false;
         oppHitSpell = false;
+    }
+
+    private IEnumerator FireballHitCheck()
+    {
+        // Wait until the opponent is hit
+        yield return new WaitUntil(() => resetOnOppHit == false);
+
+        // When the fireball is successful and goes through the opponent, play the ouch line
+        if (ouchVoicelines != null && ouchVoicelines.Length > 0 && audioSource != null)
+        {
+            int index = Random.Range(0, ouchVoicelines.Length);
+            audioSource.pitch = 1f;
+            audioSource.PlayOneShot(ouchVoicelines[index]);
+        }
     }
 }

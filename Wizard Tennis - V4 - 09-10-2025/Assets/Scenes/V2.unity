@@ -11056,6 +11056,10 @@ MonoBehaviour:
   resetOnPlrHit: 0
   oppHitSpell: 0
   plrHitSpell: 0
+  audioSource: {fileID: 944520099}
+  ouchVoicelines:
+  - {fileID: 8300000, guid: 9b1c3b059b57a5b4da6620d510c175ee, type: 3}
+  - {fileID: 8300000, guid: 6fdbe16580664324aaf51dcd9e31b6c4, type: 3}
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0
