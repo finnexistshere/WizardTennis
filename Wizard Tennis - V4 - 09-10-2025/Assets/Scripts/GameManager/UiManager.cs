@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using System.Collections;
+using UnityEditor.Experimental.GraphView;
 
 public class UIManager : MonoBehaviour
 {
@@ -112,6 +113,7 @@ public class UIManager : MonoBehaviour
         Color startColor = Color.white;
         Color midColor = Color.yellow;
         Color endColor = new Color(0.7f, 0f, 0f); // deep crimson
+        Color endColor2 = Color.magenta;
 
         float t;
         if (value < 10)
@@ -120,11 +122,17 @@ public class UIManager : MonoBehaviour
             t = Mathf.InverseLerp(0, 20, value);
             return Color.Lerp(startColor, midColor, t);
         }
-        else
+        else if (value < 20)
         {
             // 10–30: yellow -> crimson
             t = Mathf.InverseLerp(20, 50, value);
             return Color.Lerp(midColor, endColor, t);
+        }
+        else
+        {
+            // 50 -> 80 Purple
+            t = Mathf.InverseLerp(50, 80, value);
+            return Color.Lerp(endColor, endColor2, t);
         }
     }
 }

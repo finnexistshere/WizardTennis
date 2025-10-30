@@ -14,6 +14,8 @@ public class Ball : MonoBehaviour
     private bool hitting = true;
     public bool serving;
 
+    public TwoHandIKController_Opponent OppIKRig;
+
     private bool nearBall = false;
 
     public SpellEffects SpellEffects;
@@ -108,6 +110,7 @@ public class Ball : MonoBehaviour
             {
                 ikController.AssignBall(currentBall.transform);
             }
+            OppIKRig.AssignBall(currentBall.transform);
         }
 
         // Press E: serve if near ball
