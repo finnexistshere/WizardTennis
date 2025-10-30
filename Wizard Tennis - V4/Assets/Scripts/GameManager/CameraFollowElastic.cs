@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class CameraElasticSway : MonoBehaviour
 {
@@ -36,6 +37,8 @@ public class CameraElasticSway : MonoBehaviour
         Vector3 targetPos = new Vector3(startPosition.x + xOffset, startPosition.y, startPosition.z);
 
         // Smoothly move camera toward this position
-        transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * smoothSpeed);
+        transform.rotation = Quaternion.Inverse(Quaternion.LookRotation(player.position)) * Quaternion.Euler(45, 180, 0);
+        Vector3 test = transform.localEulerAngles;
+        transform.rotation = Quaternion.Euler(test.x, test.y, 0);
     }
 }
