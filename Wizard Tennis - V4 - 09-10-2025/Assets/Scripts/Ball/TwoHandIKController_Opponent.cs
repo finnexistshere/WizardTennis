@@ -1,11 +1,11 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Animations.Rigging;
 
-public class TwoHandIKController : MonoBehaviour
+public class TwoHandIKController_Opponent : MonoBehaviour
 {
     [Header("Controller & Targets")]
     [SerializeField] private Transform twoHandController;
-    [SerializeField] private Transform playerPos;
+    [SerializeField] private Transform opponentRoot;
 
     [Header("Extras")]
     [SerializeField] private Transform ball;
@@ -36,12 +36,13 @@ public class TwoHandIKController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!twoHandController || !playerPos || !ball) return;
+        if (!twoHandController || !opponentRoot || !ball) return;
 
-        // Ball position relative to player
-        Vector3 localBallPos = playerPos.InverseTransformPoint(ball.position);
+        // Ball position relative to opponent root
+        Vector3 localBallPos = opponentRoot.InverseTransformPoint(ball.position);
 
-        float forwardZ = localBallPos.z; // forward is player's Z
+        // Forward along opponent's negative Z (since opponent is mirrored)
+        float forwardZ = -localBallPos.z;
         float horizontalDir = Mathf.Clamp(localBallPos.x, -1f, 1f);
 
         // Trigger swing if ball is close and hasn't swung yet
@@ -52,7 +53,7 @@ public class TwoHandIKController : MonoBehaviour
             hasSwung = true;
 
             if (debugLogs)
-                Debug.Log($"{name}: Player swing triggered! dir={swingDirection}, forwardZ={forwardZ}");
+                Debug.Log($"{name}: Opponent swing triggered! dir={swingDirection}, forwardZ={forwardZ}");
         }
 
         // Reset swing if ball moves back past swing distance
@@ -76,9 +77,9 @@ public class TwoHandIKController : MonoBehaviour
         }
 
         // Final target position
-        Vector3 targetPos = playerPos.position
-                            + playerPos.right * sideOffset
-                            + playerPos.forward * forwardOffset
+        Vector3 targetPos = opponentRoot.position
+                            + opponentRoot.right * sideOffset
+                            - opponentRoot.forward * forwardOffset
                             + Vector3.up * heightOffset;
 
         twoHandController.position = Vector3.Lerp(twoHandController.position, targetPos, Time.deltaTime * followSpeed);
@@ -91,9 +92,9 @@ public class TwoHandIKController : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if (!playerPos) return;
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(playerPos.position, swingDistance);
-        Gizmos.DrawLine(playerPos.position, playerPos.position + playerPos.forward * swingDistance);
+        if (!opponentRoot) return;
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(opponentRoot.position, swingDistance);
+        Gizmos.DrawLine(opponentRoot.position, opponentRoot.position - opponentRoot.forward * swingDistance);
     }
 }

@@ -11,6 +11,9 @@ public class Ball : MonoBehaviour
     private float upForce = 11;
     public float ballSpeed = 5;
 
+    public TwoHandIKController_Opponent OppIKRig;
+    public TwoHandIKController PlayerIKRig;
+
     private bool hitting = true;
     public bool serving;
 
@@ -88,11 +91,13 @@ public class Ball : MonoBehaviour
             nearBall = true; // immediately allow serving
             GameManager.Instance.UnlockPickupSpawning();
 
-            // --- NEW: Assign the new ball to the TwoHandIKController ---
-            TwoHandIKController ikController = FindObjectOfType<TwoHandIKController>();
-            if (ikController != null)
+            if (PlayerIKRig != null)
             {
-                ikController.AssignBall(currentBall.transform);
+                PlayerIKRig.AssignBall(currentBall.transform);
+            }
+            if (OppIKRig != null)
+            {
+                OppIKRig.AssignBall(currentBall.transform);
             }
         }
 
@@ -108,8 +113,6 @@ public class Ball : MonoBehaviour
             }
         }
     }
-
-    
 
     private void OnTriggerEnter(Collider other)
     {
