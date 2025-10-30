@@ -34,8 +34,6 @@ public class SpellEffects : MonoBehaviour
 
     public void castSpell()
     {
-        Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
-
         if (spellName == "Lightning")
         {
             Player.GetComponent<MainCharacterMovement>().speed = 17;
@@ -44,6 +42,7 @@ public class SpellEffects : MonoBehaviour
         else if (spellName == "Ice")
         {
             Opponent.GetComponent<OppHitting>().speed = 0f;
+            Player.GetComponent<Ball>().xPos = 0f;
             Invoke("resetSpellEffect", 0.5f);
         }
         else if (spellName == "Fireball")
@@ -58,6 +57,7 @@ public class SpellEffects : MonoBehaviour
                 oppHitSpell = true;
             } else
             {
+                Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
                 OppHitting OppHitting = Opponent.GetComponent<OppHitting>();
                 OppHitting.xPos = Player.transform.position.x;
                 OppHitting.zPos = Player.transform.position.z;
@@ -67,6 +67,11 @@ public class SpellEffects : MonoBehaviour
         else if (spellName == "Green")
         {
             Player.GetComponent<Ball>().green = true;
+        }
+
+        if (!oppHitSpell)
+        {
+            Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
         }
     }
 

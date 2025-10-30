@@ -32,6 +32,9 @@ public class Ball : MonoBehaviour
 
     private float _lastHitSfxTime = -999f;
 
+    public GameObject Opponent;
+    public float xPos;
+
     private void PlayHitsound(Vector3 contactPoint)
     {
         if (audioSource == null) return;
@@ -78,6 +81,11 @@ public class Ball : MonoBehaviour
             currentBall = GameObject.FindWithTag("Ball");
     }
 
+    private void Awake()
+    {
+        Opponent = GameObject.Find("Opponent");
+    }
+
     void Update()
     {
         // Press E: spawn ball if none exists
@@ -118,12 +126,29 @@ public class Ball : MonoBehaviour
             nearBall = true;
             if (hitting)
             {
-                if (SpellEffects.plrHitSpell) SpellEffects.castSpell();
 
                 if (35.5 < transform.position.x) upForce = ogUpForce + 2;
                 else upForce = ogUpForce;
 
                 if (-6.25 < transform.position.z || transform.position.z < 6.25) upForce += 2;
+
+                float aimTargety = aimTarget.transform.position.y;
+                float aimTargetz = aimTarget.transform.position.z;
+                Vector3 oppPos = Opponent.transform.position;
+                if (oppPos.x > 0)
+                {
+                    xPos = -2f;
+                }
+                else
+                {
+                    xPos = 2f;
+                }
+
+                if (transform.position.z < 5) xPos = 0f;
+
+                if (SpellEffects.plrHitSpell) SpellEffects.castSpell();
+
+                aimTarget.transform.position = new Vector3(xPos, aimTargety, aimTargetz);
 
                 ParticleSystem particle = GameObject.FindGameObjectWithTag("Player Hit Particle").GetComponent<ParticleSystem>();
                 particle.transform.position = other.transform.position;
