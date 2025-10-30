@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 4816375581768926881}
   - component: {fileID: 3609873570403320339}
   - component: {fileID: 2088207171365508779}
-  - component: {fileID: 1645953902849043620}
   m_Layer: 0
   m_Name: LightningPickup
   m_TagString: Untagged
@@ -131,21 +130,6 @@ MonoBehaviour:
   spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 91d6565c3c117ea4d98e1380e3148ff1, type: 3}
   audioClip: {fileID: 0}
---- !u!114 &1645953902849043620
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2459800992572170402}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9959ef68e0ebc7e48878ba6a28116795, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  rotationSpeed: 60
-  bobHeight: 0.25
-  bobSpeed: 2
 --- !u!1001 &2102087191738129570
 PrefabInstance:
   m_ObjectHideFlags: 0
