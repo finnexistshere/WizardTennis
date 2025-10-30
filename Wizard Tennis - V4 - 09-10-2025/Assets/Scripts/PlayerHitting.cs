@@ -11,9 +11,6 @@ public class Ball : MonoBehaviour
     private float upForce = 11;
     public float ballSpeed = 5;
 
-    public TwoHandIKController_Opponent OppIKRig;
-    public TwoHandIKController PlayerIKRig;
-
     private bool hitting = true;
     public bool serving;
 
@@ -39,6 +36,8 @@ public class Ball : MonoBehaviour
     public float xPos;
 
     public GameObject servingBarriers;
+
+    private Camera cam;
 
     private void PlayHitsound(Vector3 contactPoint)
     {
@@ -88,6 +87,7 @@ public class Ball : MonoBehaviour
 
     private void Awake()
     {
+        cam = GameObject.Find("Main Camera").GetComponent<Camera>();
         Opponent = GameObject.Find("Opponent");
         servingBarriers = GameObject.Find("ServingBarriers");
     }
@@ -102,13 +102,11 @@ public class Ball : MonoBehaviour
             nearBall = true; // immediately allow serving
             GameManager.Instance.UnlockPickupSpawning();
 
-            if (PlayerIKRig != null)
+            // --- NEW: Assign the new ball to the TwoHandIKController ---
+            TwoHandIKController ikController = FindObjectOfType<TwoHandIKController>();
+            if (ikController != null)
             {
-                PlayerIKRig.AssignBall(currentBall.transform);
-            }
-            if (OppIKRig != null)
-            {
-                OppIKRig.AssignBall(currentBall.transform);
+                ikController.AssignBall(currentBall.transform);
             }
         }
 
@@ -121,13 +119,23 @@ public class Ball : MonoBehaviour
                 rb.useGravity = true;
                 rb.velocity = new Vector3(0, upForce, 0).normalized * strength / 2;
                 serving = false;
-                if (servingBarriers != null)
-                { 
-                    servingBarriers.SetActive(false);
-                }
+                servingBarriers.SetActive(false);
             }
         }
     }
+
+
+
+    IEnumerator HitSlowdown()
+    {
+        cam.fieldOfView = 60.5f;
+        Time.timeScale = 0.1f;
+        yield return new WaitForSeconds(0.01f);
+        Time.timeScale = 1;
+        cam.fieldOfView = 60;
+    }
+    
+
 
     private void OnTriggerEnter(Collider other)
     {
@@ -136,7 +144,7 @@ public class Ball : MonoBehaviour
             nearBall = true;
             if (hitting)
             {
-
+                
                 if (35.5 < transform.position.x) upForce = ogUpForce + 2;
                 else upForce = ogUpForce;
 
@@ -195,6 +203,10 @@ public class Ball : MonoBehaviour
                 {
                     CollisionTracker.LastHitWizard = "Player";
                     CollisionTracker.hasBounced = false;
+                }
+                if (SpellEffects.spellHit == true)
+                {
+                    StartCoroutine(HitSlowdown());
                 }
             }
         }
