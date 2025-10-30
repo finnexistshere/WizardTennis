@@ -4581,7 +4581,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &521821892
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7034,7 +7034,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_PlayOnAwake: 0
+  m_PlayOnAwake: 1
   m_Volume: 0.526
   m_Pitch: 1
   Loop: 0
@@ -10745,10 +10745,6 @@ MonoBehaviour:
   Player: {fileID: 153926187}
   Opponent: {fileID: 2092549635}
   TennisAI: {fileID: 0}
-  audioSource: {fileID: 944520099}
-  ouchVoicelines:
-  - {fileID: 8300000, guid: e1bc227456e77a1448f43cf387172c70, type: 3}
-  - {fileID: 8300000, guid: cc14b3f5f5540d44d81a7cf153ef5d2d, type: 3}
   spellName: 
   resetOnOppHit: 0
   resetOnPlrHit: 0
