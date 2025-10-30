@@ -121,7 +121,10 @@ public class Ball : MonoBehaviour
                 rb.useGravity = true;
                 rb.velocity = new Vector3(0, upForce, 0).normalized * strength / 2;
                 serving = false;
-                servingBarriers.SetActive(false);
+                if (servingBarriers != null)
+                { 
+                    servingBarriers.SetActive(false);
+                }
             }
         }
     }

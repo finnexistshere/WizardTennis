@@ -1381,6 +1381,9 @@ MonoBehaviour:
   pitchJitter: 0.07
   volumeJitter: 0.12
   minInterval: 0.08
+  Opponent: {fileID: 2092549635}
+  xPos: 0
+  servingBarriers: {fileID: 0}
   spellcasting: {fileID: 153926197}
   CollisionTracker: {fileID: 0}
   rallyCount: 0
@@ -1732,7 +1735,8 @@ MonoBehaviour:
   swingDistance: 3
   swingSharpness: 0.1
   followThroughAmount: 5
-  mirrorFacing: 0
+  swingTriggerDistance: 0.4
+  debugLogs: 0
 --- !u!1 &168140766
 GameObject:
   m_ObjectHideFlags: 0
@@ -11240,6 +11244,8 @@ MonoBehaviour:
   resetOnPlrHit: 0
   oppHitSpell: 0
   plrHitSpell: 0
+  audioSource: {fileID: 0}
+  ouchVoicelines: []
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0
