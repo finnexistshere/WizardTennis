@@ -87,6 +87,13 @@ public class Ball : MonoBehaviour
             CollisionTracker = currentBall.GetComponent<CollisionTrackerBall>(); // get tracker
             nearBall = true; // immediately allow serving
             GameManager.Instance.UnlockPickupSpawning();
+
+            // --- NEW: Assign the new ball to the TwoHandIKController ---
+            TwoHandIKController ikController = FindObjectOfType<TwoHandIKController>();
+            if (ikController != null)
+            {
+                ikController.AssignBall(currentBall.transform);
+            }
         }
 
         // Press E: serve if near ball
