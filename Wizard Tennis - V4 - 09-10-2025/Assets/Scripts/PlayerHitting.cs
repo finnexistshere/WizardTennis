@@ -121,7 +121,16 @@ public class Ball : MonoBehaviour
         }
     }
 
+
+
+    IEnumerator HitSlowdown()
+    {
+        Time.timeScale = 0.1f;
+        yield return new WaitForSeconds(0.01f);
+        Time.timeScale = 1;
+    }
     
+
 
     private void OnTriggerEnter(Collider other)
     {
@@ -130,7 +139,7 @@ public class Ball : MonoBehaviour
             nearBall = true;
             if (hitting)
             {
-
+                
                 if (35.5 < transform.position.x) upForce = ogUpForce + 2;
                 else upForce = ogUpForce;
 
@@ -190,6 +199,8 @@ public class Ball : MonoBehaviour
                     CollisionTracker.LastHitWizard = "Player";
                     CollisionTracker.hasBounced = false;
                 }
+
+                StartCoroutine(HitSlowdown());
             }
         }
     }
