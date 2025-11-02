@@ -1521,6 +1521,7 @@ MonoBehaviour:
   ogUpForce: 5
   ballSpeed: 2.5
   serving: 1
+  OppIKRig: {fileID: 0}
   SpellEffects: {fileID: 1594825195}
   ballSpawnPoint: {fileID: 1945201662}
   ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
@@ -1532,6 +1533,9 @@ MonoBehaviour:
   pitchJitter: 0.07
   volumeJitter: 0.12
   minInterval: 0.08
+  Opponent: {fileID: 0}
+  xPos: 0
+  servingBarriers: {fileID: 0}
   spellcasting: {fileID: 153926197}
   CollisionTracker: {fileID: 0}
   rallyCount: 0
@@ -1693,7 +1697,7 @@ MonoBehaviour:
   spellParticleColor: {fileID: 1977279300}
   inputTimeout: 2
   audioSource: {fileID: 944520099}
-  SpellInputClick: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  SpellInputClick: {fileID: 8300000, guid: 24a27dd945e649c48b916c4c1dcd1f17, type: 3}
   spellRegisterSound: {fileID: 8300000, guid: c34692d8361f4eb43b256d8c9e8f3049, type: 3}
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
@@ -10978,6 +10982,15 @@ MonoBehaviour:
   resetOnPlrHit: 0
   oppHitSpell: 0
   plrHitSpell: 0
+  audioSource: {fileID: 1580895398}
+  ouchVoicelines:
+  - {fileID: 8300000, guid: 5694cc7b9ba916f458f6633adc0c9a5d, type: 3}
+  - {fileID: 8300000, guid: 9bfe429511fd55f4d8c3c209fe292fb3, type: 3}
+  pointSource: {fileID: 1580895398}
+  pointWon: {fileID: 8300000, guid: 2b4192940219cf54da1024a91d8eebe8, type: 3}
+  pointlost: {fileID: 0}
+  pointSFXVolume: 1
+  spellHit: 0
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0

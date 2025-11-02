@@ -23,6 +23,17 @@ public class SpellEffects : MonoBehaviour
     public bool oppHitSpell;
     public bool plrHitSpell;
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip[] ouchVoicelines;
+
+    [Header("Point SFX")]
+    public AudioSource pointSource;
+    public AudioClip pointWon;
+    public AudioClip pointlost;
+    [Range(0f, 1f)] public float pointSFXVolume = 1f;
+
+
     public bool spellHit;
 
 
@@ -51,6 +62,9 @@ public class SpellEffects : MonoBehaviour
         {
             TennisAI.ApplyBuff(-0.2f, spellName);
             resetOnOppHit = true;
+
+            // Start a coroutine to monitor for when the Fireball hits the opponent
+            StartCoroutine(FireballHitCheck());
         }
         else if (spellName == "Shadow")
         {
@@ -101,5 +115,39 @@ public class SpellEffects : MonoBehaviour
         plrHitSpell = false;
         oppHitSpell = false;
         spellHit = false;
+    }
+
+    public void OnPointWon()
+    {
+        if (pointSource != null && pointWon != null)
+        {
+            pointSource.PlayOneShot(pointWon, pointSFXVolume);
+        }
+    }
+
+    public void OnPointLost()
+    {
+        if (pointSource != null && pointlost != null)
+        {
+            pointSource.PlayOneShot(pointlost, pointSFXVolume);
+        }
+    }
+    
+    private IEnumerator FireballHitCheck()
+    {
+        // Wait until the opponent is hit and the fireball effect resets
+        yield return new WaitUntil(() => resetOnOppHit == false);
+
+        if (audioSource == null) yield break;
+        if (ouchVoicelines == null || ouchVoicelines.Length == 0) yield break;
+
+        // Optional: slight delay for impact feel
+        yield return new WaitForSeconds(0.1f);
+
+        // Ensure this source isn’t inheriting a pitch change from elsewhere
+        audioSource.pitch = 1f;
+
+        int index = (ouchVoicelines.Length == 1) ? 0 : Random.Range(0, ouchVoicelines.Length);
+        audioSource.PlayOneShot(ouchVoicelines[index]);
     }
 }

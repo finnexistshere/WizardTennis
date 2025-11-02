@@ -127,7 +127,7 @@ MonoBehaviour:
   onHitBool: 0
   FloorVisualColor: {r: 0, g: 1, b: 0, a: 0}
   spellCastAudio: {fileID: 0}
-  wizardSpellSound: {fileID: 8300000, guid: 9508e302655e3a24aa77c4c9c7adb8fd, type: 3}
+  wizardSpellSound: {fileID: 8300000, guid: f4074551d85fe984094c6d76f795c7c5, type: 3}
   spawnWeight: 0.05
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 915ac6b199225ac4a9d199babdb3613a, type: 3}
   audioClip: {fileID: 0}
