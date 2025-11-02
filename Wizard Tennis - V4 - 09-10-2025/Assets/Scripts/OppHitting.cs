@@ -31,6 +31,8 @@ public class OppHitting : MonoBehaviour
 
     private float _lastHitSfxTime = -999f;
 
+    public NPCBounceAnimator npcBounceAnimator;
+
     private void PlayHitsound(Vector3 contactPoint)
     {
         if (audioSource == null) return;
@@ -80,8 +82,6 @@ public class OppHitting : MonoBehaviour
             if (ballObj != null)
             {
                 ball = ballObj.transform;
-
-                // Also grab the CollisionTrackerBall component
                 CollisionTracker = ballObj.GetComponent<CollisionTrackerBall>();
             }
             else
@@ -92,6 +92,14 @@ public class OppHitting : MonoBehaviour
 
         // Move opponent on X axis toward the ball
         targetPosition.x = ball.position.x;
+
+        // Measure actual movement between frames
+        float frameMovement = Mathf.Abs(targetPosition.x - transform.position.x);
+
+        // Trigger bounce whenever *any* movement occurs (even very small)
+        npcBounceAnimator.isMoving = frameMovement > 0.0001f;
+
+        // Perform movement
         transform.position = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
     }
 

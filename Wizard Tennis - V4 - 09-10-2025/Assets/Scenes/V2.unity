@@ -1405,6 +1405,9 @@ MonoBehaviour:
   speed: 7
   jumpSpeed: 8
   gravity: 25
+  meshChild: {fileID: 802809286}
+  bounceAmplitude: 0.1
+  bounceFrequency: 20
 --- !u!143 &153926192
 CharacterController:
   m_ObjectHideFlags: 0
@@ -13827,6 +13830,7 @@ GameObject:
   - component: {fileID: 2092549639}
   - component: {fileID: 2092549638}
   - component: {fileID: 2092549637}
+  - component: {fileID: 2092549642}
   - component: {fileID: 2092549636}
   - component: {fileID: 2092549641}
   m_Layer: 0
@@ -13873,6 +13877,7 @@ MonoBehaviour:
   pitchJitter: 0.07
   volumeJitter: 0.12
   minInterval: 0.08
+  npcBounceAnimator: {fileID: 2092549642}
   xPos: 0
   zPos: 0
 --- !u!136 &2092549637
@@ -13993,6 +13998,23 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &2092549642
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2092549635}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 336066e2201cc504bb77ebc3d4db8b61, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterMesh: {fileID: 1697663170}
+  bounceAmplitude: 0.1
+  bounceSpeed: 20
+  returnSpeed: 10
+  isMoving: 0
 --- !u!1 &2098253622
 GameObject:
   m_ObjectHideFlags: 0
