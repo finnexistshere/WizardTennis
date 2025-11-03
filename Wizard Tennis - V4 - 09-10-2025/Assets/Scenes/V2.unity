@@ -41868,6 +41868,7 @@ MonoBehaviour:
   spellExplanationText: {fileID: 1786369346}
   slowTimeScale: 0.1
   explanationDuration: 3.5
+  iceBlockPrefab: {fileID: 6739675707158918549, guid: 7fea345ac8ee7e64885f2f42c84f722c, type: 3}
   spellHit: 0
 --- !u!1 &1596896129
 GameObject:

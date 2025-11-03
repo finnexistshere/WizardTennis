@@ -32,6 +32,10 @@ public class SpellEffects : MonoBehaviour
     public float slowTimeScale = 0.25f;
     public float explanationDuration = 2.5f;
 
+    [Header("Ice Spell Settings")]
+    public GameObject iceBlockPrefab;
+    private GameObject activeIceBlock;
+
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
 
     public bool spellHit;
@@ -61,6 +65,18 @@ public class SpellEffects : MonoBehaviour
         {
             Opponent.GetComponent<OppHitting>().speed = 0f;
             Player.GetComponent<Ball>().xPos = 0f;
+
+            // Spawn the ice block if prefab is assigned
+            if (iceBlockPrefab != null)
+            {
+                // Spawn and attach to opponent
+                activeIceBlock = Instantiate(iceBlockPrefab, Opponent.transform.position, Opponent.transform.rotation);
+                activeIceBlock.transform.SetParent(Opponent.transform);
+
+                // Optionally scale/offset it slightly to fit the opponent visually
+                activeIceBlock.transform.localPosition = Vector3.zero;
+            }
+
             Invoke(nameof(resetSpellEffect), 0.5f);
         }
         else if (spellName == "Fireball")
@@ -105,6 +121,13 @@ public class SpellEffects : MonoBehaviour
         else if (spellName == "Ice")
         {
             Opponent.GetComponent<OppHitting>().speed = 5;
+
+            // Destroy the spawned ice block if it exists
+            if (activeIceBlock != null)
+            {
+                Destroy(activeIceBlock);
+                activeIceBlock = null;
+            }
         }
         else if (spellName == "Fireball" || spellName == "Shadow")
         {
