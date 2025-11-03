@@ -126,7 +126,8 @@ MonoBehaviour:
   spellName: Ice
   spellAddress: bAa
   onHitBool: 1
-  FloorVisualColor: {r: 0, g: 0.9430566, b: 1, a: 1}
+  Color1: {r: 0.47058824, g: 0.8980392, b: 0.84705883, a: 0}
+  Color2: {r: 0.015686275, g: 0.41960785, b: 0.49019608, a: 0}
   spellCastAudio: {fileID: 8300000, guid: b7d80ddddce274042bde9b73f8f377f4, type: 3}
   wizardSpellSound: {fileID: 8300000, guid: 267ed843502762745830d5824afcd6ff, type: 3}
   spawnWeight: 0.3
@@ -276,15 +277,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3776817191689049399, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
       propertyPath: m_LocalScale.x
-      value: 3.0594
+      value: 4.233085
       objectReference: {fileID: 0}
     - target: {fileID: 3776817191689049399, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
       propertyPath: m_LocalScale.y
-      value: 3.0593998
+      value: 4.233085
       objectReference: {fileID: 0}
     - target: {fileID: 3776817191689049399, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
       propertyPath: m_LocalScale.z
-      value: 3.0593998
+      value: 4.233085
       objectReference: {fileID: 0}
     - target: {fileID: 3776817191689049399, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
       propertyPath: m_LocalPosition.x
@@ -292,11 +293,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3776817191689049399, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -0.000000055249
       objectReference: {fileID: 0}
     - target: {fileID: 3776817191689049399, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 0.000000071024
       objectReference: {fileID: 0}
     - target: {fileID: 3776817191689049399, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
       propertyPath: m_LocalRotation.w
@@ -330,7 +331,20 @@ PrefabInstance:
       propertyPath: m_Name
       value: sm_Ball_Ice
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    - target: {fileID: 7580965759946295769, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2.7309077
+      objectReference: {fileID: 0}
+    - target: {fileID: 7580965759946295769, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2.7309077
+      objectReference: {fileID: 0}
+    - target: {fileID: 7580965759946295769, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 2.7309077
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 3859308216455353394, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
@@ -391,7 +405,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 18064076532fe4241a4d8e1d983a541a, type: 2}
+      objectReference: {fileID: 2100000, guid: 9551581b38b41114e93a45f564e0c5ee, type: 2}
     - target: {fileID: 919132149155446097, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Name
       value: sm_spellPage

@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 3780717064356172620}
   - component: {fileID: 2312225277774927468}
   - component: {fileID: 4105260682208742391}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Ball_Updated
   m_TagString: Ball
   m_Icon: {fileID: 0}
@@ -162,7 +162,7 @@ GameObject:
   - component: {fileID: 2732620493066899712}
   - component: {fileID: 1278554756815242679}
   - component: {fileID: 4453320641484318127}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: BounceChecker
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -284,6 +284,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 6276cea626fad8b4aae323bf82751a3c, type: 3}
       propertyPath: m_Name
       value: sm_Ball
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 6276cea626fad8b4aae323bf82751a3c, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

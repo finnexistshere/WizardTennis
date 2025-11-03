@@ -140,7 +140,8 @@ MonoBehaviour:
   spellName: Fireball
   spellAddress: aAB
   onHitBool: 1
-  FloorVisualColor: {r: 1, g: 0.5641353, b: 0, a: 1}
+  Color1: {r: 1, g: 0.5882353, b: 0.11764706, a: 0}
+  Color2: {r: 1, g: 0.2, b: 0.1764706, a: 0}
   spellCastAudio: {fileID: 8300000, guid: c1ca27f0948b8b84daa73557fde54ece, type: 3}
   wizardSpellSound: {fileID: 8300000, guid: 1cba6a67d151f5343ac29a819ed23327, type: 3}
   spawnWeight: 0.4
@@ -199,7 +200,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 0a0daccc72d2a3442a0719e3608a4c7f, type: 2}
+      objectReference: {fileID: 2100000, guid: 1316d60bd2096734d8cf77c26b41f38c, type: 2}
     - target: {fileID: 919132149155446097, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Name
       value: sm_spellPage
@@ -285,7 +286,20 @@ PrefabInstance:
       propertyPath: m_Name
       value: sm_Ball_Fire
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    - target: {fileID: 7580965759946295769, guid: de8332094fc41bd4480762e02c4946c4, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 3.6480284
+      objectReference: {fileID: 0}
+    - target: {fileID: 7580965759946295769, guid: de8332094fc41bd4480762e02c4946c4, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 3.6480284
+      objectReference: {fileID: 0}
+    - target: {fileID: 7580965759946295769, guid: de8332094fc41bd4480762e02c4946c4, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 3.6480284
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 3859308216455353394, guid: de8332094fc41bd4480762e02c4946c4, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []

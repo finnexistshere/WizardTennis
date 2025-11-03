@@ -15,6 +15,7 @@ TagManager:
   - Player Hit Particle
   - Opponent Hit Particle
   - Audio Source
+  - Music Manager
   layers:
   - Default
   - TransparentFX
@@ -22,8 +23,8 @@ TagManager:
   - Shadow
   - Water
   - UI
-  - 
-  - 
+  - Ball
+  - Plr Collider
   - 
   - 
   - 

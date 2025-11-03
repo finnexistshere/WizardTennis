@@ -11,7 +11,8 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] private string spellName;
     [SerializeField] private string spellAddress;
     [SerializeField] private bool onHitBool;
-    [SerializeField] public Color FloorVisualColor;
+    [SerializeField] public Color Color1;
+    [SerializeField] public Color Color2;
     [SerializeField] public AudioClip spellCastAudio;
     [SerializeField] public AudioClip wizardSpellSound;
 
@@ -159,7 +160,7 @@ public class PickupEffect : MonoBehaviour
         {
             Spellcasting spellcasting = other.GetComponent<Spellcasting>();
 
-            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, FloorVisualColor, spellCastAudio, wizardSpellSound);
+            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound);
             if (spellcasting != null)
             {
                 if (!spellcasting.spellBook.ContainsKey(SpellAddress))

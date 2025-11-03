@@ -5,12 +5,16 @@ using System.Collections.Generic;
 
 public class Spellcasting : MonoBehaviour
 {
+    // --- Racket Shader Reference ---
+    [SerializeField] private Material racketShader;
+
     // --- Spell Dictionaries ---
     public Dictionary<string, string> spellBook = new Dictionary<string, string>();
     public Dictionary<string, float> debuffBook = new Dictionary<string, float>();
     public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>();
     public Dictionary<string, bool> boolBook = new Dictionary<string, bool>();
     public Dictionary<string, Color> spellColors = new Dictionary<string, Color>();
+    public Dictionary<string, Color> spellColors2 = new Dictionary<string, Color>();
     public Dictionary<string, AudioClip> spellAudio = new Dictionary<string, AudioClip>();
     public Dictionary<string, AudioClip> wizardAudio = new Dictionary<string, AudioClip>();
 
@@ -58,6 +62,12 @@ public class Spellcasting : MonoBehaviour
     private GameObject currentBall;
     private float ballCheckInterval = 0.5f;
     private float nextBallCheckTime = 0f;
+
+    private void Awake()
+    {
+        racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
+        racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+    }
 
     private void Update()
     {
@@ -241,6 +251,12 @@ public class Spellcasting : MonoBehaviour
         }
 
         Color spellColor = spellColors[spellAddress];
+        Color spellColor2 = spellColors2[spellAddress];
+
+        // Change racket color
+        racketShader.SetColor("_Racket_Color_Top", spellColor);
+        racketShader.SetColor("_Racket_Color_Bottom", spellColor2);
+
         spellFloorImage.ShowSpell(spellName, spellColor);
         spellParticleColor.SetSpellColor(spellColor);
 
@@ -280,6 +296,10 @@ public class Spellcasting : MonoBehaviour
             baseEffect.SetActive(true);
 
         spellParticleColor.ResetColor();
+
+        racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
+        racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+
 
         if (!string.IsNullOrEmpty(currentActiveSpell))
         {
@@ -353,7 +373,7 @@ public class Spellcasting : MonoBehaviour
         UpdateSpellBook();
     }
 
-    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color FloorVisualColor, AudioClip spellCastAudio, AudioClip wizardSpellSound)
+    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound)
     {
         if (!spellBook.ContainsKey(address))
         {
@@ -364,7 +384,8 @@ public class Spellcasting : MonoBehaviour
                 spellVisuals[address] = visualPrefab;
 
             boolBook[name] = onHitBool;
-            spellColors[address] = FloorVisualColor;
+            spellColors[address] = SpellColor1;
+            spellColors2[address] = SpellColor2;
             spellAudio[address] = spellCastAudio;
             wizardAudio[address] = wizardSpellSound;
         }

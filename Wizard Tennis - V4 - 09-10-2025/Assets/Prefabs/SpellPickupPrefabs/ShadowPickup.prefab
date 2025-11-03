@@ -126,7 +126,8 @@ MonoBehaviour:
   spellName: Shadow
   spellAddress: bbb
   onHitBool: 0
-  FloorVisualColor: {r: 0.48546308, g: 0, b: 0.5471698, a: 1}
+  Color1: {r: 0.54901963, g: 0.6745098, b: 0.8862745, a: 0}
+  Color2: {r: 0.7490196, g: 0, b: 1, a: 0}
   spellCastAudio: {fileID: 8300000, guid: 4def3e56f2c119b4bbe45fb5c0cd97b6, type: 3}
   wizardSpellSound: {fileID: 8300000, guid: b57cf6f1e7d0645499ea9cb68ea4fdb1, type: 3}
   spawnWeight: 0.2
@@ -330,7 +331,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: sm_Ball_Shadow
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 3859308216455353394, guid: a7f6afc188cd81d498f7f718f966c46d, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
@@ -391,7 +393,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 8eb1aea3e793d964681051e3c9ba8f76, type: 2}
+      objectReference: {fileID: 2100000, guid: 19878c5601021f14d8aa7bea4a785f0e, type: 2}
     - target: {fileID: 919132149155446097, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Name
       value: sm_spellPage

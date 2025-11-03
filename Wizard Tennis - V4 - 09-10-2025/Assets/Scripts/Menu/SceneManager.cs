@@ -15,8 +15,12 @@ public class SceneChanger : MonoBehaviour
     public Toggle leftHandedToggle;
     public TextMeshProUGUI modeLabel;
 
+    private AudioSource musicManager;
+
     public void ChangeScene(string sceneName)
     {
+        AudioSource musicManager = GameObject.FindGameObjectWithTag("Music Manager").GetComponent<AudioSource>();
+        musicManager.Stop();
         SceneManager.LoadScene(sceneName);
     }
 

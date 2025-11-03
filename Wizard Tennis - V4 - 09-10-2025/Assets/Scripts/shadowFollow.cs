@@ -12,8 +12,8 @@ public class shadowFollow : MonoBehaviour
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
 
-        if (spriteRenderer != null)
-            spriteRenderer.enabled = false; // Hide shadow initially
+       // if (spriteRenderer != null)
+       //     spriteRenderer.enabled = false; // Hide shadow initially
     }
 
     void Update()

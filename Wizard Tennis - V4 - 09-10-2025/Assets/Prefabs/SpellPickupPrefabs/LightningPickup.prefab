@@ -125,12 +125,15 @@ MonoBehaviour:
   spellName: Lightning
   spellAddress: BBbA
   onHitBool: 0
-  FloorVisualColor: {r: 1, g: 0.9924085, b: 0.36320752, a: 1}
+  Color1: {r: 0.84313726, g: 1, b: 0.25882354, a: 0}
+  Color2: {r: 0.90588236, g: 0.85882354, b: 0, a: 0}
   spellCastAudio: {fileID: 8300000, guid: 2e99312607a35fc4fa2bbf41d49de3fa, type: 3}
   wizardSpellSound: {fileID: 8300000, guid: f7f67fc41b16e364fad4031fdbb6bbc4, type: 3}
   spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 91d6565c3c117ea4d98e1380e3148ff1, type: 3}
   audioClip: {fileID: 0}
+  fadeInDuration: 3
+  destroyAfterFadeIn: 0
 --- !u!114 &1645953902849043620
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -197,7 +200,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 7df79bca64850704f9cecc4b1c189363, type: 2}
+      objectReference: {fileID: 2100000, guid: 45f1f03e661f50e4d8ff30f7221f0d1f, type: 2}
     - target: {fileID: 919132149155446097, guid: ca1fafcf0a4a97246a677f013465181d, type: 3}
       propertyPath: m_Name
       value: sm_spellPage
