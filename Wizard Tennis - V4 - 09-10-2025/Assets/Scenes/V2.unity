@@ -15598,9 +15598,9 @@ MonoBehaviour:
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
-  audioSource: {fileID: 0}
-  creakSFX: {fileID: 8300000, guid: 707779e456f5e80429e217a19a6cfde3, type: 3}
-  sparkleSFX: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  audioSource: {fileID: 1136450470}
+  creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
+  sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
 --- !u!82 &126685021
 AudioSource:
   m_ObjectHideFlags: 0
@@ -15855,9 +15855,9 @@ MonoBehaviour:
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
-  audioSource: {fileID: 0}
-  creakSFX: {fileID: 8300000, guid: 707779e456f5e80429e217a19a6cfde3, type: 3}
-  sparkleSFX: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  audioSource: {fileID: 1136450470}
+  creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
+  sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
 --- !u!82 &152661690
 AudioSource:
   m_ObjectHideFlags: 0
@@ -17710,9 +17710,9 @@ MonoBehaviour:
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
-  audioSource: {fileID: 302547066}
-  creakSFX: {fileID: 8300000, guid: 707779e456f5e80429e217a19a6cfde3, type: 3}
-  sparkleSFX: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  audioSource: {fileID: 1136450470}
+  creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
+  sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
 --- !u!82 &302547066
 AudioSource:
   m_ObjectHideFlags: 0
@@ -23603,9 +23603,9 @@ MonoBehaviour:
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
-  audioSource: {fileID: 0}
-  creakSFX: {fileID: 8300000, guid: 707779e456f5e80429e217a19a6cfde3, type: 3}
-  sparkleSFX: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  audioSource: {fileID: 1136450470}
+  creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
+  sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
 --- !u!82 &440953816
 AudioSource:
   m_ObjectHideFlags: 0
@@ -24209,6 +24209,7 @@ GameObject:
   m_Component:
   - component: {fileID: 521821894}
   - component: {fileID: 521821893}
+  - component: {fileID: 521821895}
   m_Layer: 0
   m_Name: MusicManager
   m_TagString: Music Manager
@@ -24226,7 +24227,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 72e55f56da04f8c4fb97868bd1efa3fc, type: 3}
+  m_audioClip: {fileID: 0}
   m_PlayOnAwake: 1
   m_Volume: 0.5
   m_Pitch: 1
@@ -24327,6 +24328,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &521821895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 521821891}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04d024cc92870da409865f893143ca29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  musicSource: {fileID: 521821893}
+  musicTrack: {fileID: 8300000, guid: 72e55f56da04f8c4fb97868bd1efa3fc, type: 3}
 --- !u!1001 &524390279
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -24819,9 +24834,9 @@ MonoBehaviour:
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
-  audioSource: {fileID: 0}
-  creakSFX: {fileID: 8300000, guid: 707779e456f5e80429e217a19a6cfde3, type: 3}
-  sparkleSFX: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  audioSource: {fileID: 1136450470}
+  creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
+  sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
 --- !u!82 &571976422
 AudioSource:
   m_ObjectHideFlags: 0
@@ -29959,7 +29974,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8178539807689418615, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -15.65
+      value: -15.69
       objectReference: {fileID: 0}
     - target: {fileID: 8178539807689418615, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
       propertyPath: m_LocalPosition.y
@@ -35843,9 +35858,9 @@ MonoBehaviour:
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
-  audioSource: {fileID: 0}
-  creakSFX: {fileID: 8300000, guid: 707779e456f5e80429e217a19a6cfde3, type: 3}
-  sparkleSFX: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  audioSource: {fileID: 1136450470}
+  creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
+  sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
 --- !u!82 &1437665136
 AudioSource:
   m_ObjectHideFlags: 0
@@ -54570,9 +54585,9 @@ MonoBehaviour:
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
-  audioSource: {fileID: 0}
-  creakSFX: {fileID: 8300000, guid: 707779e456f5e80429e217a19a6cfde3, type: 3}
-  sparkleSFX: {fileID: 8300000, guid: f1758dcb809b3834dbe1ce79609867ed, type: 3}
+  audioSource: {fileID: 1136450470}
+  creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
+  sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
 --- !u!82 &2101770634
 AudioSource:
   m_ObjectHideFlags: 0

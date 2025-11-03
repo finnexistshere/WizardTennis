@@ -381,6 +381,7 @@ public class GameManager : MonoBehaviour
     {
         ScoreManager.Instance.ResetScores();
         SceneManager.LoadScene("Main Menu");
+        Time.timeScale = 1f;
     }
 
     public void QuitGame()

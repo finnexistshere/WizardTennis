@@ -1,20 +1,17 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-[RequireComponent(typeof(AudioSource))]
 public class MusicManager : MonoBehaviour
 {
     public static MusicManager Instance;
+    public AudioSource musicSource;
+    public AudioClip musicTrack;
 
-    [Header("Music Settings")]
-    [SerializeField] private AudioClip musicClip;
-    [Range(0f, 1f)] public float volume = 0.75f;
-    [SerializeField] private bool playOnAwake = true;
-
-    private AudioSource audioSource;
+    private int lastSceneIndex;
 
     private void Awake()
     {
-        // Singleton pattern
+        // Singleton setup
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -24,69 +21,43 @@ public class MusicManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        audioSource = GetComponent<AudioSource>();
-        audioSource.loop = true;
-        audioSource.volume = volume;
-        audioSource.clip = musicClip;
-
-        if (playOnAwake && musicClip != null)
-            audioSource.Play();
-    }
-
-    /// <summary>
-    /// Start playing a new track (loops automatically)
-    /// </summary>
-    public void PlayMusic(AudioClip clip, float newVolume = -1f)
-    {
-        if (clip == null)
+        // Configure AudioSource if not assigned
+        if (musicSource == null)
         {
-            Debug.LogWarning("[MusicManager] No clip provided!");
-            return;
+            musicSource = gameObject.AddComponent<AudioSource>();
+            musicSource.loop = true;
         }
 
-        if (audioSource.clip == clip && audioSource.isPlaying)
-            return; // Already playing this track
+        if (musicTrack != null)
+        {
+            musicSource.clip = musicTrack;
+            musicSource.Play();
+        }
 
-        audioSource.clip = clip;
-        audioSource.loop = true;
+        // Store the starting scene index
+        lastSceneIndex = SceneManager.GetActiveScene().buildIndex;
 
-        if (newVolume >= 0f)
-            audioSource.volume = Mathf.Clamp01(newVolume);
-
-        audioSource.Play();
+        // Subscribe to scene change event
+        SceneManager.activeSceneChanged += OnSceneChanged;
     }
 
-    /// <summary>
-    /// Stop music
-    /// </summary>
-    public void StopMusic()
+    private void OnSceneChanged(Scene oldScene, Scene newScene)
     {
-        audioSource.Stop();
+        // If scene changed to a new one (not reload)
+        if (newScene.buildIndex != lastSceneIndex)
+        {
+            Destroy(gameObject); // Stop music and reset manager
+        }
+        else
+        {
+            // Scene reloaded, do nothing — music continues
+        }
+
+        lastSceneIndex = newScene.buildIndex;
     }
 
-    /// <summary>
-    /// Pause music
-    /// </summary>
-    public void PauseMusic()
+    private void OnDestroy()
     {
-        audioSource.Pause();
-    }
-
-    /// <summary>
-    /// Resume paused music
-    /// </summary>
-    public void ResumeMusic()
-    {
-        if (!audioSource.isPlaying)
-            audioSource.Play();
-    }
-
-    /// <summary>
-    /// Adjust music volume on the fly
-    /// </summary>
-    public void SetVolume(float newVolume)
-    {
-        volume = Mathf.Clamp01(newVolume);
-        audioSource.volume = volume;
+        SceneManager.activeSceneChanged -= OnSceneChanged;
     }
 }
