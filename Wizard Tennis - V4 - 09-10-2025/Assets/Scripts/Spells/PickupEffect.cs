@@ -44,6 +44,7 @@ public class PickupEffect : MonoBehaviour
     private void Awake()
     {
         audioSource = GameObject.FindGameObjectWithTag("Audio Source").GetComponent<AudioSource>();
+        Debug.Log($"Assigned audiosource to {audioSource.name}");
 
         // Collect all renderers and materials from children
         Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
@@ -163,6 +164,9 @@ public class PickupEffect : MonoBehaviour
             spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound);
             if (spellcasting != null)
             {
+                if (audioClip != null)
+                    audioSource.PlayOneShot(audioClip);
+
                 if (!spellcasting.spellBook.ContainsKey(SpellAddress))
                 {
                     // Match Spellcasting.AddSpell() structure
@@ -171,9 +175,6 @@ public class PickupEffect : MonoBehaviour
 
                     // Optionally assign a prefab and bool if you have those
                     spellcasting.boolBook[SpellName] = false; // default to false or set dynamically
-
-                    if (audioClip != null)
-                        audioSource.PlayOneShot(audioClip);
                 }
             }
 

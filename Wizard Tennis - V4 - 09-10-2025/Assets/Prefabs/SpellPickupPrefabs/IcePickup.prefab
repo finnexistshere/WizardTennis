@@ -133,7 +133,7 @@ MonoBehaviour:
   wizardSpellSound: {fileID: 8300000, guid: 267ed843502762745830d5824afcd6ff, type: 3}
   spawnWeight: 0.3
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
-  audioClip: {fileID: 0}
+  audioClip: {fileID: 8300000, guid: e7eecb186a98f934b8fc547f770b6e7b, type: 3}
   fadeInDuration: 3
   destroyAfterFadeIn: 0
 --- !u!96 &2732718826391848496
