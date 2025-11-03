@@ -1548,7 +1548,7 @@ MonoBehaviour:
   inputTimeout: 2
   audioSource: {fileID: 944520099}
   SpellInputClick: {fileID: 8300000, guid: 24a27dd945e649c48b916c4c1dcd1f17, type: 3}
-  spellRegisterSound: {fileID: 8300000, guid: c34692d8361f4eb43b256d8c9e8f3049, type: 3}
+  spellRegisterSound: {fileID: 8300000, guid: e4d15085eaf882c41b8d21a360d6f01a, type: 3}
   inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
   spellFloorImage: {fileID: 1076509792}
@@ -11358,6 +11358,10 @@ MonoBehaviour:
   ouchVoicelines:
   - {fileID: 8300000, guid: 5694cc7b9ba916f458f6633adc0c9a5d, type: 3}
   - {fileID: 8300000, guid: 9bfe429511fd55f4d8c3c209fe292fb3, type: 3}
+  pointSource: {fileID: 45134626}
+  pointWon: {fileID: 8300000, guid: 2b4192940219cf54da1024a91d8eebe8, type: 3}
+  pointlost: {fileID: 8300000, guid: 9dea78e08194efb43a2780f751937a72, type: 3}
+  pointSFXVolume: 1
   spellHit: 0
 --- !u!1 &1596896129
 GameObject:
