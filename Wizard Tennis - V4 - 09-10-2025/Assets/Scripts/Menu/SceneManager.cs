@@ -10,6 +10,7 @@ public class SceneChanger : MonoBehaviour
     public GameObject MainMenu;
     public GameObject CreditsMenu;
     public GameObject OptionsMenu;
+    public GameObject SpellbookMenu;
 
     [Header("Options Menu UI References")]
     public Slider volumeSlider;
@@ -77,6 +78,18 @@ public class SceneChanger : MonoBehaviour
         MoveCameraTo(mainMenuCamPos);
     }
 
+    public void OpenSpellBookMenu()
+    {
+        MainMenu.SetActive(false);
+        SpellbookMenu.SetActive(true);
+    }
+
+    public void BackToMainFromSpells()
+    {
+        MainMenu.SetActive(true);
+        SpellbookMenu.SetActive(false);
+    }
+
     private void MoveCameraTo(Transform target)
     {
         if (menuCamera == null || target == null)
@@ -113,4 +126,6 @@ public class SceneChanger : MonoBehaviour
         menuCamera.transform.position = target.position;
         menuCamera.transform.rotation = target.rotation;
     }
+
+
 }
