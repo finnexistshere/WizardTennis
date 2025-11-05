@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 public class SpellEffects : MonoBehaviour
@@ -27,8 +26,8 @@ public class SpellEffects : MonoBehaviour
     [Range(0f, 1f)] public float pointSFXVolume = 1f;
 
     [Header("Spell Explanation UI")]
-    public GameObject spellExplanationUI; // UI panel or text to display
-    public TMP_Text spellExplanationText; // Optional - text component to show info
+    public GameObject spellExplanationUI;
+    public TMP_Text spellExplanationText;
     public float slowTimeScale = 0.25f;
     public float explanationDuration = 2.5f;
 
@@ -37,8 +36,12 @@ public class SpellEffects : MonoBehaviour
     private GameObject activeIceBlock;
 
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
+    private Coroutine explanationRoutine;
+    private float lastOriginalTimeScale = 1f;
 
     public bool spellHit;
+
+    public static bool isSpellSlowdownActive = false;
 
     private void Awake()
     {
@@ -49,89 +52,86 @@ public class SpellEffects : MonoBehaviour
 
     public void castSpell()
     {
-        // Check if first time this round
+        // Show explanation only once per round per spell
         if (!spellsUsedThisRound.Contains(spellName))
         {
             spellsUsedThisRound.Add(spellName);
-            StartCoroutine(ShowSpellExplanation(spellName));
+            explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
         }
 
-        if (spellName == "Lightning")
+        switch (spellName)
         {
-            Player.GetComponent<MainCharacterMovement>().speed = 17;
-            Invoke(nameof(resetSpellEffect), 5f);
-        }
-        else if (spellName == "Ice")
-        {
-            Opponent.GetComponent<OppHitting>().speed = 0f;
-            Player.GetComponent<Ball>().xPos = 0f;
+            case "Lightning":
+                Player.GetComponent<MainCharacterMovement>().speed = 17;
+                Invoke(nameof(resetSpellEffect), 5f);
+                break;
 
-            // Spawn the ice block if prefab is assigned
-            if (iceBlockPrefab != null)
-            {
-                // Spawn and attach to opponent
-                activeIceBlock = Instantiate(iceBlockPrefab, Opponent.transform.position, Opponent.transform.rotation);
-                activeIceBlock.transform.SetParent(Opponent.transform);
+            case "Ice":
+                Opponent.GetComponent<OppHitting>().speed = 0f;
+                Player.GetComponent<Ball>().xPos = 0f;
 
-                // Optionally scale/offset it slightly to fit the opponent visually
-                activeIceBlock.transform.localPosition = Vector3.zero;
-            }
+                if (iceBlockPrefab != null)
+                {
+                    activeIceBlock = Instantiate(iceBlockPrefab, Opponent.transform.position, Opponent.transform.rotation);
+                    activeIceBlock.transform.SetParent(Opponent.transform);
+                    activeIceBlock.transform.localPosition = Vector3.zero;
+                }
 
-            Invoke(nameof(resetSpellEffect), 0.5f);
-        }
-        else if (spellName == "Fireball")
-        {
-            TennisAI.ApplyBuff(-0.2f, spellName);
-            resetOnOppHit = true;
-            StartCoroutine(FireballHitCheck());
-        }
-        else if (spellName == "Shadow")
-        {
-            if (!oppHitSpell)
-            {
-                oppHitSpell = true;
-            }
-            else
-            {
-                Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
-                OppHitting OppHitting = Opponent.GetComponent<OppHitting>();
-                OppHitting.xPos = Player.transform.position.x;
-                OppHitting.zPos = Player.transform.position.z;
+                Invoke(nameof(resetSpellEffect), 0.5f);
+                break;
+
+            case "Fireball":
+                TennisAI.ApplyBuff(-0.2f, spellName);
                 resetOnOppHit = true;
-            }
-        }
-        else if (spellName == "Green")
-        {
-            Player.GetComponent<Ball>().green = true;
-            Invoke(nameof(resetSpellEffect), 1f);
+                StartCoroutine(FireballHitCheck());
+                break;
+
+            case "Shadow":
+                if (!oppHitSpell)
+                {
+                    oppHitSpell = true;
+                }
+                else
+                {
+                    Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
+                    OppHitting opp = Opponent.GetComponent<OppHitting>();
+                    opp.xPos = Player.transform.position.x;
+                    opp.zPos = Player.transform.position.z;
+                    resetOnOppHit = true;
+                }
+                break;
+
+            case "Green":
+                Player.GetComponent<Ball>().green = true;
+                Invoke(nameof(resetSpellEffect), 1f);
+                break;
         }
 
         if (!oppHitSpell)
-        {
             Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
-        }
     }
 
     public void resetSpellEffect()
     {
-        if (spellName == "Lightning")
+        switch (spellName)
         {
-            Player.GetComponent<MainCharacterMovement>().speed = 7;
-        }
-        else if (spellName == "Ice")
-        {
-            Opponent.GetComponent<OppHitting>().speed = 5;
+            case "Lightning":
+                Player.GetComponent<MainCharacterMovement>().speed = 7;
+                break;
 
-            // Destroy the spawned ice block if it exists
-            if (activeIceBlock != null)
-            {
-                Destroy(activeIceBlock);
-                activeIceBlock = null;
-            }
-        }
-        else if (spellName == "Fireball" || spellName == "Shadow")
-        {
-            resetOnOppHit = false;
+            case "Ice":
+                Opponent.GetComponent<OppHitting>().speed = 5;
+                if (activeIceBlock != null)
+                {
+                    Destroy(activeIceBlock);
+                    activeIceBlock = null;
+                }
+                break;
+
+            case "Fireball":
+            case "Shadow":
+                resetOnOppHit = false;
+                break;
         }
 
         spellName = null;
@@ -156,8 +156,8 @@ public class SpellEffects : MonoBehaviour
     {
         yield return new WaitUntil(() => resetOnOppHit == false);
 
-        if (audioSource == null) yield break;
-        if (ouchVoicelines == null || ouchVoicelines.Length == 0) yield break;
+        if (audioSource == null || ouchVoicelines == null || ouchVoicelines.Length == 0)
+            yield break;
 
         yield return new WaitForSeconds(0.1f);
 
@@ -170,22 +170,40 @@ public class SpellEffects : MonoBehaviour
     {
         if (spellExplanationUI == null) yield break;
 
-        // Set UI text
+        // Prevent overlapping UI or multiple slowdowns
+        if (explanationRoutine != null)
+            ForceResetSpellExplanation();
+
+        isSpellSlowdownActive = true; //  Mark slowdown active
+
         if (spellExplanationText != null)
             spellExplanationText.text = GetSpellDescription(spell);
 
-        // Activate UI
         spellExplanationUI.SetActive(true);
 
-        // Slow down time
-        float originalTimeScale = Time.timeScale;
+        lastOriginalTimeScale = Time.timeScale;
         Time.timeScale = slowTimeScale;
 
         yield return new WaitForSecondsRealtime(explanationDuration);
 
-        // Restore time and hide UI
-        Time.timeScale = originalTimeScale;
-        spellExplanationUI.SetActive(false);
+        ForceResetSpellExplanation();
+
+        isSpellSlowdownActive = false; // Mark slowdown complete
+    }
+
+
+    public void ForceResetSpellExplanation()
+    {
+        // Called by CollisionTrackerBall to restore the timescale before doing it's pause to give a point, otherwise things get a little messy. - Ed
+        Time.timeScale = lastOriginalTimeScale;
+        if (spellExplanationUI != null)
+            spellExplanationUI.SetActive(false);
+
+        if (explanationRoutine != null)
+        {
+            StopCoroutine(explanationRoutine);
+            explanationRoutine = null;
+        }
     }
 
     private string GetSpellDescription(string spell)

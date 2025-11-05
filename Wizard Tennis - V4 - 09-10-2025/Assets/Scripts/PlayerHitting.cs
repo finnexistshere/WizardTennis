@@ -127,17 +127,41 @@ public class Ball : MonoBehaviour
         }
     }
 
-
+    // Had to stuff this thing full of safety rails to make sure it plays nice with the Tutorial coroutine in Playerhitting.cs. We love timescale. - Ed
+    private static bool isHitSlowActive = false;
 
     IEnumerator HitSlowdown()
     {
+        // If a spell explanation slow is active, wait for it to finish
+        if (SpellEffects.isSpellSlowdownActive)
+        {
+            yield return new WaitUntil(() => SpellEffects.isSpellSlowdownActive == false);
+        }
+
+        // Give one frame so any timescale restoration from the spell system settles
+        yield return null;
+
+        // Prevent overlapping impact slowdowns
+        if (isHitSlowActive) yield break;
+        isHitSlowActive = true;
+
+        // Store originals
+        float originalFOV = cam.fieldOfView;
+        float originalTimeScale = Time.timeScale;
+
+        // Apply impact feel
         cam.fieldOfView = 60.5f;
+
+        // Use a perceptible realtime slowdown (use WaitForSecondsRealtime so it's unaffected by timescale)
         Time.timeScale = 0.1f;
-        yield return new WaitForSeconds(0.01f);
-        Time.timeScale = 1;
-        cam.fieldOfView = 60;
+        yield return new WaitForSecondsRealtime(0.08f); // 80ms realtime — tweak to taste
+
+        // Restore everything
+        Time.timeScale = originalTimeScale;
+        cam.fieldOfView = originalFOV;
+
+        isHitSlowActive = false;
     }
-    
 
 
     private void OnTriggerEnter(Collider other)
