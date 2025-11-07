@@ -17,6 +17,7 @@ public class Spellcasting : MonoBehaviour
     public Dictionary<string, Color> spellColors2 = new Dictionary<string, Color>();
     public Dictionary<string, AudioClip> spellAudio = new Dictionary<string, AudioClip>();
     public Dictionary<string, AudioClip> wizardAudio = new Dictionary<string, AudioClip>();
+    public Dictionary<string, float> spellDurations = new Dictionary<string, float>();
 
     // --- UI References ---
     [Header("UI References")]
@@ -203,8 +204,17 @@ public class Spellcasting : MonoBehaviour
                 SpellEffects.castSpell();
             }
 
+            if (UIManager.Instance != null)
+            {
+                Color uiSpellColor = spellColors.ContainsKey(inputSpellAddress)
+                    ? spellColors[inputSpellAddress]
+                    : Color.white;
+                UIManager.Instance.UpdateSpellStatus(spellName, uiSpellColor);
+            }
+
             // Start visual/audio reset coroutine and pass the spell address for deferred removal
-            StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject, inputSpellAddress));
+            float duration = spellDurations.ContainsKey(inputSpellAddress) ? spellDurations[inputSpellAddress] : spellDuration;
+            StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, inputSpellAddress));
         }
         else
         {
@@ -246,7 +256,9 @@ public class Spellcasting : MonoBehaviour
         Debug.Log($"{spellName} cast!");
         if (UIManager.Instance != null)
         {
-            Color uiSpellColor = spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white;
+            Color uiSpellColor = spellColors.ContainsKey(spellAddress)
+                ? spellColors[spellAddress]
+                : Color.white;
             UIManager.Instance.UpdateSpellStatus(spellName, uiSpellColor);
         }
 
@@ -277,16 +289,15 @@ public class Spellcasting : MonoBehaviour
         if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
             SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
         SpellEffects.spellHit = true;
-        // Start coroutine with deferred removal
-        StartCoroutine(ResetVisualAfterDelay(spellDuration, baseEffectObject, spellAddress));
+
+        float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
+        StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, spellAddress));
     }
 
     // --- Updated ResetVisualAfterDelay ---
     private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
     {
-        // Adjust duration so that the spell lasts the intended *scaled* game time
-        float scaledDelay = delay * Time.timeScale; // optional if you want game-time scaling
-        yield return new WaitForSecondsRealtime(scaledDelay);
+        yield return new WaitForSeconds(delay);
 
         if (currentVisualInstance != null)
         {
@@ -301,6 +312,7 @@ public class Spellcasting : MonoBehaviour
 
         racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
         racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+
 
         if (!string.IsNullOrEmpty(currentActiveSpell))
         {
@@ -317,6 +329,7 @@ public class Spellcasting : MonoBehaviour
         isCasting = false;
         Debug.Log("Spellcasting unlocked.");
     }
+
 
     private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
     {
@@ -373,7 +386,7 @@ public class Spellcasting : MonoBehaviour
         UpdateSpellBook();
     }
 
-    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound)
+    public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound, float duration)
     {
         if (!spellBook.ContainsKey(address))
         {
@@ -388,6 +401,7 @@ public class Spellcasting : MonoBehaviour
             spellColors2[address] = SpellColor2;
             spellAudio[address] = spellCastAudio;
             wizardAudio[address] = wizardSpellSound;
+            spellDurations[address] = duration;
         }
     }
 

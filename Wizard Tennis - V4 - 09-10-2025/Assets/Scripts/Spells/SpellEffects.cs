@@ -116,7 +116,7 @@ public class SpellEffects : MonoBehaviour
 
                     activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
                     StartCoroutine(HandleStoneWall(activeStoneWall, 5f)); // 5 seconds duration
-                    Invoke(nameof(resetSpellEffect), 1f);
+                    Invoke(nameof(resetSpellEffect), 5f);
                 }
                 else
                 {
@@ -124,16 +124,15 @@ public class SpellEffects : MonoBehaviour
                 }
                 break;
             case "Chronos":
+                // Temporarily buff movement and gravity for slow-time effect
                 Player.GetComponent<MainCharacterMovement>().speed = 70f;
+                Player.GetComponent<MainCharacterMovement>().gravity = 250f;
 
-                // Wait until explanation ends
+                // Wait until explanation UI finishes before applying time slowdown
                 StartCoroutine(ApplyChronosAfterExplanation());
-                Invoke(nameof(resetSpellEffect), 1f);
                 break;
-
-}
-
-if (!oppHitSpell)
+        }
+        if (!oppHitSpell)
             Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
     }
 
@@ -161,6 +160,7 @@ if (!oppHitSpell)
             case "Chronos":
                 Time.timeScale = 1f;
                 Player.GetComponent<MainCharacterMovement>().speed = 7;
+                Player.GetComponent<MainCharacterMovement>().gravity = 25f;
                 break;
         }
 
@@ -173,8 +173,25 @@ if (!oppHitSpell)
     // Coroutine
     private IEnumerator ApplyChronosAfterExplanation()
     {
+        // Wait until the tutorial/explanation is done
         yield return new WaitUntil(() => !SpellEffects.isSpellSlowdownActive);
+
+        // Small extra buffer to ensure TimeScale resets first
+        yield return new WaitForSecondsRealtime(0.05f);
+
+        // Apply Chronos time slowdown cleanly
         Time.timeScale = 0.1f;
+
+        // Keep it active for a few seconds in real time
+        yield return new WaitForSecondsRealtime(2.0f);
+
+        // Restore normal time and player physics
+        Time.timeScale = 1f;
+        Player.GetComponent<MainCharacterMovement>().speed = 7f;
+        Player.GetComponent<MainCharacterMovement>().gravity = 25f;
+
+        // Fully reset spell state
+        resetSpellEffect();
     }
 
     private IEnumerator HandleStoneWall(GameObject wall, float duration)

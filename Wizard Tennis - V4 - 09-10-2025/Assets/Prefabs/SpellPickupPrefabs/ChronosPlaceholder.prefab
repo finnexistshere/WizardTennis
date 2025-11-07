@@ -4966,11 +4966,12 @@ MonoBehaviour:
   spellName: Chronos
   spellAddress: AAA
   onHitBool: 0
-  Color1: {r: 1, g: 0.9908297, b: 0.9103774, a: 0}
-  Color2: {r: 1, g: 0.9770462, b: 0.5330188, a: 0}
+  Color1: {r: 1, g: 0.9908297, b: 0.9103774, a: 1}
+  Color2: {r: 1, g: 0.9770462, b: 0.5330188, a: 1}
   spellCastAudio: {fileID: 8300000, guid: 4def3e56f2c119b4bbe45fb5c0cd97b6, type: 3}
-  wizardSpellSound: {fileID: 8300000, guid: b57cf6f1e7d0645499ea9cb68ea4fdb1, type: 3}
-  spawnWeight: 1
+  wizardSpellSound: {fileID: 0}
+  duration: 2
+  spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 7685bcac08d39984bb728ba3898cd10b, type: 3}
   audioClip: {fileID: 8300000, guid: bc2deeab52e088e43a9cef4a166237ef, type: 3}
   fadeInDuration: 3

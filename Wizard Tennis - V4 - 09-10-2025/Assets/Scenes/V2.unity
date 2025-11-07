@@ -41811,6 +41811,7 @@ MonoBehaviour:
   - {fileID: 2459800992572170402, guid: fff5a79dc4be55a48861a22405a31cc9, type: 3}
   - {fileID: 8121200742715402744, guid: 7965b561e9ee54e4daa18a154d641cf2, type: 3}
   - {fileID: 7109859178366572936, guid: 8de44abb723e28845a8363bf8122bb5e, type: 3}
+  - {fileID: 7109859178366572936, guid: 041b102b8f230424c9305a22b619402b, type: 3}
   spawnInterval: 5
   spawnRadius: 6
   maxActivePickups: 4

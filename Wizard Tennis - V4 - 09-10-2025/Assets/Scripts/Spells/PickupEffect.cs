@@ -15,6 +15,7 @@ public class PickupEffect : MonoBehaviour
     [SerializeField] public Color Color2;
     [SerializeField] public AudioClip spellCastAudio;
     [SerializeField] public AudioClip wizardSpellSound;
+    [SerializeField] private float duration = 5f;
 
     [Header("Spawn Settings")]
     [Range(0f, 1f)] public float spawnWeight = 0.2f;
@@ -161,7 +162,7 @@ public class PickupEffect : MonoBehaviour
         {
             Spellcasting spellcasting = other.GetComponent<Spellcasting>();
 
-            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound);
+            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
             if (spellcasting != null)
             {
                 if (audioClip != null)
