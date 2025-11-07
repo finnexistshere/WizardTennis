@@ -284,7 +284,9 @@ public class Spellcasting : MonoBehaviour
     // --- Updated ResetVisualAfterDelay ---
     private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
     {
-        yield return new WaitForSeconds(delay);
+        // Adjust duration so that the spell lasts the intended *scaled* game time
+        float scaledDelay = delay * Time.timeScale; // optional if you want game-time scaling
+        yield return new WaitForSecondsRealtime(scaledDelay);
 
         if (currentVisualInstance != null)
         {
@@ -299,7 +301,6 @@ public class Spellcasting : MonoBehaviour
 
         racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
         racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
-
 
         if (!string.IsNullOrEmpty(currentActiveSpell))
         {
@@ -316,7 +317,6 @@ public class Spellcasting : MonoBehaviour
         isCasting = false;
         Debug.Log("Spellcasting unlocked.");
     }
-
 
     private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
     {

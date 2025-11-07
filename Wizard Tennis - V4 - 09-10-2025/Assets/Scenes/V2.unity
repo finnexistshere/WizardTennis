@@ -41810,6 +41810,7 @@ MonoBehaviour:
   - {fileID: 7109859178366572936, guid: f59d810aa651e6240ae499e5587d48da, type: 3}
   - {fileID: 2459800992572170402, guid: fff5a79dc4be55a48861a22405a31cc9, type: 3}
   - {fileID: 8121200742715402744, guid: 7965b561e9ee54e4daa18a154d641cf2, type: 3}
+  - {fileID: 7109859178366572936, guid: 8de44abb723e28845a8363bf8122bb5e, type: 3}
   spawnInterval: 5
   spawnRadius: 6
   maxActivePickups: 4
@@ -41869,6 +41870,7 @@ MonoBehaviour:
   slowTimeScale: 0.1
   explanationDuration: 3.5
   iceBlockPrefab: {fileID: 6739675707158918549, guid: 7fea345ac8ee7e64885f2f42c84f722c, type: 3}
+  stoneWallPrefab: {fileID: 6431261414360197309, guid: 0b4927277a528a04a88b24971fd682e3, type: 3}
   spellHit: 0
 --- !u!1 &1596896129
 GameObject:

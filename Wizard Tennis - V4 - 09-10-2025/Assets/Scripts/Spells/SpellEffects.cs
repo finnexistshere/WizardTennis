@@ -31,9 +31,11 @@ public class SpellEffects : MonoBehaviour
     public float slowTimeScale = 0.25f;
     public float explanationDuration = 2.5f;
 
-    [Header("Ice Spell Settings")]
+    [Header("Spell Object Settings")]
     public GameObject iceBlockPrefab;
     private GameObject activeIceBlock;
+    public GameObject stoneWallPrefab;
+    private GameObject activeStoneWall;
 
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
@@ -105,9 +107,33 @@ public class SpellEffects : MonoBehaviour
                 Player.GetComponent<Ball>().green = true;
                 Invoke(nameof(resetSpellEffect), 1f);
                 break;
-        }
 
-        if (!oppHitSpell)
+            case "Stone":
+                if (stoneWallPrefab != null)
+                {
+                    Vector3 spawnPos = Player.transform.position + Player.transform.forward * 2f;
+                    Quaternion spawnRot = Quaternion.identity;
+
+                    activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
+                    StartCoroutine(HandleStoneWall(activeStoneWall, 5f)); // 5 seconds duration
+                    Invoke(nameof(resetSpellEffect), 1f);
+                }
+                else
+                {
+                    Debug.LogWarning("Stone Wall Prefab not assigned!");
+                }
+                break;
+            case "Chronos":
+                Player.GetComponent<MainCharacterMovement>().speed = 70f;
+
+                // Wait until explanation ends
+                StartCoroutine(ApplyChronosAfterExplanation());
+                Invoke(nameof(resetSpellEffect), 1f);
+                break;
+
+}
+
+if (!oppHitSpell)
             Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
     }
 
@@ -132,12 +158,62 @@ public class SpellEffects : MonoBehaviour
             case "Shadow":
                 resetOnOppHit = false;
                 break;
+            case "Chronos":
+                Time.timeScale = 1f;
+                Player.GetComponent<MainCharacterMovement>().speed = 7;
+                break;
         }
 
         spellName = null;
         plrHitSpell = false;
         oppHitSpell = false;
         spellHit = false;
+    }
+
+    // Coroutine
+    private IEnumerator ApplyChronosAfterExplanation()
+    {
+        yield return new WaitUntil(() => !SpellEffects.isSpellSlowdownActive);
+        Time.timeScale = 0.1f;
+    }
+
+    private IEnumerator HandleStoneWall(GameObject wall, float duration)
+    {
+        // Make it rise up from below ground
+        Vector3 endPos = wall.transform.position;
+        Vector3 startPos = endPos + Vector3.down * 2f;
+        wall.transform.position = startPos;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f; // speed of rising
+            wall.transform.position = Vector3.Lerp(startPos, endPos, t);
+            yield return null;
+        }
+
+        // Wait for the wall's duration
+        yield return new WaitForSeconds(duration - 1f);
+
+        // Fade out before destroy (if it has a renderer)
+        Renderer rend = wall.GetComponent<Renderer>();
+        if (rend != null && rend.material.HasProperty("_Color"))
+        {
+            Color startColor = rend.material.color;
+            float fadeTime = 1f;
+            float fade = 0f;
+
+            while (fade < 1f)
+            {
+                fade += Time.deltaTime / fadeTime;
+                Color c = startColor;
+                c.a = Mathf.Lerp(1f, 0f, fade);
+                rend.material.color = c;
+                yield return null;
+            }
+        }
+
+        Destroy(wall);
     }
 
     public void OnPointWon()
@@ -215,6 +291,8 @@ public class SpellEffects : MonoBehaviour
             case "Fireball": return "Fireball: Fiery attack!";
             case "Shadow": return "Shadow: Return your hit!";
             case "Green": return "Green: Mysteriously green!";
+            case "Stone": return "Stone: Rock solid Defense!";
+            case "Chronos": return "Chronos: Time itself bends!";
             default: return "A mysterious spell...";
         }
     }
