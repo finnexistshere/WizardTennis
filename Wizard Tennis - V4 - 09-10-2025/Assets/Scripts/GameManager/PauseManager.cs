@@ -13,7 +13,8 @@ public class PauseManager : MonoBehaviour
 
     public bool IsPaused { get; private set; }
 
-    private float pauseCooldown = 0.2f; // to prevent double-toggling
+    [Header("Timing")]
+    [SerializeField] private float pauseCooldown = 0.3f; // Slightly shorter feels snappier
     private float cooldownTimer = 0f;
 
     private void Awake()
@@ -31,31 +32,59 @@ public class PauseManager : MonoBehaviour
             playerInput = FindObjectOfType<PlayerInput>();
     }
 
+    private void OnEnable()
+    {
+        // Always listen to Pause, regardless of current action map
+        if (playerInput != null && playerInput.actions != null)
+        {
+            var pauseAction = playerInput.actions["Pause"];
+            if (pauseAction != null)
+                pauseAction.performed += OnPause;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (playerInput != null && playerInput.actions != null)
+        {
+            var pauseAction = playerInput.actions["Pause"];
+            if (pauseAction != null)
+                pauseAction.performed -= OnPause;
+        }
+    }
+
     private void Update()
     {
-        // This script runs even when timeScale = 0
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            if (cooldownTimer <= 0f)
-            {
-                TogglePause();
-                cooldownTimer = pauseCooldown;
-            }
-        }
-
-        // cooldown uses unscaled time
+        // Cooldown uses unscaled time (so it still counts while paused)
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.unscaledDeltaTime;
     }
 
+    private void OnPause(InputAction.CallbackContext context)
+    {
+        if (!context.performed) return;
+
+        // Debug helps you confirm which map is active
+        Debug.Log($"Pause pressed! (current map: {playerInput.currentActionMap.name})");
+
+        if (cooldownTimer > 0f) return;
+
+        TogglePause();
+        cooldownTimer = pauseCooldown;
+    }
+
     public void TogglePause()
     {
-        if (IsPaused) ResumeGame();
-        else PauseGame();
+        if (IsPaused)
+            ResumeGame();
+        else
+            PauseGame();
     }
 
     public void PauseGame()
     {
+        if (IsPaused) return;
+
         IsPaused = true;
         Time.timeScale = 0f;
 
@@ -64,10 +93,14 @@ public class PauseManager : MonoBehaviour
 
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("UI");
+
+        Debug.Log("Game paused — switched to UI map.");
     }
 
     public void ResumeGame()
     {
+        if (!IsPaused) return;
+
         IsPaused = false;
         Time.timeScale = 1f;
 
@@ -76,11 +109,7 @@ public class PauseManager : MonoBehaviour
 
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
-    }
 
-    public void OnPause(InputAction.CallbackContext context)
-    {
-        if (!context.performed) return;
-        TogglePause();
+        Debug.Log("Game resumed — switched to Player map.");
     }
 }
