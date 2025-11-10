@@ -59,11 +59,11 @@ public class NetworkedBall : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        if (PlayerReferenceRelay.Instance != null)
+            PlayerReferenceRelay.Instance.ApplyTo(this);
+
         if (IsOwner)
-        {
-            // Only allow input on the owning player
             StartCoroutine(InputCheckRoutine());
-        }
     }
 
     private IEnumerator InputCheckRoutine()
