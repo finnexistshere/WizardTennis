@@ -16766,12 +16766,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b341cceda48ac4f46b9e2f8b2ec4f1db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  aimTarget: {fileID: 319551048}
-  oppIKRig: {fileID: 0}
   spellEffects: {fileID: 1594825195}
-  opponent: {fileID: 2092549635}
-  spellBarriers: {fileID: 584352478}
   scoreManager: {fileID: 1578197341}
+  hostAimTarget: {fileID: 319551048}
+  clientAimTarget: {fileID: 2036865726}
+  hostIKRig: {fileID: 1207922161}
+  clientIKRig: {fileID: 1207922161}
+  hostOpponent: {fileID: 2092549635}
+  clientOpponent: {fileID: 2092549635}
+  hostBarriers: {fileID: 584352478}
+  clientBarriers: {fileID: 584352478}
+  audioSource: {fileID: 546744925}
 --- !u!4 &259505485
 Transform:
   m_ObjectHideFlags: 0
@@ -29613,6 +29618,10 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 04432109-3b7a-49fb-b316-cf345de7e69f
     m_ActionName: Player/Cancel Spell[/Keyboard/leftCtrl]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 9e126c43-4ed7-4ec2-8514-a6af4e1bb007
+    m_ActionName: UI/Pause[/Keyboard/escape]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player

@@ -43,11 +43,11 @@ GameObject:
   - component: {fileID: 8621081905335392856}
   - component: {fileID: 6152987463818602167}
   - component: {fileID: 3828764449105300203}
+  - component: {fileID: 9117693654922756609}
   - component: {fileID: 6705841135343936561}
   - component: {fileID: 5676232458367227458}
   - component: {fileID: 344088833895849865}
   - component: {fileID: 6127271981052730050}
-  - component: {fileID: 521572665819107050}
   - component: {fileID: 7540797166899056846}
   - component: {fileID: 7560125625727246618}
   - component: {fileID: 5830144506489353081}
@@ -142,7 +142,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 636615662
+  GlobalObjectIdHash: 1810154718
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -151,6 +151,45 @@ MonoBehaviour:
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
+--- !u!114 &9117693654922756609
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5267886797547245765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bb61d4e0b63ba44dabb6294d757c60e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  aimTarget: {fileID: 0}
+  strength: 25
+  ogUpForce: 11
+  ballSpeed: 5
+  hitting:
+    m_InternalValue: 1
+  serving:
+    m_InternalValue: 1
+  OppIKRig: {fileID: 0}
+  SpellEffects: {fileID: 0}
+  ballSpawnPoint: {fileID: 4865593349180664403}
+  ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
+  audioSourceComponent: {fileID: 0}
+  hitsounds: []
+  pitchJitter: 0.07
+  volumeJitter: 0.12
+  minInterval: 0.08
+  Opponent: {fileID: 0}
+  xPos: 0
+  servingBarriers: {fileID: 0}
+  spellcasting: {fileID: 3826378993174836451}
+  CollisionTracker: {fileID: 0}
+  rallyCount: 0
+  greenRallyCount: 0
+  green: 0
+  greenPoints: 0
+  scoreManagerComponent: {fileID: 0}
 --- !u!114 &6705841135343936561
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,45 +269,6 @@ MonoBehaviour:
   meshChild: {fileID: 4584418264159440827}
   bounceAmplitude: 0.1
   bounceFrequency: 20
---- !u!114 &521572665819107050
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5267886797547245765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3b0863ed44b0d0943985becc1db30be8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  aimTarget: {fileID: 0}
-  strength: 15
-  ogUpForce: 5
-  ballSpeed: 2.5
-  serving: 1
-  OppIKRig: {fileID: 0}
-  SpellEffects: {fileID: 0}
-  ballSpawnPoint: {fileID: 4865593349180664403}
-  ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
-  audioSource: {fileID: 0}
-  hitsounds:
-  - {fileID: 8300000, guid: 820b22098d554f7469ab14c7d191ccf8, type: 3}
-  - {fileID: 8300000, guid: a22eccf48dfd3f04caabd2e671a3d836, type: 3}
-  - {fileID: 8300000, guid: 5b6527dd77a73ea41ac001c83bf9d2e0, type: 3}
-  pitchJitter: 0.07
-  volumeJitter: 0.12
-  minInterval: 0.08
-  Opponent: {fileID: 0}
-  xPos: 0
-  servingBarriers: {fileID: 0}
-  spellcasting: {fileID: 3826378993174836451}
-  CollisionTracker: {fileID: 0}
-  rallyCount: 0
-  greenRallyCount: 0
-  green: 0
-  greenPoints: 0
-  scoreManager: {fileID: 0}
 --- !u!54 &7540797166899056846
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -467,7 +467,7 @@ MonoBehaviour:
     m_ActionName: Player/Fire[/Mouse/leftButton]
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 521572665819107050}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Ball, Assembly-CSharp
         m_MethodName: OnHitBall
         m_Mode: 0
