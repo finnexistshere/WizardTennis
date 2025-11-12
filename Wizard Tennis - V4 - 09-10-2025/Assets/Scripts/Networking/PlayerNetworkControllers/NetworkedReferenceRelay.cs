@@ -39,7 +39,7 @@ public class PlayerReferenceRelay : MonoBehaviour
     }
 
     // Core method: applies correct references based on who owns this NetworkedBall
-    public void ApplyTo(NetworkedBall ball)
+    public void ApplyTo(NetworkedPlayerHitting ball)
     {
         // Defensive guard
         if (ball == null)
@@ -52,27 +52,24 @@ public class PlayerReferenceRelay : MonoBehaviour
         bool isHost = ownerId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost;
 
         // Assign shared references
-        ball.SpellEffects = spellEffects;
-        ball.scoreManagerComponent = scoreManager;
-        ball.audioSourceComponent = audioSource;
+        ball.spellEffects = spellEffects;
+        ball.scoreManager = scoreManager;
+        ball.audioSource = audioSource;
 
-        // Assign per-player references
+        // Per-player references
         if (NetworkManager.Singleton.IsHost)
         {
-            // Host’s local player
             ball.aimTarget = hostAimTarget;
             ball.OppIKRig = hostIKRig;
-            ball.Opponent = hostOpponent;
+            ball.opponent = hostOpponent;
             ball.servingBarriers = hostBarriers;
         }
         else
         {
-            // Client’s local player
             ball.aimTarget = clientAimTarget;
             ball.OppIKRig = clientIKRig;
-            ball.Opponent = clientOpponent;
+            ball.opponent = clientOpponent;
             ball.servingBarriers = clientBarriers;
-
         }
 
         Debug.Log($"[Relay] Applied references to NetworkedBall ({(isHost ? "Host" : "Client")})");

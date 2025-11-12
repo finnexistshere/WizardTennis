@@ -1,263 +1,192 @@
-using System.Collections;
 using UnityEngine;
 using Unity.Netcode;
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.Users;
+using System.Collections;
 
-public class NetworkedBall : NetworkBehaviour
+public class NetworkedPlayerHitting : NetworkBehaviour
 {
-    [Header("Ball Settings")]
+    [Header("References")]
     public Transform aimTarget;
-    public float strength = 25;
-    public float ogUpForce = 11;
-    private float upForce = 11;
-    public float ballSpeed = 5;
-
-    [Header("State")]
-    public NetworkVariable<bool> hitting = new NetworkVariable<bool>(true);
-    public NetworkVariable<bool> serving = new NetworkVariable<bool>(true);
-
     public TwoHandIKController_Opponent OppIKRig;
-    private bool nearBall = false;
-    public SpellEffects SpellEffects;
+    public SpellEffects spellEffects;
+    public ScoreManager scoreManager;
+    public AudioSource audioSource;
+    public GameObject opponent;
+    public GameObject servingBarriers;
 
-    [Header("Spawn Settings")]
+    [Header("Ball Settings")]
     public Transform ballSpawnPoint;
     public GameObject ballPrefab;
-    private static NetworkedBall currentBall;
+
+    private static GameObject currentBall;
+    private bool nearBall = false;
+    private bool serving = true;
+    private bool hitting = true;
+
+    [Header("Force Settings")]
+    public float strength = 25f;
+    public float ogUpForce = 11f;
+    private float upForce;
 
     [Header("Audio")]
-    public AudioSource audioSourceComponent;
-    public AudioClip[] hitsounds;
+    public AudioClip[] hitSounds;
     [Range(0f, 0.5f)] public float pitchJitter = 0.07f;
     [Range(0f, 0.5f)] public float volumeJitter = 0.12f;
     public float minInterval = 0.08f;
-
-    private float _lastHitSfxTime = -999f;
-
-    public GameObject Opponent;
-    public float xPos;
-    public GameObject servingBarriers;
+    private float lastHitSfxTime = -999f;
 
     private Camera cam;
-    public CollisionTrackerBall CollisionTracker;
-    public int rallyCount = 0;
-    public int greenRallyCount = 0;
-    public bool green = false;
-    public int greenPoints = 0;
-    public ScoreManager scoreManagerComponent;
+    private CollisionTrackerBall collisionTracker;
 
     private void Awake()
     {
         cam = Camera.main;
-        Opponent = GameObject.Find("Opponent");
-        servingBarriers = GameObject.Find("ServingBarriers");
+        upForce = ogUpForce;
     }
 
     public override void OnNetworkSpawn()
     {
-        base.OnNetworkSpawn();
+        // On spawn, pull references from the relay
+        if (PlayerReferenceRelay.Instance)
+            PlayerReferenceRelay.Instance.ApplyTo(this);
 
         if (IsOwner)
-        {
-            var playerInput = GetComponent<PlayerInput>();
-            if (playerInput != null)
-            {
-                if (!playerInput.user.valid)
-                {
-                    InputUser newUser = InputUser.PerformPairingWithDevice(Keyboard.current);
-                    newUser.AssociateActionsWithUser(playerInput.actions);
-                    newUser.ActivateControlScheme(playerInput.defaultControlScheme);
-                }
-
-                playerInput.ActivateInput();
-            }
-
-            StartCoroutine(WaitAndApplyRelayReferences());
-            StartCoroutine(InputCheckRoutine()); // Start input polling
-        }
+            Debug.Log($"[NetworkedPlayerHitting] Owner ({OwnerClientId}) initialized references.");
     }
 
-    private IEnumerator WaitAndApplyRelayReferences()
+    private void Update()
     {
-        float timeout = 5f;
-        float elapsed = 0f;
+        if (!IsOwner) return;
 
-        while (PlayerReferenceRelay.Instance == null && elapsed < timeout)
+        // Spawn a new ball if none exists
+        if (Input.GetKeyDown(KeyCode.E) && currentBall == null && ballPrefab && ballSpawnPoint)
         {
-            elapsed += Time.deltaTime;
-            yield return null;
+            RequestBallSpawnServerRpc();
         }
 
-        if (PlayerReferenceRelay.Instance == null) yield break;
-
-        PlayerReferenceRelay.Instance.ApplyTo(this);
-    }
-
-    // --- INPUT HANDLING ---
-    private IEnumerator InputCheckRoutine()
-    {
-        while (true)
+        // Serve if near the ball
+        if (Input.GetKeyDown(KeyCode.E) && nearBall && serving && currentBall != null)
         {
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                if (currentBall == null)
-                {
-                    SpawnBallServerRpc();
-                    nearBall = true;
-                }
-                else if (nearBall && serving.Value)
-                {
-                    ServeBallServerRpc();
-                }
-            }
-            yield return null;
+            ServeBallServerRpc();
         }
     }
 
-    // --- SPAWNING & SERVING ---
     [ServerRpc]
-    private void SpawnBallServerRpc(ServerRpcParams rpcParams = default)
+    private void RequestBallSpawnServerRpc(ServerRpcParams rpcParams = default)
     {
-        if (ballPrefab == null || ballSpawnPoint == null) return;
+        if (currentBall != null) return;
 
-        GameObject ballObj = Instantiate(ballPrefab, ballSpawnPoint.position, ballSpawnPoint.rotation);
-        NetworkObject netObj = ballObj.GetComponent<NetworkObject>();
-        netObj.Spawn();
+        currentBall = Instantiate(ballPrefab, ballSpawnPoint.position, ballSpawnPoint.rotation);
+        currentBall.tag = "Ball";
+        currentBall.GetComponent<Rigidbody>().useGravity = false;
+        NetworkObject netObj = currentBall.GetComponent<NetworkObject>();
+        if (netObj != null) netObj.Spawn(true);
 
-        currentBall = ballObj.GetComponent<NetworkedBall>();
-        CollisionTracker = currentBall.GetComponent<CollisionTrackerBall>();
+        collisionTracker = currentBall.GetComponent<CollisionTrackerBall>();
+        nearBall = true;
+        GameManager.Instance.UnlockPickupSpawning();
 
-        AssignBallClientRpc(netObj.NetworkObjectId);
+        // Assign to IK rigs
+        var ikController = FindObjectOfType<TwoHandIKController>();
+        if (ikController != null)
+            ikController.AssignBall(currentBall.transform);
+        if (OppIKRig != null)
+            OppIKRig.AssignBall(currentBall.transform);
+
+        Debug.Log("[Server] Spawned ball and assigned to both IK rigs.");
     }
 
     [ServerRpc]
     private void ServeBallServerRpc(ServerRpcParams rpcParams = default)
     {
         if (currentBall == null) return;
-
         Rigidbody rb = currentBall.GetComponent<Rigidbody>();
         rb.useGravity = true;
-        Vector3 dir = new Vector3(0, upForce, 0).normalized * strength / 2;
-        rb.linearVelocity = dir;
+        rb.linearVelocity = new Vector3(0, upForce, 0).normalized * strength / 2f;
+        serving = false;
 
-        serving.Value = false;
-        servingBarriers.SetActive(false);
+        if (servingBarriers) servingBarriers.SetActive(false);
+
+        Debug.Log("[Server] Ball served.");
     }
 
-    [ClientRpc]
-    private void AssignBallClientRpc(ulong netObjId)
-    {
-        NetworkObject netObj = NetworkManager.Singleton.SpawnManager.SpawnedObjects[netObjId];
-        if (netObj == null) return;
-
-        TwoHandIKController ikController = FindObjectOfType<TwoHandIKController>();
-        if (ikController != null) ikController.AssignBall(netObj.transform);
-
-        OppIKRig.AssignBall(netObj.transform);
-    }
-
-    // --- HIT SOUND ---
-    private void PlayHitsound(Vector3 contactPoint)
-    {
-        if (audioSourceComponent == null || hitsounds.Length == 0) return;
-        if (Time.time - _lastHitSfxTime < minInterval) return;
-
-        _lastHitSfxTime = Time.time;
-        int index = (hitsounds.Length == 1) ? 0 : Random.Range(0, hitsounds.Length);
-
-        audioSourceComponent.transform.position = contactPoint;
-        float basePitch = 1f + Random.Range(-pitchJitter, pitchJitter);
-        float baseVol = Mathf.Clamp01(1f + Random.Range(-volumeJitter, volumeJitter));
-        audioSourceComponent.pitch = basePitch;
-        audioSourceComponent.PlayOneShot(hitsounds[index], baseVol);
-    }
-
-    // --- BALL HIT LOGIC ---
     private void OnTriggerEnter(Collider other)
     {
-        if (!IsServer) return;
-        if (!other.CompareTag("Ball")) return;
+        if (!IsOwner || other.tag != "Ball") return;
 
         nearBall = true;
-        if (!hitting.Value) return;
+        if (!hitting || serving) return;
 
-        // --- Original force adjustments ---
-        upForce = ogUpForce;
-        if (35.5 < transform.position.x) upForce += 2;
+        if (35.5 < transform.position.x) upForce = ogUpForce + 2;
+        else upForce = ogUpForce;
         if (-6.25 < transform.position.z || transform.position.z < 6.25) upForce += 2;
 
-        // --- Determine X offset ---
-        Vector3 oppPos = Opponent.transform.position;
-        xPos = (oppPos.x > 0) ? -2f : 2f;
-        if (transform.position.z < 5 || transform.position.x < -5 || transform.position.x > 5) xPos = 0f;
+        if (spellEffects != null && spellEffects.plrHitSpell)
+            spellEffects.castSpell();
 
-        // --- Spell effects ---
-        if (SpellEffects.plrHitSpell) SpellEffects.castSpell();
+        Vector3 aimTargetPos = aimTarget.position;
+        Vector3 oppPos = opponent.transform.position;
+        float xPos = oppPos.x > 0 ? -2f : 2f;
+        if (transform.position.z < 5 || transform.position.x < -5 || transform.position.x > 5)
+            xPos = 0f;
 
-        aimTarget.transform.position = new Vector3(xPos, aimTarget.transform.position.y, aimTarget.transform.position.z);
-
-        // Particle effect
-        ParticleSystem particle = GameObject.FindGameObjectWithTag("Player Hit Particle").GetComponent<ParticleSystem>();
-        particle.transform.position = other.transform.position;
-        particle.Play();
+        aimTarget.position = new Vector3(xPos, aimTargetPos.y, aimTargetPos.z);
 
         // Audio
         Vector3 contactPoint = other.ClosestPoint(transform.position);
-        PlayHitsound(contactPoint);
+        PlayHitSound(contactPoint);
 
-        // Apply velocity if not serving
-        if (!serving.Value)
+        // Physics (done on server)
+        HitBallServerRpc(aimTarget.position, upForce, strength);
+
+        if (spellEffects != null && spellEffects.resetOnPlrHit)
+            spellEffects.resetSpellEffect();
+
+        if (collisionTracker)
         {
-            Vector3 dir = aimTarget.position - transform.position;
-            other.GetComponent<Rigidbody>().linearVelocity = dir.normalized * strength + new Vector3(0, upForce, 0);
-
-            // Rally and green points
-            rallyCount++;
-            if (green)
-            {
-                greenRallyCount++;
-                if (greenRallyCount % 4 == 0)
-                {
-                    greenPoints++;
-                    this.GetComponent<UIManager>().UpdateGreenPoints(greenPoints);
-                    scoreManagerComponent.greenPoints = greenPoints;
-                }
-            }
-            this.GetComponent<UIManager>().UpdateRallyCount(rallyCount);
+            collisionTracker.LastHitWizard = "Player";
+            collisionTracker.hasBounced = false;
         }
 
-        // Reset spell effect
-        if (SpellEffects.resetOnPlrHit) SpellEffects.resetSpellEffect();
-
-        // Update collision tracker
-        if (CollisionTracker != null)
-        {
-            CollisionTracker.LastHitWizard = "Player";
-            CollisionTracker.hasBounced = false;
-        }
-
-        if (SpellEffects.spellHit)
-        {
+        if (spellEffects != null && spellEffects.spellHit)
             StartCoroutine(HitSlowdown());
-        }
+    }
+
+    [ServerRpc]
+    private void HitBallServerRpc(Vector3 aimPos, float upF, float force)
+    {
+        if (currentBall == null) return;
+        Rigidbody rb = currentBall.GetComponent<Rigidbody>();
+        Vector3 dir = (aimPos - transform.position).normalized;
+        rb.linearVelocity = dir * force + new Vector3(0, upF, 0);
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (!IsServer) return;
         if (other.CompareTag("Ball"))
             nearBall = false;
     }
 
+    private void PlayHitSound(Vector3 contactPoint)
+    {
+        if (!audioSource || hitSounds == null || hitSounds.Length == 0) return;
+        if (Time.time - lastHitSfxTime < minInterval) return;
+        lastHitSfxTime = Time.time;
+
+        int index = (hitSounds.Length == 1) ? 0 : Random.Range(0, hitSounds.Length);
+        audioSource.transform.position = contactPoint;
+        float pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
+        float vol = Mathf.Clamp01(1f + Random.Range(-volumeJitter, volumeJitter));
+        audioSource.pitch = pitch;
+        audioSource.PlayOneShot(hitSounds[index], vol);
+    }
+
     private static bool isHitSlowActive = false;
-    IEnumerator HitSlowdown()
+    private IEnumerator HitSlowdown()
     {
         if (SpellEffects.isSpellSlowdownActive)
             yield return new WaitUntil(() => SpellEffects.isSpellSlowdownActive == false);
 
         yield return null;
-
         if (isHitSlowActive) yield break;
         isHitSlowActive = true;
 
@@ -272,6 +201,4 @@ public class NetworkedBall : NetworkBehaviour
         cam.fieldOfView = originalFOV;
         isHitSlowActive = false;
     }
-
-    public static NetworkedBall GetCurrentBall() => currentBall;
 }
