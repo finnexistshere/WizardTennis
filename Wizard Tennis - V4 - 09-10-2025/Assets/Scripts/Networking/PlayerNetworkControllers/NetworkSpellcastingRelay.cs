@@ -43,6 +43,6 @@ public class NetworkedSpellcastingRelay : MonoBehaviour
         spellcaster.spellParticleColor = spellParticleColor;
         spellcaster.spellFloorImage = spellFloorImage;
         spellcaster.TennisAi = tennisAI;
-        spellcaster.spellEffects = spellEffects;
+        spellcaster.SpellEffects = spellEffects;
     }
 }

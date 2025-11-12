@@ -16820,7 +16820,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d205870ba64f5734590104a2d5df88d5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  racketShader: {fileID: 0}
+  racketShader: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
   spellBookPanel: {fileID: 1596896129}
   spellAddressText: {fileID: 3126104}
   spellTextPrefab: {fileID: 2101806974530891495, guid: 72a54dee25628d34cb2de5d70d97484d, type: 3}
@@ -16843,7 +16843,7 @@ GameObject:
   - component: {fileID: 260133493}
   - component: {fileID: 260133492}
   m_Layer: 5
-  m_Name: RallyCountText
+  m_Name: RallyCounter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -23035,7 +23035,7 @@ GameObject:
   - component: {fileID: 400132961}
   - component: {fileID: 400132960}
   m_Layer: 5
-  m_Name: RallyCountNumbers
+  m_Name: RallyCountText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -29185,10 +29185,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd247bc0dcc0ae549b4e7e44d6adf142, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  aimTarget: {fileID: 0}
+  aimTarget: {fileID: 658361824}
   opponent: {fileID: 0}
-  strength: 15
-  upForce: 5
+  strength: 11
+  upForce: 3
 --- !u!65 &1171966753
 BoxCollider:
   m_ObjectHideFlags: 0
