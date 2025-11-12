@@ -213,8 +213,20 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private void UpdateSpellBook()
     {
-        if (spellAddressText != null)
-            spellAddressText.text = inputSpellAddress;
+        spellAddressText.text = string.IsNullOrEmpty(inputSpellAddress) ? "" : inputSpellAddress;
+
+        foreach (GameObject currentSpell in GameObject.FindGameObjectsWithTag("SpellUI"))
+            Destroy(currentSpell);
+
+        foreach (KeyValuePair<string, string> item in spellBook)
+        {
+            if (item.Key.StartsWith(inputSpellAddress))
+            {
+                SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
+                newEntry.gameObject.tag = "SpellUI";
+                newEntry.SetText(item.Value, item.Key);
+            }
+        }
     }
 
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound, float duration)

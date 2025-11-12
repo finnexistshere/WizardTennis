@@ -16821,7 +16821,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   racketShader: {fileID: 0}
-  spellBookPanel: {fileID: 1882240444}
+  spellBookPanel: {fileID: 1596896129}
   spellAddressText: {fileID: 3126104}
   spellTextPrefab: {fileID: 2101806974530891495, guid: 72a54dee25628d34cb2de5d70d97484d, type: 3}
   audioSource: {fileID: 546744925}
