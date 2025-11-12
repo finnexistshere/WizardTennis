@@ -155,7 +155,7 @@ public class OppHitting : MonoBehaviour
 
                 // If you want more detailed comments regarding how the ball hitting works, check the PlayerHitting code
                 Vector3 dir = aimTarget.transform.position - transform.position;
-                other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
+                other.GetComponent<Rigidbody>().linearVelocity = dir.normalized * strength + new Vector3(0, upForce, 0);
 
                 Player.GetComponent<Ball>().rallyCount++;
 

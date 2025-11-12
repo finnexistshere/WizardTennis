@@ -14,7 +14,7 @@ public class BallSpawner : MonoBehaviour
         }
 
         // Reset physics
-        ball.velocity = Vector3.zero;
+        ball.linearVelocity = Vector3.zero;
         ball.angularVelocity = Vector3.zero;
 
         // Reset position & rotation

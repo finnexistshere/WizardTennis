@@ -120,7 +120,7 @@ public class Ball : MonoBehaviour
             {
                 Rigidbody rb = currentBall.GetComponent<Rigidbody>();
                 rb.useGravity = true;
-                rb.velocity = new Vector3(0, upForce, 0).normalized * strength / 2;
+                rb.linearVelocity = new Vector3(0, upForce, 0).normalized * strength / 2;
                 serving = false;
                 servingBarriers.SetActive(false);
             }
@@ -154,7 +154,7 @@ public class Ball : MonoBehaviour
 
         // Use a perceptible realtime slowdown (use WaitForSecondsRealtime so it's unaffected by timescale)
         Time.timeScale = 0.1f;
-        yield return new WaitForSecondsRealtime(0.08f); // 80ms realtime — tweak to taste
+        yield return new WaitForSecondsRealtime(0.08f); // 80ms realtime ï¿½ tweak to taste
 
         // Restore everything
         Time.timeScale = originalTimeScale;
@@ -206,7 +206,7 @@ public class Ball : MonoBehaviour
                 if (!serving)
                 {
                     Vector3 dir = aimTarget.position - transform.position;
-                    other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
+                    other.GetComponent<Rigidbody>().linearVelocity = dir.normalized * strength + new Vector3(0, upForce, 0);
                     rallyCount++;
                     if (green)
                     {

@@ -139,7 +139,7 @@ public class NetworkedBall : NetworkBehaviour
         Rigidbody rb = currentBall.GetComponent<Rigidbody>();
         rb.useGravity = true;
         Vector3 dir = new Vector3(0, upForce, 0).normalized * strength / 2;
-        rb.velocity = dir;
+        rb.linearVelocity = dir;
 
         serving.Value = false;
         servingBarriers.SetActive(false);
@@ -210,7 +210,7 @@ public class NetworkedBall : NetworkBehaviour
         if (!serving.Value)
         {
             Vector3 dir = aimTarget.position - transform.position;
-            other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
+            other.GetComponent<Rigidbody>().linearVelocity = dir.normalized * strength + new Vector3(0, upForce, 0);
 
             // Rally and green points
             rallyCount++;

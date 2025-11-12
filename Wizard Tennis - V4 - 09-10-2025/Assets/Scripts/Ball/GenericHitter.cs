@@ -69,7 +69,7 @@ public class SimpleBallReturner : MonoBehaviour
         Vector3 finalVelocity = dir.normalized * strength + Vector3.up * upForce;
 
         // --- Apply hit ---
-        ballRb.velocity = finalVelocity;
+        ballRb.linearVelocity = finalVelocity;
 
         // --- Update collision tracker ---
         if (collisionTracker != null)
