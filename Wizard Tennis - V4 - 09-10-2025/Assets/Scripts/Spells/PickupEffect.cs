@@ -1,38 +1,33 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 
 public class PickupEffect : MonoBehaviour
 {
     public enum EffectType { Buff, Debuff }
 
-    [SerializeField] public EffectType type;
-    [SerializeField] public float value;
+    [Header("Effect Settings")]
+    [SerializeField] private EffectType type;
+    [SerializeField] private float value;
     [SerializeField] private string spellName;
     [SerializeField] private string spellAddress;
     [SerializeField] private bool onHitBool;
-    [SerializeField] public Color Color1;
-    [SerializeField] public Color Color2;
-    [SerializeField] public AudioClip spellCastAudio;
-    [SerializeField] public AudioClip wizardSpellSound;
+    [SerializeField] private Color Color1;
+    [SerializeField] private Color Color2;
+    [SerializeField] private AudioClip spellCastAudio;
+    [SerializeField] private AudioClip wizardSpellSound;
     [SerializeField] private float duration = 5f;
 
     [Header("Spawn Settings")]
     [Range(0f, 1f)] public float spawnWeight = 0.2f;
 
     [Header("Visual Prefab")]
-    [SerializeField] private GameObject spellVisualPrefab; // full ball visual prefab
+    [SerializeField] private GameObject spellVisualPrefab;
 
-    [SerializeField] private AudioClip audioClip;
-
+    [Header("Audio")]
+    [SerializeField] private AudioClip pickupAudio;
     private AudioSource audioSource;
-
-    public bool IsBuff => type == EffectType.Buff;
-    public float Amount => value;
-    public string SpellName => spellName;
-    public string SpellAddress => spellAddress;
-
-    public bool OnHitBool => onHitBool;
 
     [Header("Fade Settings")]
     [SerializeField] private float fadeInDuration = 3f;
@@ -42,20 +37,30 @@ public class PickupEffect : MonoBehaviour
     private List<ParticleSystem> particleSystems = new List<ParticleSystem>();
     private bool isFading = false;
 
+    public bool IsBuff => type == EffectType.Buff;
+    public float Amount => value;
+    public string SpellName => spellName;
+    public string SpellAddress => spellAddress;
+    public bool OnHitBool => onHitBool;
+
     private void Awake()
     {
-        audioSource = GameObject.FindGameObjectWithTag("Audio Source").GetComponent<AudioSource>();
-        Debug.Log($"Assigned audiosource to {audioSource.name}");
+        // Assign audio source safely
+        GameObject audioObj = GameObject.FindGameObjectWithTag("Audio Source");
+        if (audioObj != null)
+            audioSource = audioObj.GetComponent<AudioSource>();
+        else
+            Debug.LogWarning("[PickupEffect] No Audio Source found in scene.");
 
-        // Collect all renderers and materials from children
+        // Collect all child renderers
         Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
         foreach (Renderer renderer in renderers)
         {
-            // Clone the material to avoid affecting shared assets
-            materials.Add(renderer.material);
+            if (renderer == null) continue;
+            materials.Add(renderer.material); // Clone material automatically
         }
 
-        // Collect all particle systems from children
+        // Collect all particle systems
         particleSystems.AddRange(GetComponentsInChildren<ParticleSystem>(true));
 
         // Start invisible
@@ -65,7 +70,6 @@ public class PickupEffect : MonoBehaviour
 
     private void OnEnable()
     {
-        // Begin fade-in when enabled
         if (!isFading)
             StartCoroutine(FadeInRoutine());
     }
@@ -82,11 +86,9 @@ public class PickupEffect : MonoBehaviour
 
             SetAlpha(alpha);
             SetParticleAlpha(alpha);
-
             yield return null;
         }
 
-        // Ensure fully visible
         SetAlpha(1f);
         SetParticleAlpha(1f);
 
@@ -106,7 +108,7 @@ public class PickupEffect : MonoBehaviour
             c.a = alpha;
             mat.color = c;
 
-            // Configure for transparent rendering if needed
+            // Configure transparent rendering
             if (alpha < 1f)
             {
                 mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
@@ -131,6 +133,7 @@ public class PickupEffect : MonoBehaviour
             if (ps == null) continue;
 
             var main = ps.main;
+
             if (main.startColor.mode == ParticleSystemGradientMode.Color)
             {
                 Color c = main.startColor.color;
@@ -139,18 +142,18 @@ public class PickupEffect : MonoBehaviour
             }
             else if (main.startColor.mode == ParticleSystemGradientMode.Gradient)
             {
-                // Fade the whole gradient if used
                 Gradient grad = main.startColor.gradient;
                 GradientColorKey[] colors = grad.colorKeys;
                 GradientAlphaKey[] alphas = grad.alphaKeys;
+
                 for (int i = 0; i < alphas.Length; i++)
                     alphas[i].alpha = alpha;
+
                 Gradient fadedGrad = new Gradient();
                 fadedGrad.SetKeys(colors, alphas);
                 main.startColor = fadedGrad;
             }
 
-            // If system is stopped, restart it so it shows
             if (!ps.isPlaying)
                 ps.Play();
         }
@@ -158,32 +161,45 @@ public class PickupEffect : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!other.CompareTag("Player")) return;
+
+        ISpellcasting spellcastingRef = null;
+
+        // Check for NetworkedSpellcasting first (owner only)
+        NetworkedSpellcasting netSpell = other.GetComponent<NetworkedSpellcasting>();
+        if (netSpell != null && netSpell.IsOwner)
         {
-            Spellcasting spellcasting = other.GetComponent<Spellcasting>();
-
-            spellcasting.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
-            if (spellcasting != null)
-            {
-                if (audioClip != null)
-                    audioSource.PlayOneShot(audioClip);
-
-                if (!spellcasting.spellBook.ContainsKey(SpellAddress))
-                {
-                    // Match Spellcasting.AddSpell() structure
-                    spellcasting.spellBook[SpellAddress] = SpellName;
-                    spellcasting.debuffBook[SpellAddress] = value;  // fixed line!
-
-                    // Optionally assign a prefab and bool if you have those
-                    spellcasting.boolBook[SpellName] = false; // default to false or set dynamically
-                }
-            }
-
-            Destroy(gameObject);
+            spellcastingRef = netSpell;
         }
+
+        // Fallback to normal Spellcasting
+        if (spellcastingRef == null)
+        {
+            Spellcasting singleSpell = other.GetComponent<Spellcasting>();
+            if (singleSpell != null)
+                spellcastingRef = singleSpell;
+        }
+
+        if (spellcastingRef == null)
+        {
+            Debug.LogWarning("[PickupEffect] No Spellcasting component found on player!");
+            return;
+        }
+
+        // Add spell safely
+        if (spellcastingRef is Spellcasting sc)
+        {
+            sc.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
+        }
+        else if (spellcastingRef is NetworkedSpellcasting nsc)
+        {
+            nsc.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
+        }
+
+        // Play pickup sound
+        if (audioSource != null && pickupAudio != null)
+            audioSource.PlayOneShot(pickupAudio);
+
+        Destroy(gameObject);
     }
-
-    // This script is to hold the Values of a Name and a debuff value
-    // We can honestly just clone this script to hold weird shit down the line, but it'd have to involve upgrades to GameManager.cs and MainCharacterMovement.cs because they call values from this
 }
-

@@ -3,13 +3,13 @@ using TMPro;
 using System.Collections;
 using System.Collections.Generic;
 
-public class Spellcasting : MonoBehaviour
+public class Spellcasting : MonoBehaviour, ISpellcasting
 {
     // --- Racket Shader Reference ---
     [SerializeField] private Material racketShader;
 
     // --- Spell Dictionaries ---
-    public Dictionary<string, string> spellBook = new Dictionary<string, string>();
+    public Dictionary<string, string> spellBook { get; private set; } = new Dictionary<string, string>();
     public Dictionary<string, float> debuffBook = new Dictionary<string, float>();
     public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>();
     public Dictionary<string, bool> boolBook = new Dictionary<string, bool>();
