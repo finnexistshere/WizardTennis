@@ -182,6 +182,9 @@ public class SpellEffects : MonoBehaviour
         // Apply Chronos time slowdown cleanly
         Time.timeScale = 0.1f;
 
+        Player.GetComponent<MainCharacterMovement>().speed = 70f;
+        Player.GetComponent<MainCharacterMovement>().gravity = 250f;
+
         // Keep it active for a few seconds in real time
         yield return new WaitForSecondsRealtime(2.0f);
 
