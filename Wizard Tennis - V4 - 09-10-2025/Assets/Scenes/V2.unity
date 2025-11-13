@@ -16224,7 +16224,6 @@ MonoBehaviour:
   audioSource: {fileID: 944520099}
   SpellInputClick: {fileID: 8300000, guid: 24a27dd945e649c48b916c4c1dcd1f17, type: 3}
   spellRegisterSound: {fileID: 8300000, guid: e4d15085eaf882c41b8d21a360d6f01a, type: 3}
-  inputSpellAddress: 
   TennisAi: {fileID: 1594825194}
   spellFloorImage: {fileID: 1076509792}
   SpellEffects: {fileID: 1594825195}
@@ -16362,6 +16361,10 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 04432109-3b7a-49fb-b316-cf345de7e69f
     m_ActionName: Player/Cancel Spell[/Keyboard/leftCtrl]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 9e126c43-4ed7-4ec2-8514-a6af4e1bb007
+    m_ActionName: UI/Pause[/Keyboard/escape]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
@@ -28117,6 +28120,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   pauseMenuUI: {fileID: 265330815}
   playerInput: {fileID: 153926198}
+  pauseCooldown: 0.3
 --- !u!4 &1039338799
 Transform:
   m_ObjectHideFlags: 0
@@ -41884,7 +41888,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Player: {fileID: 153926187}
   Opponent: {fileID: 2092549635}
-  TennisAI: {fileID: 0}
+  TennisAI: {fileID: 1594825194}
   spellName: 
   resetOnOppHit: 0
   resetOnPlrHit: 0
@@ -48142,7 +48146,7 @@ PrefabInstance:
     - target: {fileID: 5088767092636707470, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
       propertyPath: follow
       value: 
-      objectReference: {fileID: 153926187}
+      objectReference: {fileID: 0}
     - target: {fileID: 5088767092636707470, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
       propertyPath: gameObject
       value: 

@@ -4,56 +4,98 @@ using UnityEngine;
 
 public class shadowFollow : MonoBehaviour
 {
-    public bool followBallOnly = true;      // If true, this shadow is for the ball
-    public GameObject follow;               // The object to follow (optional for editor assign)
+    [Header("Follow Settings")]
+    [Tooltip("If true, this shadow follows the ball. If false, it will follow the player.")]
+    public bool followBallOnly = true;
+
+    [Tooltip("The object this shadow should follow. If not assigned, the script will try to find one at runtime.")]
+    public GameObject follow;
+
     private SpriteRenderer spriteRenderer;
+    private float groundY = 0.941f;
+
+    // Height-based scale control
+    private const float minScale = 1.0f;   // Smallest shadow (when object is high)
+    private const float maxScale = 3.0f;   // Largest shadow (when near ground)
+    private const float maxHeight = 5f;    // Height at which the shadow reaches min size
+
+    private float nextSearchTime = 0f;
+    private const float searchInterval = 1.0f; // seconds between search attempts
 
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null)
+        {
+            Debug.LogWarning("[shadowFollow] Missing SpriteRenderer component on " + gameObject.name);
+        }
 
-       // if (spriteRenderer != null)
-       //     spriteRenderer.enabled = false; // Hide shadow initially
+        // Hide shadow until valid target is found
+        if (spriteRenderer != null)
+            spriteRenderer.enabled = false;
+
+        TryFindFollowTarget();
     }
 
     void Update()
     {
-        // If this shadow should follow the ball
+        if (follow == null)
+        {
+            // Occasionally retry finding a target
+            if (Time.time >= nextSearchTime)
+            {
+                nextSearchTime = Time.time + searchInterval;
+                TryFindFollowTarget();
+            }
+            return;
+        }
+
+        if (spriteRenderer != null && !spriteRenderer.enabled)
+            spriteRenderer.enabled = true;
+
+        FollowTarget();
+    }
+
+    private void FollowTarget()
+    {
+        // Position shadow directly below the target, locked to ground height
+        transform.position = new Vector3(follow.transform.position.x, groundY, follow.transform.position.z);
+        transform.rotation = Quaternion.Euler(-90, 0, 0);
+
+        // Scale shadow based on height difference
+        float height = follow.transform.position.y;
+        float t = Mathf.InverseLerp(0, maxHeight, height);
+        float scale = Mathf.Lerp(maxScale, minScale, t);
+        transform.localScale = new Vector3(scale, scale, scale);
+    }
+
+    private void TryFindFollowTarget()
+    {
         if (followBallOnly)
         {
+            // Try to use Ball.GetCurrentBall() first
+            follow = Ball.GetCurrentBall();
+
             if (follow == null)
-                follow = Ball.GetCurrentBall(); // Try to find the ball
-
-            if (follow != null)
             {
-                if (spriteRenderer != null && !spriteRenderer.enabled)
-                    spriteRenderer.enabled = true; // Enable once ball exists
-
-                // Position shadow (lock Y to ground)
-                transform.position = new Vector3(follow.transform.position.x, 0.941f, follow.transform.position.z);
-                transform.rotation = Quaternion.Euler(-90, 0, 0);
-
-                // --- Scale based on height ---
-                float ballHeight = follow.transform.position.y;
-
-                // Define limits for scaling
-                float minScale = 1.0f;   // Smallest shadow (when ball is high up)
-                float maxScale = 3.0f;   // Largest shadow (when ball is near ground)
-                float maxHeight = 5f;    // Height at which the shadow reaches minimum size
-
-                // Calculate scale factor based on height
-                float t = Mathf.InverseLerp(0, maxHeight, ballHeight);
-                float scale = Mathf.Lerp(maxScale, minScale, t);
-
-                // Apply uniform scale to shadow
-                transform.localScale = new Vector3(scale, scale, scale);
+                follow = GameObject.FindWithTag("Ball");
+                if (follow != null)
+                    Debug.Log("[shadowFollow] Found Ball via tag lookup.");
+                else
+                    Debug.LogWarning("[shadowFollow] Could not find Ball in scene.");
+            }
+            else
+            {
+                Debug.Log("[shadowFollow] Linked to Ball via Ball.GetCurrentBall().");
             }
         }
-        else if (follow != null)
+        else
         {
-            // Optional: follow another object
-            transform.position = new Vector3(follow.transform.position.x, 0.941f, follow.transform.position.z);
-            transform.rotation = Quaternion.Euler(-90, 0, 0);
+            follow = GameObject.FindWithTag("Player");
+            if (follow != null)
+                Debug.Log("[shadowFollow] Found Player via tag lookup.");
+            else
+                Debug.LogWarning("[shadowFollow] Could not find Player in scene.");
         }
     }
 }

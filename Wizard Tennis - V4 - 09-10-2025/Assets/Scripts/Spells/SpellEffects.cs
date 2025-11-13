@@ -5,8 +5,14 @@ using TMPro;
 
 public class SpellEffects : MonoBehaviour
 {
+    // These reference the Player and the Opponent so it can call their attached components (Aiming, Spells, etc)
+    // If this script is to account for two players, then it'll need to find the *casting* player and the *victim* player on a case-by-case basis
+
+    // This can be done by making NetworkedSpellcasting assign it's own Player Object in it's spell cast routine as the caster, and the other player in the scene as the victim
+    // It'll then pass these values to a network-specific version of THIS SCRIPT, which will use those values for the effects, after which it'll wipe the values ready to be used again in ResetSpellEffect()
     public GameObject Player;
     public GameObject Opponent;
+
     public TennisAI TennisAI;
 
     public string spellName;
@@ -25,6 +31,7 @@ public class SpellEffects : MonoBehaviour
     public AudioClip pointlost;
     [Range(0f, 1f)] public float pointSFXVolume = 1f;
 
+    // In the network specific version we'll omit the slow down but keep the Explanation UI
     [Header("Spell Explanation UI")]
     public GameObject spellExplanationUI;
     public TMP_Text spellExplanationText;

@@ -22,6 +22,7 @@ public class SceneChanger : MonoBehaviour
     public Transform mainMenuCamPos;                // Camera position for Main Menu
     public Transform creditsCamPos;                 // Camera position for Credits
     public Transform optionsCamPos;                 // Camera position for Options
+    public Transform spellBookCamPos;
     [Tooltip("Higher values = slower camera movement")]
     public float cameraMoveDuration = 1.5f;
 
@@ -82,12 +83,14 @@ public class SceneChanger : MonoBehaviour
     {
         MainMenu.SetActive(false);
         SpellbookMenu.SetActive(true);
+        MoveCameraTo(spellBookCamPos);
     }
 
     public void BackToMainFromSpells()
     {
         MainMenu.SetActive(true);
         SpellbookMenu.SetActive(false);
+        MoveCameraTo(mainMenuCamPos);
     }
 
     private void MoveCameraTo(Transform target)
