@@ -51,10 +51,10 @@ GameObject:
   - component: {fileID: 7540797166899056846}
   - component: {fileID: 7560125625727246618}
   - component: {fileID: 5830144506489353081}
-  - component: {fileID: 855109082531266832}
   - component: {fileID: 5647846991154063780}
   - component: {fileID: 5661107530976996555}
   - component: {fileID: 5817332677244105511}
+  - component: {fileID: 8161680072285587756}
   m_Layer: 0
   m_Name: PlayerNetworked
   m_TagString: Player
@@ -145,7 +145,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 636615662
+  GlobalObjectIdHash: 1810154718
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -330,35 +330,6 @@ MonoBehaviour:
   rallyCountText: {fileID: 0}
   greenPointsText: {fileID: 0}
   greenPointsParent: {fileID: 0}
---- !u!114 &855109082531266832
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5267886797547245765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0bdd967aca4d6fd4b9a4a5be8112f019, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  racketShader: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
-  spellBookPanel: {fileID: 0}
-  spellAddressText: {fileID: 0}
-  spellTextPrefab: {fileID: 0}
-  parentObject: {fileID: 0}
-  baseEffectObject: {fileID: 0}
-  spellDuration: 5
-  inputTimeout: 2
-  hitParticle: {fileID: 1497286266799946001}
-  spellParticleColor: {fileID: 6499075747684456719}
-  audioSource: {fileID: 0}
-  SpellInputClick: {fileID: 0}
-  spellRegisterSound: {fileID: 0}
-  TennisAi: {fileID: 0}
-  spellFloorImage: {fileID: 0}
-  spellEffects: {fileID: 0}
-  leftHandedMode: 0
 --- !u!114 &5647846991154063780
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -554,6 +525,35 @@ MonoBehaviour:
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
+--- !u!114 &8161680072285587756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5267886797547245765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 899ff2024ed4c6a41987d549fd46cf51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  racketShader: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
+  spellBookPanel: {fileID: 0}
+  spellAddressText: {fileID: 0}
+  spellTextPrefab: {fileID: 2101806974530891495, guid: 72a54dee25628d34cb2de5d70d97484d, type: 3}
+  parentObject: {fileID: 0}
+  baseEffectObject: {fileID: 0}
+  spellDuration: 5
+  hitParticle: {fileID: 1497286266799946001, guid: 1004cd108f5409c4c88f475f2675bc79, type: 3}
+  spellParticleColor: {fileID: 6499075747684456719, guid: 1004cd108f5409c4c88f475f2675bc79, type: 3}
+  inputTimeout: 2
+  audioSource: {fileID: 0}
+  SpellInputClick: {fileID: 8300000, guid: 24a27dd945e649c48b916c4c1dcd1f17, type: 3}
+  spellRegisterSound: {fileID: 8300000, guid: e4d15085eaf882c41b8d21a360d6f01a, type: 3}
+  TennisAi: {fileID: 0}
+  spellFloorImage: {fileID: 0}
+  SpellEffects: {fileID: 0}
+  leftHandedMode: 0
 --- !u!1001 &709143113258412094
 PrefabInstance:
   m_ObjectHideFlags: 0

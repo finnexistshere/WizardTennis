@@ -5,15 +5,18 @@ using TMPro;
 
 public class SpellEffects : MonoBehaviour
 {
-    public GameObject Player;
-    public GameObject Opponent;
-    public TennisAI TennisAI;
+    private GameObject caster;
+    private GameObject victim;
+    private TennisAI tennisAI;
 
+    [Header("Runtime Spell State")]
     public string spellName;
     public bool resetOnOppHit;
     public bool resetOnPlrHit;
     public bool oppHitSpell;
     public bool plrHitSpell;
+    public bool spellHit;
+    public static bool isSpellSlowdownActive = false;
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -31,136 +34,227 @@ public class SpellEffects : MonoBehaviour
     public float slowTimeScale = 0.25f;
     public float explanationDuration = 2.5f;
 
-    [Header("Spell Object Settings")]
+    [Header("Spell Object Prefabs")]
     public GameObject iceBlockPrefab;
     private GameObject activeIceBlock;
     public GameObject stoneWallPrefab;
     private GameObject activeStoneWall;
 
+    [Header("Singleplayer References")]
+    public GameObject singleplayerOpponent;
+
+    [Header("Behavior")]
+    public bool allowTimescale = true;
+
+    // Internal bookkeeping
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
     private float lastOriginalTimeScale = 1f;
+    private Coroutine fireballRoutine;
 
-    public bool spellHit;
+    // Sentinel: prevents multiple visual/audio triggers per spell
+    private bool spellVisualPlayed = false;
 
-    public static bool isSpellSlowdownActive = false;
+    private void Log(string msg) => Debug.Log($"[SpellEffects] {msg}");
 
-    private void Awake()
+    // -----------------------
+    // Public API
+    // -----------------------
+    public void CastSpellWithContext(string spell, GameObject caster, GameObject victim, TennisAI ai = null)
     {
-        Player = GameObject.Find("Player");
-        Opponent = GameObject.Find("Opponent");
-        TennisAI = GameObject.Find("Game Manager").GetComponent<TennisAI>();
+        if (string.IsNullOrEmpty(spell))
+        {
+            Debug.LogWarning("[SpellEffects] Attempt to cast null/empty spell.");
+            return;
+        }
+
+        if (caster == null)
+        {
+            Debug.LogWarning($"[SpellEffects] CastSpellWithContext called with null caster for '{spell}'. Aborting.");
+            return;
+        }
+
+        SetContext(caster, victim, ai);
+        spellName = spell;
+        Log($"Casting '{spellName}' from '{caster.name}' -> '{(victim ? victim.name : "null")}'");
+        castSpell();
+        ClearContext();
     }
 
+    public void SetContext(GameObject caster, GameObject victim, TennisAI ai = null)
+    {
+        this.caster = caster;
+
+        // Use the passed victim first; fallback to inspector for singleplayer
+        if (victim != null)
+            this.victim = victim;
+        else if (singleplayerOpponent != null)
+            this.victim = singleplayerOpponent;
+
+        this.tennisAI = ai;
+    }
+
+    public void ClearContext()
+    {
+        caster = null;
+        victim = null;
+        tennisAI = null;
+    }
+
+    // -----------------------
+    // Core casting logic
+    // -----------------------
     public void castSpell()
     {
-        // Show explanation only once per round per spell
+        if (string.IsNullOrEmpty(spellName)) return;
+
+        // Explanation UI: show once per round per spell
         if (!spellsUsedThisRound.Contains(spellName))
         {
             spellsUsedThisRound.Add(spellName);
+            if (explanationRoutine != null) StopCoroutine(explanationRoutine);
             explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
         }
 
         switch (spellName)
         {
-            case "Lightning":
-                Player.GetComponent<MainCharacterMovement>().speed = 17;
-                Invoke(nameof(resetSpellEffect), 5f);
-                break;
-
-            case "Ice":
-                Opponent.GetComponent<OppHitting>().speed = 0f;
-                Player.GetComponent<Ball>().xPos = 0f;
-
-                if (iceBlockPrefab != null)
-                {
-                    activeIceBlock = Instantiate(iceBlockPrefab, Opponent.transform.position, Opponent.transform.rotation);
-                    activeIceBlock.transform.SetParent(Opponent.transform);
-                    activeIceBlock.transform.localPosition = Vector3.zero;
-                }
-
-                Invoke(nameof(resetSpellEffect), 0.5f);
-                break;
-
-            case "Fireball":
-                TennisAI.ApplyBuff(-0.2f, spellName);
-                resetOnOppHit = true;
-                StartCoroutine(FireballHitCheck());
-                break;
-
-            case "Shadow":
-                if (!oppHitSpell)
-                {
-                    oppHitSpell = true;
-                }
-                else
-                {
-                    Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
-                    OppHitting opp = Opponent.GetComponent<OppHitting>();
-                    opp.xPos = Player.transform.position.x;
-                    opp.zPos = Player.transform.position.z;
-                    resetOnOppHit = true;
-                }
-                break;
-
-            case "Green":
-                Player.GetComponent<Ball>().green = true;
-                Invoke(nameof(resetSpellEffect), 1f);
-                break;
-
-            case "Stone":
-                if (stoneWallPrefab != null)
-                {
-                    Vector3 spawnPos = Player.transform.position + Player.transform.forward * 2f;
-                    Quaternion spawnRot = Quaternion.identity;
-
-                    activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
-                    StartCoroutine(HandleStoneWall(activeStoneWall, 5f)); // 5 seconds duration
-                    Invoke(nameof(resetSpellEffect), 5f);
-                }
-                else
-                {
-                    Debug.LogWarning("Stone Wall Prefab not assigned!");
-                }
-                break;
-            case "Chronos":
-                // Temporarily buff movement and gravity for slow-time effect
-                Player.GetComponent<MainCharacterMovement>().speed = 70f;
-                Player.GetComponent<MainCharacterMovement>().gravity = 250f;
-
-                // Wait until explanation UI finishes before applying time slowdown
-                StartCoroutine(ApplyChronosAfterExplanation());
-                break;
+            case "Lightning": ApplyLightning(); break;
+            case "Ice": ApplyIce(); break;
+            case "Fireball": ApplyFireball(); break;
+            case "Shadow": ApplyShadow(); break;
+            case "Green": ApplyGreen(); break;
+            case "Stone": ApplyStone(); break;
+            case "Chronos": ApplyChronos(); break;
+            default: Log($"Unknown spell requested: {spellName}"); break;
         }
-        if (!oppHitSpell)
-            Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
+
+        // Only run visuals/audio once
+        if (!oppHitSpell && !spellVisualPlayed)
+        {
+            spellVisualPlayed = true;
+            InvokeCasterSpellVisualCall(spellName);
+        }
     }
 
+    // -----------------------
+    // Per-spell handlers
+    // -----------------------
+    private void ApplyLightning()
+    {
+        var mm = TryGetComponentFromCaster<MainCharacterMovement>();
+        if (mm != null)
+        {
+            mm.speed = 17;
+            StartCoroutine(ResetAfterDelay(5f));
+            Log("Applied Lightning to caster (speed boost).");
+        }
+    }
+
+    private void ApplyIce()
+    {
+        var oppHitting = TryGetComponentFromVictim<OppHitting>();
+        var ball = TryGetComponentFromCaster<Ball>();
+
+        if (oppHitting != null) oppHitting.speed = 0f;
+        if (ball != null) ball.xPos = 0f;
+
+        if (iceBlockPrefab != null && victim != null)
+        {
+            activeIceBlock = Instantiate(iceBlockPrefab, victim.transform.position, victim.transform.rotation);
+            activeIceBlock.transform.SetParent(victim.transform);
+            activeIceBlock.transform.localPosition = Vector3.zero;
+        }
+
+        StartCoroutine(ResetAfterDelay(0.5f));
+    }
+
+    private void ApplyFireball()
+    {
+        if (tennisAI != null) tennisAI.ApplyBuff(-0.2f, spellName);
+
+        resetOnOppHit = true;
+        if (fireballRoutine != null) StopCoroutine(fireballRoutine);
+        fireballRoutine = StartCoroutine(FireballHitCheck());
+    }
+
+    private void ApplyShadow()
+    {
+        if (!oppHitSpell)
+        {
+            oppHitSpell = true;
+            Log("Shadow: awaiting opponent hit.");
+        }
+        else
+        {
+            InvokeCasterSpellVisualCall(spellName);
+            var opp = TryGetComponentFromVictim<OppHitting>();
+            if (opp != null && caster != null)
+            {
+                opp.xPos = caster.transform.position.x;
+                opp.zPos = caster.transform.position.z;
+            }
+            resetOnOppHit = true;
+        }
+    }
+
+    private void ApplyGreen()
+    {
+        var ball = TryGetComponentFromCaster<Ball>();
+        if (ball != null) ball.green = true;
+        StartCoroutine(ResetAfterDelay(1f));
+    }
+
+    private void ApplyStone()
+    {
+        if (stoneWallPrefab != null && caster != null)
+        {
+            Vector3 spawnPos = caster.transform.position + caster.transform.forward * 2f;
+            Quaternion spawnRot = Quaternion.identity;
+            activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
+            StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
+        }
+    }
+
+    private void ApplyChronos()
+    {
+        var mm = TryGetComponentFromCaster<MainCharacterMovement>();
+        if (mm != null) { mm.speed = 70f; mm.gravity = 250f; }
+
+        StartCoroutine(ApplyChronosAfterExplanation());
+    }
+
+    // -----------------------
+    // Reset
+    // -----------------------
     public void resetSpellEffect()
     {
+        if (fireballRoutine != null) { StopCoroutine(fireballRoutine); fireballRoutine = null; }
+        ForceResetSpellExplanation();
+        isSpellSlowdownActive = false;
+        spellVisualPlayed = false;
+
         switch (spellName)
         {
             case "Lightning":
-                Player.GetComponent<MainCharacterMovement>().speed = 7;
+                var mm1 = TryGetComponentFromCaster<MainCharacterMovement>();
+                if (mm1 != null) mm1.speed = 7f;
                 break;
 
             case "Ice":
-                Opponent.GetComponent<OppHitting>().speed = 5;
-                if (activeIceBlock != null)
-                {
-                    Destroy(activeIceBlock);
-                    activeIceBlock = null;
-                }
+                var opp = TryGetComponentFromVictim<OppHitting>();
+                if (opp != null) opp.speed = 5f;
+                if (activeIceBlock != null) { Destroy(activeIceBlock); activeIceBlock = null; }
                 break;
 
             case "Fireball":
             case "Shadow":
                 resetOnOppHit = false;
                 break;
+
             case "Chronos":
-                Time.timeScale = 1f;
-                Player.GetComponent<MainCharacterMovement>().speed = 7;
-                Player.GetComponent<MainCharacterMovement>().gravity = 25f;
+                if (allowTimescale) Time.timeScale = 1f;
+                var mm2 = TryGetComponentFromCaster<MainCharacterMovement>();
+                if (mm2 != null) { mm2.speed = 7f; mm2.gravity = 25f; }
                 break;
         }
 
@@ -168,94 +262,29 @@ public class SpellEffects : MonoBehaviour
         plrHitSpell = false;
         oppHitSpell = false;
         spellHit = false;
+
+        Log("resetSpellEffect executed.");
     }
 
-    // Coroutine
-    private IEnumerator ApplyChronosAfterExplanation()
+    private IEnumerator ResetAfterDelay(float delay)
     {
-        // Wait until the tutorial/explanation is done
-        yield return new WaitUntil(() => !SpellEffects.isSpellSlowdownActive);
-
-        // Small extra buffer to ensure TimeScale resets first
-        yield return new WaitForSecondsRealtime(0.05f);
-
-        // Apply Chronos time slowdown cleanly
-        Time.timeScale = 0.1f;
-
-        // Keep it active for a few seconds in real time
-        yield return new WaitForSecondsRealtime(2.0f);
-
-        // Restore normal time and player physics
-        Time.timeScale = 1f;
-        Player.GetComponent<MainCharacterMovement>().speed = 7f;
-        Player.GetComponent<MainCharacterMovement>().gravity = 25f;
-
-        // Fully reset spell state
+        yield return new WaitForSeconds(delay);
         resetSpellEffect();
     }
 
-    private IEnumerator HandleStoneWall(GameObject wall, float duration)
-    {
-        // Make it rise up from below ground
-        Vector3 endPos = wall.transform.position;
-        Vector3 startPos = endPos + Vector3.down * 2f;
-        wall.transform.position = startPos;
-
-        float t = 0f;
-        while (t < 1f)
-        {
-            t += Time.deltaTime * 2f; // speed of rising
-            wall.transform.position = Vector3.Lerp(startPos, endPos, t);
-            yield return null;
-        }
-
-        // Wait for the wall's duration
-        yield return new WaitForSeconds(duration - 1f);
-
-        // Fade out before destroy (if it has a renderer)
-        Renderer rend = wall.GetComponent<Renderer>();
-        if (rend != null && rend.material.HasProperty("_Color"))
-        {
-            Color startColor = rend.material.color;
-            float fadeTime = 1f;
-            float fade = 0f;
-
-            while (fade < 1f)
-            {
-                fade += Time.deltaTime / fadeTime;
-                Color c = startColor;
-                c.a = Mathf.Lerp(1f, 0f, fade);
-                rend.material.color = c;
-                yield return null;
-            }
-        }
-
-        Destroy(wall);
-    }
-
-    public void OnPointWon()
-    {
-        if (pointSource != null && pointWon != null)
-            pointSource.PlayOneShot(pointWon, pointSFXVolume);
-    }
-
-    public void OnPointLost()
-    {
-        if (pointSource != null && pointlost != null)
-            pointSource.PlayOneShot(pointlost, pointSFXVolume);
-    }
-
+    // -----------------------
+    // Coroutines & utility
+    // -----------------------
     private IEnumerator FireballHitCheck()
     {
         yield return new WaitUntil(() => resetOnOppHit == false);
 
-        if (audioSource == null || ouchVoicelines == null || ouchVoicelines.Length == 0)
-            yield break;
+        if (audioSource == null || ouchVoicelines == null || ouchVoicelines.Length == 0) yield break;
 
         yield return new WaitForSeconds(0.1f);
 
-        audioSource.pitch = 1f;
         int index = (ouchVoicelines.Length == 1) ? 0 : Random.Range(0, ouchVoicelines.Length);
+        audioSource.pitch = 1f;
         audioSource.PlayOneShot(ouchVoicelines[index]);
     }
 
@@ -263,34 +292,26 @@ public class SpellEffects : MonoBehaviour
     {
         if (spellExplanationUI == null) yield break;
 
-        // Prevent overlapping UI or multiple slowdowns
-        if (explanationRoutine != null)
-            ForceResetSpellExplanation();
-
-        isSpellSlowdownActive = true; //  Mark slowdown active
+        isSpellSlowdownActive = true;
 
         if (spellExplanationText != null)
             spellExplanationText.text = GetSpellDescription(spell);
 
         spellExplanationUI.SetActive(true);
-
         lastOriginalTimeScale = Time.timeScale;
-        Time.timeScale = slowTimeScale;
+
+        if (allowTimescale) Time.timeScale = slowTimeScale;
 
         yield return new WaitForSecondsRealtime(explanationDuration);
 
         ForceResetSpellExplanation();
-
-        isSpellSlowdownActive = false; // Mark slowdown complete
+        isSpellSlowdownActive = false;
     }
-
 
     public void ForceResetSpellExplanation()
     {
-        // Called by CollisionTrackerBall to restore the timescale before doing it's pause to give a point, otherwise things get a little messy. - Ed
         Time.timeScale = lastOriginalTimeScale;
-        if (spellExplanationUI != null)
-            spellExplanationUI.SetActive(false);
+        if (spellExplanationUI != null) spellExplanationUI.SetActive(false);
 
         if (explanationRoutine != null)
         {
@@ -314,8 +335,88 @@ public class SpellEffects : MonoBehaviour
         }
     }
 
-    public static void ResetSpellsForNewRound()
+    private IEnumerator ApplyChronosAfterExplanation()
     {
-        spellsUsedThisRound.Clear();
+        yield return new WaitUntil(() => !isSpellSlowdownActive);
+
+        if (allowTimescale) Time.timeScale = 0.1f;
+        var mm = TryGetComponentFromCaster<MainCharacterMovement>();
+        if (mm != null) { mm.speed = 70f; mm.gravity = 250f; }
+
+        yield return new WaitForSecondsRealtime(2f);
+
+        if (allowTimescale) Time.timeScale = 1f;
+        if (mm != null) { mm.speed = 7f; mm.gravity = 25f; }
+
+        resetSpellEffect();
     }
+
+    private IEnumerator HandleStoneWall(GameObject wall, float duration)
+    {
+        if (wall == null) yield break;
+
+        Vector3 endPos = wall.transform.position;
+        Vector3 startPos = endPos + Vector3.down * 2f;
+        wall.transform.position = startPos;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f;
+            wall.transform.position = Vector3.Lerp(startPos, endPos, t);
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(duration - 1f);
+
+        Renderer rend = wall.GetComponent<Renderer>();
+        if (rend != null && rend.material.HasProperty("_Color"))
+        {
+            Color startColor = rend.material.color;
+            float fade = 0f;
+            while (fade < 1f)
+            {
+                fade += Time.deltaTime / 1f;
+                Color c = startColor; c.a = Mathf.Lerp(1f, 0f, fade);
+                rend.material.color = c;
+                yield return null;
+            }
+        }
+
+        Destroy(wall);
+    }
+
+    // -----------------------
+    // Helper
+    // -----------------------
+    private T TryGetComponentFromCaster<T>() where T : Component => caster ? caster.GetComponent<T>() : null;
+    private T TryGetComponentFromVictim<T>() where T : Component => victim ? victim.GetComponent<T>() : null;
+
+    private void InvokeCasterSpellVisualCall(string spell)
+    {
+        if (caster == null) { Log("Caster null, cannot call Spellcasting."); return; }
+
+        Spellcasting sc = caster.GetComponent<Spellcasting>();
+        if (sc != null) { sc.CastSpellNormal(spell); Log($"Called Spellcasting.CastSpellNormal('{spell}')"); return; }
+
+        NetworkedSpellcasting nsc = caster.GetComponent<NetworkedSpellcasting>();
+        if (nsc != null) { nsc.CastSpellNormal(spell); Log($"Called NetworkedSpellcasting.CastSpellNormal('{spell}')"); return; }
+
+        Log("No Spellcasting component found, skipping visual call.");
+    }
+
+    public static void ResetSpellsForNewRound() => spellsUsedThisRound.Clear();
+
+    public void OnPointWon()
+    {
+        if (pointSource != null && pointWon != null)
+            pointSource.PlayOneShot(pointWon, pointSFXVolume);
+    }
+
+    public void OnPointLost()
+    {
+        if (pointSource != null && pointlost != null)
+            pointSource.PlayOneShot(pointlost, pointSFXVolume);
+    }
+
 }

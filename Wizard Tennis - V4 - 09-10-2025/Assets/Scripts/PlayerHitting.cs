@@ -89,9 +89,18 @@ public class Ball : MonoBehaviour
 
     private void Awake()
     {
-        cam = GameObject.Find("Main Camera").GetComponent<Camera>();
-        Opponent = GameObject.Find("Opponent");
-        servingBarriers = GameObject.Find("ServingBarriers");
+        if (cam == null)
+        {
+            GameObject camObj = GameObject.Find("Main Camera");
+            if (camObj != null)
+                cam = camObj.GetComponent<Camera>();
+        }
+
+        if (Opponent == null)
+            Opponent = GameObject.Find("Opponent");
+
+        if (servingBarriers == null)
+            servingBarriers = GameObject.Find("ServingBarriers");
     }
 
     void Update()

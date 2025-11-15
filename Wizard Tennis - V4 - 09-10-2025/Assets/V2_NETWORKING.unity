@@ -16762,7 +16762,6 @@ GameObject:
   m_Component:
   - component: {fileID: 259505485}
   - component: {fileID: 259505484}
-  - component: {fileID: 259505486}
   m_Layer: 0
   m_Name: PlayerNetworkRelay
   m_TagString: Untagged
@@ -16808,29 +16807,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &259505486
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 259505483}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d205870ba64f5734590104a2d5df88d5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  racketShader: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
-  spellBookPanel: {fileID: 1596896129}
-  spellAddressText: {fileID: 3126104}
-  spellTextPrefab: {fileID: 2101806974530891495, guid: 72a54dee25628d34cb2de5d70d97484d, type: 3}
-  audioSource: {fileID: 546744925}
-  spellInputClick: {fileID: 8300000, guid: 24a27dd945e649c48b916c4c1dcd1f17, type: 3}
-  spellRegisterSound: {fileID: 8300000, guid: e4d15085eaf882c41b8d21a360d6f01a, type: 3}
-  spellParticleColor: {fileID: 0}
-  spellFloorImage: {fileID: 1076509792}
-  tennisAI: {fileID: 1594825194}
-  spellEffects: {fileID: 1594825195}
 --- !u!1 &260133490
 GameObject:
   m_ObjectHideFlags: 0
@@ -41819,14 +41795,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e241b6e3a1f5c06429f6696e64ba78df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Player: {fileID: 0}
-  Opponent: {fileID: 2092549635}
-  TennisAI: {fileID: 0}
   spellName: 
   resetOnOppHit: 0
   resetOnPlrHit: 0
   oppHitSpell: 0
   plrHitSpell: 0
+  spellHit: 0
   audioSource: {fileID: 1580895398}
   ouchVoicelines:
   - {fileID: 8300000, guid: 5694cc7b9ba916f458f6633adc0c9a5d, type: 3}
@@ -41841,7 +41815,7 @@ MonoBehaviour:
   explanationDuration: 3.5
   iceBlockPrefab: {fileID: 6739675707158918549, guid: 7fea345ac8ee7e64885f2f42c84f722c, type: 3}
   stoneWallPrefab: {fileID: 6431261414360197309, guid: 0b4927277a528a04a88b24971fd682e3, type: 3}
-  spellHit: 0
+  allowTimescale: 1
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0
