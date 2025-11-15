@@ -16,6 +16,8 @@ TagManager:
   - Opponent Hit Particle
   - Audio Source
   - Music Manager
+  - Mud
+  - Water
   layers:
   - Default
   - TransparentFX

@@ -6,9 +6,9 @@ using UnityEngine.InputSystem;
 public class Ball : MonoBehaviour
 {
     public Transform aimTarget; // point on the opposite side
-    public float strength = 25;
-    public float ogUpForce = 11;
-    private float upForce = 11;
+    public float strength = 15;
+    public float ogUpForce = 5;
+    private float upForce = 5;
     public float ballSpeed = 5;
 
     private bool hitting = true;
@@ -205,7 +205,7 @@ public class Ball : MonoBehaviour
 
                 if (!serving)
                 {
-                    Vector3 dir = aimTarget.position - transform.position;
+                    Vector3 dir = aimTarget.transform.position - transform.position;
                     other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
                     rallyCount++;
                     if (green)

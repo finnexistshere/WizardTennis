@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.EventSystems;
+using System.ComponentModel;
 
 public class SpellEffects : MonoBehaviour
 {
@@ -20,6 +22,7 @@ public class SpellEffects : MonoBehaviour
     public bool resetOnPlrHit;
     public bool oppHitSpell;
     public bool plrHitSpell;
+    public bool resetOnBounce;
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -43,6 +46,14 @@ public class SpellEffects : MonoBehaviour
     private GameObject activeIceBlock;
     public GameObject stoneWallPrefab;
     private GameObject activeStoneWall;
+    public GameObject geminiPrefab;
+    private GameObject activeGemini;
+    public GameObject mudPrefab;
+    private GameObject activeMud;
+    public GameObject orbiterPrefab;
+    private GameObject activeOrbiter;
+    public GameObject tetherPrefab;
+    private GameObject activeTether;
 
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
@@ -122,6 +133,8 @@ public class SpellEffects : MonoBehaviour
                     Quaternion spawnRot = Quaternion.identity;
 
                     activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
+                    activeStoneWall.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                    activeStoneWall.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
                     StartCoroutine(HandleStoneWall(activeStoneWall, 5f)); // 5 seconds duration
                     Invoke(nameof(resetSpellEffect), 5f);
                 }
@@ -131,12 +144,115 @@ public class SpellEffects : MonoBehaviour
                 }
                 break;
             case "Chronos":
-                // Temporarily buff movement and gravity for slow-time effect
-                Player.GetComponent<MainCharacterMovement>().speed = 70f;
-                Player.GetComponent<MainCharacterMovement>().gravity = 250f;
 
                 // Wait until explanation UI finishes before applying time slowdown
                 StartCoroutine(ApplyChronosAfterExplanation());
+                break;
+            case "Gemini":
+                Vector3 gemPos = Player.transform.position;
+                gemPos.x = -Player.transform.position.x;
+                Quaternion gemRot = Player.transform.rotation;
+
+                activeGemini = Instantiate(geminiPrefab, gemPos, gemRot);
+                activeGemini.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                activeGemini.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
+                Invoke(nameof(resetSpellEffect), 5f);
+                break;
+            case "Blink":
+
+                Vector3 input = Vector3.zero;
+
+                // Default movement keys (WASD)
+                KeyCode forward = KeyCode.W;
+                KeyCode backward = KeyCode.S;
+                KeyCode left = KeyCode.A;
+                KeyCode right = KeyCode.D;
+
+                // If OptionsManager exists, swap keys for left-handed mode
+                if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
+                {
+                    forward = KeyCode.UpArrow;
+                    backward = KeyCode.DownArrow;
+                    left = KeyCode.LeftArrow;
+                    right = KeyCode.RightArrow;
+                }
+
+                if (Input.GetKey(forward)) input.z += 3;
+                if (Input.GetKey(backward)) input.z -= 3;
+                if (Input.GetKey(right)) input.x += 3;
+                if (Input.GetKey(left)) input.x -= 3;
+                Vector3 moveDirection = Vector3.zero;
+                moveDirection = new Vector3(input.x, 0, input.z);
+
+                Vector3 testPos = Player.transform.position - moveDirection;
+
+                if (Player.transform.position.z > 0)
+                {
+                    if (testPos.z > 10.9) testPos.z = 10.9f;
+                    if (testPos.z < 0.5) testPos.z = 0.5f;
+                } else
+                {
+                    if (testPos.z > -1) testPos.z = -1;
+                    if (testPos.z < -11.5) testPos.z = -11.5f;
+                }
+
+                if (testPos.x > 4.9) testPos.x = 4.9f;
+                if (testPos.x < -4.9) testPos.x = -4.9f;
+
+                //Player.GetComponent<MainCharacterMovement>().speed = 0;
+                Player.GetComponent<MainCharacterMovement>().enabled = false;
+                Player.GetComponent<CharacterController>().enabled = false;
+                Player.transform.position = testPos;
+
+                //Player.GetComponent<MainCharacterMovement>().speed = 7;
+                Player.GetComponent<MainCharacterMovement>().enabled = true;
+                Player.GetComponent<CharacterController>().enabled = true;
+
+                Invoke(nameof(resetSpellEffect), 5f);
+                break;
+            case "Jolly":
+                Player.GetComponent<CapsuleCollider>().radius = 2;
+                Invoke(nameof(resetSpellEffect), 5f);
+                break;
+            case "Mud":
+                resetOnOppHit = true;
+                resetOnBounce = true;
+                break;
+            case "Warp":
+                Invoke(nameof(resetSpellEffect), 0.5f);
+                break;
+            case "Pisces":
+                Quaternion orbitRot = Player.transform.rotation;
+
+                activeOrbiter = Instantiate(orbiterPrefab, Player.transform.position, orbitRot);
+                activeOrbiter.transform.parent = Player.transform;
+                activeOrbiter.transform.localPosition = Vector3.zero;
+                SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
+                foreach (SimpleBallReturner child in children)
+                {
+                    child.aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                    child.opponent = Opponent.transform;
+                }
+
+                StartCoroutine(HandleOrbiter(activeOrbiter, 5f)); // 5 seconds duration
+                break;
+            case "Tether":
+                if (tetherPrefab != null)
+                {
+                    Vector3 tetherPos = Opponent.transform.position;
+                    tetherPos.y = 1.45f;
+                    Quaternion tetherRot = Quaternion.identity;
+
+                    activeTether = Instantiate(tetherPrefab, tetherPos, tetherRot);
+                    activeTether.GetComponent<Tether>().Player = Opponent.transform;
+                    Opponent.GetComponent<OppHitting>().tether = activeTether;
+                    StartCoroutine(HandleStoneWall(activeTether, 5f)); // 5 seconds duration
+                    Invoke(nameof(resetSpellEffect), 5f);
+                }
+                else
+                {
+                    Debug.LogWarning("Tether Prefab not assigned!");
+                }
                 break;
         }
         if (!oppHitSpell)
@@ -168,6 +284,64 @@ public class SpellEffects : MonoBehaviour
                 Time.timeScale = 1f;
                 Player.GetComponent<MainCharacterMovement>().speed = 7;
                 Player.GetComponent<MainCharacterMovement>().gravity = 25f;
+                break;
+            case "Gemini":
+                Destroy(activeGemini);
+                break;
+            case "Jolly":
+                Player.GetComponent<CapsuleCollider>().radius = 1;
+                break;
+            case "Mud":
+                resetOnOppHit = false;
+                resetOnBounce = false;
+
+                if (mudPrefab != null)
+                {
+                    GameObject Ball = GameObject.FindWithTag("Ball");
+
+                    Vector3 spawnPos = Ball.transform.position;
+                    spawnPos.y = 0.94f;
+                    Quaternion spawnRot = Quaternion.identity;
+
+                    activeMud = Instantiate(mudPrefab, spawnPos, spawnRot);
+                    StartCoroutine(HandleMud(activeMud, 5f)); // 5 seconds duration
+                }
+                else
+                {
+                    Debug.LogWarning("Mud Prefab not assigned!");
+                }
+
+                break;
+            case "Warp":
+
+                float min;
+                float max;
+
+                if (Player.GetComponent<Ball>().aimTarget.position.x > 0) 
+                {
+                    min = -4.5f;
+                    max = 0f;
+                }
+                else
+                {
+                    min = 0f;
+                    max = 4.5f;
+                }
+
+                float ballX = Random.Range(min, max);
+
+                GameObject Ball1 = GameObject.FindWithTag("Ball");
+                Vector3 ballPos = Ball1.transform.position;
+                ballPos.x = ballX;
+
+                Ball1.transform.position = ballPos;
+
+                break;
+            case "Pisces":
+                Destroy(activeOrbiter);
+                break;
+            case "Tether":
+                Opponent.GetComponent<OppHitting>().tether = null;
                 break;
         }
 
@@ -241,6 +415,46 @@ public class SpellEffects : MonoBehaviour
         }
 
         Destroy(wall);
+    }
+
+    private IEnumerator HandleMud(GameObject mud, float duration)
+    {
+        Vector3 endScale = mud.transform.localScale;
+        Vector3 startScale = new Vector3( 0.1f, 0.01f, 0.1f);
+        mud.transform.localScale = startScale;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f; // speed of rising
+            mud.transform.localScale = Vector3.Lerp(startScale, endScale, t);
+            yield return null;
+        }
+
+        // Wait for the wall's duration
+        yield return new WaitForSeconds(duration - 1f);
+
+        Destroy(mud);
+    }
+
+    private IEnumerator HandleOrbiter(GameObject orbiter, float duration)
+    {
+        Vector3 endScale = orbiter.transform.localScale;
+        Vector3 startScale = new Vector3(0.1f, 0.1f, 0.1f);
+        orbiter.transform.localScale = startScale;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f; // speed of rising
+            orbiter.transform.localScale = Vector3.Lerp(startScale, endScale, t);
+            yield return null;
+        }
+
+        // Wait for the wall's duration
+        yield return new WaitForSeconds(duration - 1f);
+
+        Destroy(orbiter);
     }
 
     public void OnPointWon()

@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System;
 using UnityEngine;
 
 public class SimpleBallReturner : MonoBehaviour
@@ -5,39 +7,23 @@ public class SimpleBallReturner : MonoBehaviour
     [Header("Hit Settings")]
     public Transform aimTarget;    // Target to aim the ball at
     public Transform opponent;     // Opponent reference
-    public float strength = 25f;   // Forward power
-    public float upForce = 11f;    // Vertical lift
-    private float ogUpForce;
+    public float strength = 15f;   // Forward power
+    public float ogUpForce = 5f;    // Vertical lift
+    private float upForce = 5f;
 
     [Header("Tracking")]
     private CollisionTrackerBall collisionTracker; // automatically found at runtime
 
     private void Awake()
     {
-        ogUpForce = upForce;
-
-        // Try to auto-assign aimTarget from the Ball if missing
-        if (aimTarget == null)
-        {
-            Ball ball = FindObjectOfType<Ball>();
-            if (ball != null)
-                aimTarget = ball.aimTarget;
-        }
-
-        // Try to auto-assign opponent
-        if (opponent == null)
-        {
-            GameObject oppObj = GameObject.FindWithTag("Opponent");
-            if (oppObj != null)
-                opponent = oppObj.transform;
-        }
+        upForce = ogUpForce;
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Ball")) return;
 
-        Rigidbody ballRb = other.attachedRigidbody;
+        Rigidbody ballRb = other.GetComponent<Rigidbody>();
         if (ballRb == null) return;
 
         // --- Find the CollisionTracker dynamically on the ball ---
@@ -51,9 +37,15 @@ public class SimpleBallReturner : MonoBehaviour
         }
 
         // --- Adjust upForce dynamically ---
-        upForce = ogUpForce;
-        if (transform.position.x > 35.5f) upForce += 2f;
-        if (Mathf.Abs(transform.position.z) < 6.25f) upForce += 2f;
+        if (35.5 < transform.position.x) upForce = ogUpForce + 2;
+        else upForce = ogUpForce;
+
+        if (-6.25 < transform.position.z || transform.position.z < 6.25) upForce += 2;
+
+        if (other.transform.position.y < 3)
+        {
+            upForce += 1;
+        }
 
         // --- Determine side to aim ---
         float xPos = (opponent != null && opponent.position.x > 0) ? -2f : 2f;
@@ -65,7 +57,7 @@ public class SimpleBallReturner : MonoBehaviour
             : new Vector3(xPos, 1f, 0f); // fallback
 
         // --- Calculate final velocity ---
-        Vector3 dir = targetPos - other.transform.position;
+        Vector3 dir = targetPos - transform.position;
         Vector3 finalVelocity = dir.normalized * strength + Vector3.up * upForce;
 
         // --- Apply hit ---

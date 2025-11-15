@@ -16082,6 +16082,7 @@ MonoBehaviour:
   meshChild: {fileID: 802809286}
   bounceAmplitude: 0.1
   bounceFrequency: 20
+  gemini: 0
 --- !u!143 &153926192
 CharacterController:
   m_ObjectHideFlags: 0
@@ -41848,6 +41849,13 @@ MonoBehaviour:
   - {fileID: 8121200742715402744, guid: 7965b561e9ee54e4daa18a154d641cf2, type: 3}
   - {fileID: 7109859178366572936, guid: 8de44abb723e28845a8363bf8122bb5e, type: 3}
   - {fileID: 7109859178366572936, guid: 041b102b8f230424c9305a22b619402b, type: 3}
+  - {fileID: 3640340661855569502, guid: 4fc3ce6f9d0595c41b65263d13da1e84, type: 3}
+  - {fileID: 1802904905735500019, guid: 1b79cd463b0d3304dbc2aaf80edbef57, type: 3}
+  - {fileID: 6593134887300939833, guid: ac958537efee80c4e9afd57e3af43461, type: 3}
+  - {fileID: 552062325092761634, guid: f12c5e49f70dba949acfffbdf99198e6, type: 3}
+  - {fileID: 9079658379876589094, guid: e328815db9acfad46b9b8ddee4b16016, type: 3}
+  - {fileID: 1755797482189511185, guid: 0b106650e60baa147b743fdb409c5668, type: 3}
+  - {fileID: 7928743636784295957, guid: 0e92ddd96f9aaff4d8df25b00ecc9d6f, type: 3}
   spawnInterval: 5
   spawnRadius: 6
   maxActivePickups: 4
@@ -41894,6 +41902,7 @@ MonoBehaviour:
   resetOnPlrHit: 0
   oppHitSpell: 0
   plrHitSpell: 0
+  resetOnBounce: 0
   audioSource: {fileID: 1580895398}
   ouchVoicelines:
   - {fileID: 8300000, guid: 5694cc7b9ba916f458f6633adc0c9a5d, type: 3}
@@ -41908,6 +41917,10 @@ MonoBehaviour:
   explanationDuration: 3.5
   iceBlockPrefab: {fileID: 6739675707158918549, guid: 7fea345ac8ee7e64885f2f42c84f722c, type: 3}
   stoneWallPrefab: {fileID: 6431261414360197309, guid: 0b4927277a528a04a88b24971fd682e3, type: 3}
+  geminiPrefab: {fileID: 488275310566214477, guid: af1c43e9465a392458a24c3f26cb7a22, type: 3}
+  mudPrefab: {fileID: 6622199852326541046, guid: 2e4ad7e8bdb68b248869e973c529e432, type: 3}
+  orbiterPrefab: {fileID: 1664898280556804845, guid: 7e0753e70f131dd429aff91289e199c5, type: 3}
+  tetherPrefab: {fileID: 7245028594593329606, guid: 43847781cb6a7244f9c92d25630a510f, type: 3}
   spellHit: 0
 --- !u!1 &1596896129
 GameObject:
@@ -54594,6 +54607,7 @@ MonoBehaviour:
   volumeJitter: 0.12
   minInterval: 0.08
   npcBounceAnimator: {fileID: 2092549642}
+  tether: {fileID: 0}
   xPos: 0
   zPos: 0
 --- !u!136 &2092549637

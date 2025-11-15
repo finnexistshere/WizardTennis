@@ -5,6 +5,8 @@ public class BounceChecker : MonoBehaviour
     private CollisionTrackerBall collisionTrackerBall;
     private bool justOnce = true;
 
+    public SpellEffects SpellEffects;
+
     private void Awake()
     {
         // Get reference to the CollisionTrackerBall on this object or its parent
@@ -18,6 +20,9 @@ public class BounceChecker : MonoBehaviour
         {
             Debug.LogError("BounceChecker: No CollisionTrackerBall found!");
         }
+
+        if (SpellEffects == null)
+            SpellEffects = FindObjectOfType<SpellEffects>();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -29,6 +34,10 @@ public class BounceChecker : MonoBehaviour
         {
             if (justOnce)
             {
+                if (SpellEffects.resetOnBounce)
+                {
+                    SpellEffects.resetSpellEffect();
+                }
                 collisionTrackerBall.HandleBounceCheck();
                 justOnce = false;
             }

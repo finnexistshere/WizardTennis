@@ -17,6 +17,8 @@ public class MainCharacterMovement : MonoBehaviour
     private float bounceTimer = 0f;
     private Vector3 meshOriginalLocalPos;
 
+    public bool gemini = false;
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -48,8 +50,15 @@ public class MainCharacterMovement : MonoBehaviour
 
             if (Input.GetKey(forward)) input.z += 1;
             if (Input.GetKey(backward)) input.z -= 1;
-            if (Input.GetKey(right)) input.x += 1;
-            if (Input.GetKey(left)) input.x -= 1;
+            if (gemini)
+            {
+                if (Input.GetKey(right)) input.x -= 1;
+                if (Input.GetKey(left)) input.x += 1;
+            } else
+            {
+                if (Input.GetKey(right)) input.x += 1;
+                if (Input.GetKey(left)) input.x -= 1;
+            }
 
             moveDirection = transform.TransformDirection(input.normalized * speed);
 
@@ -89,5 +98,15 @@ public class MainCharacterMovement : MonoBehaviour
                 Time.deltaTime * 10f
             );
         }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Mud")) speed = 3f;
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Mud")) speed = 6f;
     }
 }
