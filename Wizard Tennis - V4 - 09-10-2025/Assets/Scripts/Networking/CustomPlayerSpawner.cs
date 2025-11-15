@@ -33,7 +33,18 @@ public class CustomPlayerSpawner : MonoBehaviour
         Transform spawnPoint = spawnManager.GetNextSpawnPoint();
         if (spawnPoint == null) return;
 
-        NetworkObject playerInstance = Instantiate(playerPrefab, spawnPoint.position, spawnPoint.rotation);
+        // Get the prefab height if it has a CapsuleCollider
+        float yOffset = 0f;
+        var collider = playerPrefab.GetComponent<Collider>();
+        if (collider != null)
+        {
+            yOffset = collider.bounds.extents.y + 0.1f; // half-height + small buffer
+        }
+
+        Vector3 spawnPos = spawnPoint.position + Vector3.up * yOffset;
+        Quaternion spawnRot = spawnPoint.rotation;
+
+        NetworkObject playerInstance = Instantiate(playerPrefab, spawnPos, spawnRot);
         playerInstance.SpawnAsPlayerObject(clientId);
     }
 }

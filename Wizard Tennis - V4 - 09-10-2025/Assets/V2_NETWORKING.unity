@@ -23954,7 +23954,7 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 494459687}
-    PlayerPrefab: {fileID: 0}
+    PlayerPrefab: {fileID: 5267886797547245765, guid: 852e54a05a5c0074b8bcff94ed5048e4, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 11400000, guid: 1aed233d94187c340ad7da74a16f06cd, type: 2}
@@ -23984,13 +23984,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 494459686}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.7485772, y: -2.1582427, z: 4.765627}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0.7071068, w: 0}
+  m_LocalPosition: {x: -0.287, y: 1.26, z: 9.238}
+  m_LocalScale: {x: 0.1594025, y: 0.1594025, z: 0.63761}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -90, y: 180, z: 0}
 --- !u!114 &494459690
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -30151,7 +30151,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1294964902}
-  - component: {fileID: 1294964901}
+  - component: {fileID: 1294964903}
   m_Layer: 0
   m_Name: PlayerSpawner
   m_TagString: Untagged
@@ -30159,20 +30159,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1294964901
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1294964900}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cf49624ec7ec70c4d9b441ab6074bc82, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerPrefab: {fileID: 3828764449105300203, guid: 852e54a05a5c0074b8bcff94ed5048e4, type: 3}
-  spawnManager: {fileID: 494459690}
 --- !u!4 &1294964902
 Transform:
   m_ObjectHideFlags: 0
@@ -30188,6 +30174,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1294964903
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1294964900}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d275589cee4e24c4fad438fff4dab136, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnPoints:
+  - {fileID: 1376262019}
+  - {fileID: 1376262019}
 --- !u!1 &1299915522
 GameObject:
   m_ObjectHideFlags: 0
@@ -35381,13 +35382,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1376262018}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: -0.35, y: 1.45, z: 9.19}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0.7071068, w: 0}
+  m_LocalPosition: {x: -0.287, y: 1.26, z: 9.238}
+  m_LocalScale: {x: 0.1594025, y: 0.1594025, z: 0.63761}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+  m_LocalEulerAnglesHint: {x: -90, y: 180, z: 0}
 --- !u!1 &1379234391
 GameObject:
   m_ObjectHideFlags: 0
@@ -41815,6 +41816,7 @@ MonoBehaviour:
   explanationDuration: 3.5
   iceBlockPrefab: {fileID: 6739675707158918549, guid: 7fea345ac8ee7e64885f2f42c84f722c, type: 3}
   stoneWallPrefab: {fileID: 6431261414360197309, guid: 0b4927277a528a04a88b24971fd682e3, type: 3}
+  singleplayerOpponent: {fileID: 0}
   allowTimescale: 1
 --- !u!1 &1596896129
 GameObject:

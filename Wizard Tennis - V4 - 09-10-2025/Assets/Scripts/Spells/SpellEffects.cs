@@ -47,7 +47,7 @@ public class SpellEffects : MonoBehaviour
     public bool allowTimescale = true;
 
     // Internal bookkeeping
-    private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
+    private HashSet<string> spellsUsedThisCaster = new HashSet<string>();
     private Coroutine explanationRoutine;
     private float lastOriginalTimeScale = 1f;
     private Coroutine fireballRoutine;
@@ -92,6 +92,9 @@ public class SpellEffects : MonoBehaviour
             this.victim = singleplayerOpponent;
 
         this.tennisAI = ai;
+
+        // Determine if we're in singleplayer (AI or assigned singleplayer opponent)
+        allowTimescale = (tennisAI != null || this.victim == singleplayerOpponent);
     }
 
     public void ClearContext()
@@ -108,10 +111,10 @@ public class SpellEffects : MonoBehaviour
     {
         if (string.IsNullOrEmpty(spellName)) return;
 
-        // Explanation UI: show once per round per spell
-        if (!spellsUsedThisRound.Contains(spellName))
+        // Explanation UI: show once per caster per spell
+        if (!spellsUsedThisCaster.Contains(spellName))
         {
-            spellsUsedThisRound.Add(spellName);
+            spellsUsedThisCaster.Add(spellName);
             if (explanationRoutine != null) StopCoroutine(explanationRoutine);
             explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
         }
@@ -405,7 +408,7 @@ public class SpellEffects : MonoBehaviour
         Log("No Spellcasting component found, skipping visual call.");
     }
 
-    public static void ResetSpellsForNewRound() => spellsUsedThisRound.Clear();
+    public static void ResetSpellsForNewRound() { }
 
     public void OnPointWon()
     {
@@ -418,5 +421,4 @@ public class SpellEffects : MonoBehaviour
         if (pointSource != null && pointlost != null)
             pointSource.PlayOneShot(pointlost, pointSFXVolume);
     }
-
 }
