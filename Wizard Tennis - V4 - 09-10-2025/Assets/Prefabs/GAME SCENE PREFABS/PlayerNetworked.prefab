@@ -74,7 +74,6 @@ GameObject:
   - component: {fileID: 8621081905335392856}
   - component: {fileID: 6152987463818602167}
   - component: {fileID: 3828764449105300203}
-  - component: {fileID: 3330841752405938172}
   - component: {fileID: 9117693654922756609}
   - component: {fileID: 6705841135343936561}
   - component: {fileID: 5676232458367227458}
@@ -188,19 +187,6 @@ MonoBehaviour:
   SpawnWithObservers: 1
   DontDestroyWithOwner: 1
   AutoObjectParentSync: 1
---- !u!114 &3330841752405938172
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5267886797547245765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 97355637d67ade843b9867fc5dd62854, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerPrefab: {fileID: 5267886797547245765}
 --- !u!114 &9117693654922756609
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -583,7 +569,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraRigPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
-  cameraSpawnPoint: {fileID: 0}
+  cameraSpawnPoint: {fileID: 8101984891337310477}
 --- !u!114 &5426126483927061752
 MonoBehaviour:
   m_ObjectHideFlags: 0

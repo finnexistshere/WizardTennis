@@ -22,6 +22,18 @@ public class PlayerFootsteps : MonoBehaviour
     void Start()
     {
         lastPosition = transform.position;
+
+        if (audioSource == null)
+        {
+            var audioGO = GameObject.Find("audiosource");
+            if (audioGO != null)
+                audioSource = audioGO.GetComponent<AudioSource>();
+
+            if (audioSource != null)
+                Debug.Log("[Spellcasting] Found and linked AudioSource.");
+            else
+                Debug.LogWarning("[Spellcasting] AudioSource missing!");
+        }
     }
 
     void Update()

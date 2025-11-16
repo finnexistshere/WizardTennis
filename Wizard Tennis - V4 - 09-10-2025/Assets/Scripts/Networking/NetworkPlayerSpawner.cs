@@ -9,18 +9,23 @@ public class NetworkPlayerSpawner : MonoBehaviour
     private void Awake()
     {
         spawnManager = FindObjectOfType<NetworkSpawnManager>();
+
+        if (spawnManager == null)
+        {
+            Debug.LogError("No NetworkSpawnManager found in scene!");
+        }
     }
 
     public void SpawnPlayer(ulong clientId)
     {
-        if (playerPrefab == null || spawnManager == null) return;
+        Debug.Log($"Spawning player for client {clientId}");
 
-        // Get position AND rotation together
-        Quaternion spawnRot;
-        Vector3 spawnPos = spawnManager.GetNextSpawnPosition(out spawnRot);
+        Quaternion rot;
+        Vector3 pos = spawnManager.GetNextSpawnPosition(out rot);
 
-        // Instantiate networked player
-        GameObject player = Instantiate(playerPrefab, spawnPos, spawnRot);
-        player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
+        Debug.Log($"Spawn position: {pos}");
+
+        GameObject obj = Instantiate(playerPrefab, pos, rot);
+        obj.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
     }
 }

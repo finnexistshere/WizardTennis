@@ -2,7 +2,7 @@ using UnityEngine;
 using Unity.Netcode;
 using System.Collections.Generic;
 
-public class PlayerSpawnManager : MonoBehaviour
+public class PlayerSpawnManager2 : MonoBehaviour
 {
     public List<Transform> spawnPoints;
 
