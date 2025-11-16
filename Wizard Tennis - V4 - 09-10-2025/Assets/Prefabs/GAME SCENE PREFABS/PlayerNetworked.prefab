@@ -72,8 +72,9 @@ GameObject:
   m_Component:
   - component: {fileID: 5076131787658572221}
   - component: {fileID: 8621081905335392856}
-  - component: {fileID: 6152987463818602167}
   - component: {fileID: 3828764449105300203}
+  - component: {fileID: 2197649773703879841}
+  - component: {fileID: 6152987463818602167}
   - component: {fileID: 9117693654922756609}
   - component: {fileID: 6705841135343936561}
   - component: {fileID: 5676232458367227458}
@@ -86,6 +87,7 @@ GameObject:
   - component: {fileID: 5817332677244105511}
   - component: {fileID: 8161680072285587756}
   - component: {fileID: -786510190546990112}
+  - component: {fileID: 1875544804061796219}
   - component: {fileID: 5426126483927061752}
   m_Layer: 0
   m_Name: PlayerNetworked
@@ -121,6 +123,41 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5267886797547245765}
   m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &3828764449105300203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5267886797547245765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 636615662
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 1
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 1
+  AutoObjectParentSync: 1
+--- !u!114 &2197649773703879841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5267886797547245765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a91463a9980c83f4fa1a25b83ae9efc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerCamera: {fileID: 0}
+  localOnlyComponents: []
 --- !u!23 &6152987463818602167
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -166,27 +203,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &3828764449105300203
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5267886797547245765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 636615662
-  InScenePlacedSourceGlobalObjectIdHash: 0
-  AlwaysReplicateAsRoot: 0
-  SynchronizeTransform: 1
-  ActiveSceneSynchronization: 1
-  SceneMigrationSynchronization: 1
-  SpawnWithObservers: 1
-  DontDestroyWithOwner: 1
-  AutoObjectParentSync: 1
 --- !u!114 &9117693654922756609
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -570,6 +586,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cameraRigPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
   cameraSpawnPoint: {fileID: 8101984891337310477}
+--- !u!114 &1875544804061796219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5267886797547245765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d07a86fde2c34c74192d041999a92272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnTag: SpawnPoint
+  spawnDelay: 0.15
 --- !u!114 &5426126483927061752
 MonoBehaviour:
   m_ObjectHideFlags: 0

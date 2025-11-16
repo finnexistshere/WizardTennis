@@ -17056,8 +17056,8 @@ GameObject:
   m_Component:
   - component: {fileID: 265336819}
   m_Layer: 0
-  m_Name: PlayerSpawnPoint (1)
-  m_TagString: Untagged
+  m_Name: ClientSpawn
+  m_TagString: SpawnPoint
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -24044,14 +24044,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 494459686}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f67099c20256794f84c4252fbf4075d, type: 3}
+  m_Script: {fileID: 11500000, guid: 029853d548844074fa0e93b5727c207c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerPrefab: {fileID: 5267886797547245765, guid: 852e54a05a5c0074b8bcff94ed5048e4, type: 3}
-  spawnPoints:
-  - {fileID: 1376262019}
-  - {fileID: 265336819}
-  cameraRigPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
+  m_SpawnMethod: 1
+  m_SpawnPositions:
+  - {x: -0.287, y: 1.26, z: 9.238}
+  - {x: -0.287, y: 1.26, z: -6.45}
 --- !u!1001 &501092530
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -35085,8 +35084,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1376262019}
   m_Layer: 0
-  m_Name: PlayerSpawnPoint
-  m_TagString: Untagged
+  m_Name: HostSpawn
+  m_TagString: SpawnPoint
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
