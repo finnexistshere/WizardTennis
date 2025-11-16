@@ -3,10 +3,15 @@ using UnityEngine;
 public class CameraElasticSway : MonoBehaviour
 {
     [Header("Target Settings")]
-    [SerializeField] private Transform player; // Assign in Inspector or auto-find by tag
-    [SerializeField] private float maxSway = 2f; // maximum distance camera can move from center
-    [SerializeField] private float swayStrength = 0.3f; // how much player movement affects sway
-    [SerializeField] private float smoothSpeed = 5f; // how smoothly camera moves
+    public Transform player; // player to follow
+    public Transform spawnPoint; // optional start point
+
+    [Header("Camera Settings")]
+    public float followHeight = 5f;
+    public float followDistance = 10f;
+    public float maxSway = 2f;
+    public float swayStrength = 0.3f;
+    public float smoothSpeed = 5f;
 
     private Vector3 startPosition;
 
@@ -19,23 +24,29 @@ public class CameraElasticSway : MonoBehaviour
                 player = playerObj.transform;
         }
 
-        // Remember the original world position (center point)
+        // Initialize position
+        if (spawnPoint != null)
+            transform.position = spawnPoint.position;
+        else if (player != null)
+            transform.position = player.position - player.forward * followDistance + Vector3.up * followHeight;
+
         startPosition = transform.position;
     }
 
     void LateUpdate()
     {
-        if (player == null)
-            return;
+        if (player == null) return;
 
-        // Get player's X offset relative to camera's X position
+        // Elastic sway along X
         float xOffset = (player.position.x - startPosition.x) * swayStrength;
         xOffset = Mathf.Clamp(xOffset, -maxSway, maxSway);
 
-        // Target position is only shifted on X
-        Vector3 targetPos = new Vector3(startPosition.x + xOffset, startPosition.y, startPosition.z);
+        Vector3 targetPos = player.position - player.forward * followDistance + Vector3.up * followHeight;
+        targetPos.x += xOffset;
 
-        // Smoothly move camera toward this position
         transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * smoothSpeed);
+
+        // Always look at player
+        transform.LookAt(player.position + Vector3.up * 1.5f);
     }
 }

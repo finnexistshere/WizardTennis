@@ -1,35 +1,26 @@
 using UnityEngine;
 using Unity.Netcode;
-using System.Collections;
 
-public class NetworkPlayerSpawner : NetworkBehaviour
+public class NetworkPlayerSpawner : MonoBehaviour
 {
-    [Header("Rotation Fix")]
-    public Vector3 rotationOffset = new Vector3(0, 0, 0); // adjust here
+    [SerializeField] private GameObject playerPrefab;
+    private NetworkSpawnManager spawnManager;
 
-    private IEnumerator Start()
+    private void Awake()
     {
-        yield return null;
+        spawnManager = FindObjectOfType<NetworkSpawnManager>();
+    }
 
-        if (!IsServer) yield break;
+    public void SpawnPlayer(ulong clientId)
+    {
+        if (playerPrefab == null || spawnManager == null) return;
 
-        NetworkSpawnManager spawnManager = FindObjectOfType<NetworkSpawnManager>();
+        // Get position AND rotation together
+        Quaternion spawnRot;
+        Vector3 spawnPos = spawnManager.GetNextSpawnPosition(out spawnRot);
 
-        if (spawnManager == null)
-        {
-            Debug.LogWarning("NetworkSpawnManager not found — spawning at Vector3.zero");
-            transform.position = Vector3.zero;
-            transform.rotation = Quaternion.Euler(rotationOffset);
-        }
-        else
-        {
-            Vector3 spawnPos = spawnManager.GetNextSpawnPosition();
-            Quaternion spawnRot = spawnManager.GetNextSpawnRotation();
-
-            // Apply correction
-            Quaternion adjustedRot = spawnRot * Quaternion.Euler(rotationOffset);
-
-            transform.SetPositionAndRotation(spawnPos, adjustedRot);
-        }
+        // Instantiate networked player
+        GameObject player = Instantiate(playerPrefab, spawnPos, spawnRot);
+        player.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId, true);
     }
 }

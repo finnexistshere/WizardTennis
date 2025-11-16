@@ -1,50 +1,47 @@
-using UnityEngine;
 using Unity.Netcode;
+using UnityEngine;
 
-public class PlayerCameraFollow : NetworkBehaviour
+public class CameraFollowElastic : MonoBehaviour
 {
-    [Header("Camera Settings")]
-    [SerializeField] private Camera playerCamera; // Assign in Inspector
+    [SerializeField] private Camera playerCamera;
+    [SerializeField] private AudioListener audioListener;
+    [SerializeField] private Transform player;
+    [SerializeField] private float followHeight = 5f;
+    [SerializeField] private float followDistance = 10f;
     [SerializeField] private float maxSway = 2f;
     [SerializeField] private float swayStrength = 0.3f;
     [SerializeField] private float smoothSpeed = 5f;
 
-    private Transform targetPlayer;
     private Vector3 startPosition;
 
-    public override void OnNetworkSpawn()
+    void Awake()
     {
-        if (!IsLocalPlayer)
+        if (player == null)
         {
-            // Only enable the camera for the local player
-            playerCamera.gameObject.SetActive(false);
-            return;
+            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+            if (playerObj != null)
+                player = playerObj.transform;
         }
 
-        // Assign the target as this player's transform
-        targetPlayer = transform;
+        startPosition = player.position - player.forward * followDistance + Vector3.up * followHeight;
 
-        // Enable local player camera
-        playerCamera.gameObject.SetActive(true);
-
-        // Start position of camera
-        startPosition = playerCamera.transform.position;
+        if (playerCamera != null) playerCamera.enabled = true;
+        if (audioListener != null) audioListener.enabled = true;
     }
 
     void LateUpdate()
     {
-        if (targetPlayer == null || !IsLocalPlayer)
-            return;
+        if (player == null) return;
 
-        // Elastic sway only in X-axis
-        float xOffset = (targetPlayer.position.x - startPosition.x) * swayStrength;
+        // Elastic sway along X
+        float xOffset = (player.position.x - startPosition.x) * swayStrength;
         xOffset = Mathf.Clamp(xOffset, -maxSway, maxSway);
 
-        Vector3 targetPos = new Vector3(startPosition.x + xOffset, startPosition.y, startPosition.z);
+        // Target position behind player
+        Vector3 targetPos = player.position - player.forward * followDistance + Vector3.up * followHeight;
+        targetPos.x += xOffset;
 
-        playerCamera.transform.position = Vector3.Lerp(playerCamera.transform.position, targetPos, Time.deltaTime * smoothSpeed);
-
-        // Optional: look at player’s chest height
-        playerCamera.transform.LookAt(targetPlayer.position + Vector3.up * 2);
+        transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * smoothSpeed);
+        transform.LookAt(player.position + Vector3.up * 1.5f);
     }
 }
