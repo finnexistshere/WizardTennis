@@ -1,4 +1,5 @@
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using UnityEngine;
 
 public class NetworkDebugLogger : MonoBehaviour
@@ -19,6 +20,7 @@ public class NetworkDebugLogger : MonoBehaviour
         NetworkManager.Singleton.OnClientDisconnectCallback += id =>
         {
             Debug.LogError($"[NETCODE] Client disconnected: {id}");
+            Debug.LogWarning("[NETCODE] If disconnects are random, check server status, port, firewall, or transport mismatch.");
         };
     }
 }

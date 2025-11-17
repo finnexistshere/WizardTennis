@@ -66,7 +66,6 @@ public class ManualPlayerSpawner : MonoBehaviour
         GameObject playerInstance = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
         NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
 
-
         if (!netObj)
         {
             Debug.LogError("Player prefab is missing NetworkObject! FIX THIS!");
