@@ -29923,7 +29923,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3436609252
+  GlobalObjectIdHash: 2130050790
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -29952,7 +29952,6 @@ MonoBehaviour:
   player1Spawn: {fileID: 1376262019}
   player2Spawn: {fileID: 265336819}
   playerPrefab: {fileID: 5267886797547245765, guid: 852e54a05a5c0074b8bcff94ed5048e4, type: 3}
-  playerCameraPrefab: {fileID: 7710823256784073713, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
 --- !u!1 &1299915522
 GameObject:
   m_ObjectHideFlags: 0

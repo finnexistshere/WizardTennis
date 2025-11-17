@@ -73,7 +73,6 @@ GameObject:
   - component: {fileID: 5076131787658572221}
   - component: {fileID: 8621081905335392856}
   - component: {fileID: 3828764449105300203}
-  - component: {fileID: 2197649773703879841}
   - component: {fileID: 6152987463818602167}
   - component: {fileID: 9117693654922756609}
   - component: {fileID: 6705841135343936561}
@@ -86,9 +85,8 @@ GameObject:
   - component: {fileID: 5647846991154063780}
   - component: {fileID: 5817332677244105511}
   - component: {fileID: 8161680072285587756}
-  - component: {fileID: -786510190546990112}
-  - component: {fileID: 1875544804061796219}
   - component: {fileID: 5426126483927061752}
+  - component: {fileID: 7166973520985070301}
   m_Layer: 0
   m_Name: PlayerNetworked
   m_TagString: Player
@@ -137,27 +135,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   GlobalObjectIdHash: 636615662
   InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 4
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
-  ActiveSceneSynchronization: 1
+  ActiveSceneSynchronization: 0
   SceneMigrationSynchronization: 1
   SpawnWithObservers: 1
-  DontDestroyWithOwner: 1
+  DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
---- !u!114 &2197649773703879841
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5267886797547245765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a91463a9980c83f4fa1a25b83ae9efc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerCamera: {fileID: 0}
-  localOnlyComponents: []
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!23 &6152987463818602167
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -178,6 +166,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -199,6 +189,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -215,6 +206,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4bb61d4e0b63ba44dabb6294d757c60e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   aimTarget: {fileID: 0}
   OppIKRig: {fileID: 0}
   spellEffects: {fileID: 0}
@@ -245,6 +237,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca650e6d2d656ad46b2ae2df30f0aea8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!136 &5676232458367227458
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -318,10 +311,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5267886797547245765}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -538,7 +531,7 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: 9e126c43-4ed7-4ec2-8514-a6af4e1bb007
     m_ActionName: 'UI/Pause[/Keyboard/escape]'
-  m_NeverAutoSwitchControlSchemes: 0
+  m_NeverAutoSwitchControlSchemes: 1
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
@@ -572,34 +565,6 @@ MonoBehaviour:
   spellFloorImage: {fileID: 0}
   SpellEffects: {fileID: 0}
   leftHandedMode: 0
---- !u!114 &-786510190546990112
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5267886797547245765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bdccd5d9f455d97449b7ad65d168281b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cameraRigPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
-  cameraSpawnPoint: {fileID: 8101984891337310477}
---- !u!114 &1875544804061796219
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5267886797547245765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d07a86fde2c34c74192d041999a92272, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  spawnTag: SpawnPoint
-  spawnDelay: 0.15
 --- !u!114 &5426126483927061752
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -612,6 +577,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
+  NetworkTransformExpanded: 0
+  AutoOwnerAuthorityTickOffset: 1
+  PositionInterpolationType: 0
+  RotationInterpolationType: 0
+  ScaleInterpolationType: 0
+  PositionLerpSmoothing: 1
+  PositionMaxInterpolationTime: 0.1
+  RotationLerpSmoothing: 1
+  RotationMaxInterpolationTime: 0.1
+  ScaleLerpSmoothing: 1
+  ScaleMaxInterpolationTime: 0.1
+  AuthorityMode: 0
+  TickSyncChildren: 0
   UseUnreliableDeltas: 0
   SyncPositionX: 1
   SyncPositionY: 1
@@ -629,8 +608,25 @@ MonoBehaviour:
   UseQuaternionCompression: 0
   UseHalfFloatPrecision: 0
   InLocalSpace: 0
+  SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
+--- !u!114 &7166973520985070301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5267886797547245765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e3163d7a293e3a4f95ef0d56a3d36ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  ShowTopMostFoldoutHeaderGroup: 1
+  playerInputPrefab: {fileID: 5817332677244105511}
+  playerCameraPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
+  playerPrefab: {fileID: 5267886797547245765}
 --- !u!1001 &709143113258412094
 PrefabInstance:
   m_ObjectHideFlags: 0
