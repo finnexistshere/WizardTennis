@@ -21,8 +21,9 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
 
-        // Spawn host immediately
-        SpawnPlayer(NetworkManager.Singleton.LocalClientId);
+        // Spawn host manually, or skip this and rely on callback
+        if (!spawnedPlayers.ContainsKey(NetworkManager.Singleton.LocalClientId))
+            SpawnPlayer(NetworkManager.Singleton.LocalClientId);
     }
 
     private void OnDestroy()
@@ -37,7 +38,10 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Spawn player for this client
+        // Skip host if already spawned
+        if (clientId == NetworkManager.Singleton.LocalClientId && spawnedPlayers.ContainsKey(clientId))
+            return;
+
         SpawnPlayer(clientId);
     }
 
@@ -57,14 +61,10 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
 
     private void SpawnPlayer(ulong clientId)
     {
-        if (playerPrefab == null)
-        {
-            Debug.LogError("[Spawner] Player prefab is not assigned!");
-            return;
-        }
+        if (playerPrefab == null) return;
 
-        Vector3 spawnPos = GetNextSpawnPosition();
-        GameObject playerInstance = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+        Transform spawnPoint = GetNextSpawnTransform();
+        GameObject playerInstance = Instantiate(playerPrefab, spawnPoint.position, spawnPoint.rotation); // rotation set here
         NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
 
         if (netObj == null)
@@ -74,25 +74,22 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
             return;
         }
 
-        // Spawn and assign ownership
         netObj.SpawnAsPlayerObject(clientId, true);
         spawnedPlayers[clientId] = playerInstance;
 
-        Debug.Log($"[Spawner] Spawned player for client {clientId} at {spawnPos}");
+        Debug.Log($"[Spawner] Spawned player for client {clientId} at {spawnPoint.position}");
     }
 
-    private Vector3 GetNextSpawnPosition()
+    private Transform GetNextSpawnTransform()
     {
-        Vector3 spawnPos;
+        Transform spawnTransform;
 
         if (spawnIndex == 0 && player1Spawn != null)
-            spawnPos = player1Spawn.position;
-        else if (player2Spawn != null)
-            spawnPos = player2Spawn.position;
+            spawnTransform = player1Spawn;
         else
-            spawnPos = Vector3.zero; // fallback
+            spawnTransform = player2Spawn;
 
         spawnIndex = (spawnIndex + 1) % 2;
-        return spawnPos;
+        return spawnTransform;
     }
 }

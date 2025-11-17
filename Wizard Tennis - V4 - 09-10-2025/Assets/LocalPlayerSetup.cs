@@ -2,7 +2,6 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.InputSystem;
 using System.Collections;
-using System.Collections.Generic;
 
 public class LocalPlayerSetup : NetworkBehaviour
 {
@@ -14,37 +13,22 @@ public class LocalPlayerSetup : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        if (!IsOwner) return;
+        if (!IsOwner) return; // Only run for local owner
         StartCoroutine(SetupOwnerPlayer());
     }
 
     private IEnumerator SetupOwnerPlayer()
     {
-        // Wait until this player object is fully spawned on this client
+        // Wait until this player object is fully spawned and owned
         yield return new WaitUntil(() => IsSpawned && IsOwner);
 
-        // Spawn input prefab as a plain GameObject (no NetworkObject)
-        if (playerInputPrefab != null)
-        {
-            var inputInstance = Instantiate(playerInputPrefab);
-            inputInstance.gameObject.name = $"PlayerInput_{OwnerClientId}";
-            inputInstance.transform.SetParent(transform, false);
+        // Setup input
+        SetupPlayerInput();
 
-            // Activate input safely
-            inputInstance.enabled = true;
-            inputInstance.ActivateInput();
-        }
+        // Setup camera
+        SetupCamera();
 
-        // Spawn camera prefab as usual
-        if (playerCameraPrefab != null)
-        {
-            spawnedCamera = Instantiate(playerCameraPrefab);
-            spawnedCamera.transform.SetParent(transform, false);
-            spawnedCamera.transform.localPosition = Vector3.zero;
-            spawnedCamera.transform.localRotation = Quaternion.identity;
-        }
-
-        Debug.Log($"[{(IsHost ? "Host" : "Client")}] Player setup complete for {OwnerClientId}");
+        Debug.Log($"[{(IsHost ? "Host" : "Client")}] Player setup complete for client {OwnerClientId}");
     }
 
     private void SetupPlayerInput()
@@ -55,14 +39,13 @@ public class LocalPlayerSetup : NetworkBehaviour
             return;
         }
 
-        var inputInstance = Instantiate(playerInputPrefab);
+        PlayerInput inputInstance = Instantiate(playerInputPrefab);
         inputInstance.gameObject.name = $"PlayerInput_{OwnerClientId}";
 
-        // Safe parenting after spawn
+        // Parent under this player
         inputInstance.transform.SetParent(transform, false);
 
-        if (!inputInstance.enabled)
-            inputInstance.enabled = true;
+        inputInstance.enabled = true;
 
         try
         {
@@ -83,11 +66,26 @@ public class LocalPlayerSetup : NetworkBehaviour
             return;
         }
 
+        // Spawn camera only for this client
         spawnedCamera = Instantiate(playerCameraPrefab);
-        spawnedCamera.transform.SetParent(transform, false);
-        spawnedCamera.transform.localPosition = Vector3.zero;
-        spawnedCamera.transform.localRotation = Quaternion.identity;
 
-        Debug.Log($"[{(IsHost ? "Host" : "Client")}] Camera spawned for player {OwnerClientId}");
+        // Detach from prefab
+        spawnedCamera.transform.SetParent(null);
+
+        // Set initial position/rotation to match spawn
+        spawnedCamera.transform.position = transform.position;
+        spawnedCamera.transform.rotation = transform.rotation;
+
+        // Initialize CameraElasticSway
+        var sway = spawnedCamera.GetComponent<CameraElasticSway>();
+        if (sway != null)
+        {
+            sway.player = transform;
+            sway.spawnPoint = transform; // optional, makes it start at spawn
+        }
+
+        spawnedCamera.SetActive(true);
+
+        Debug.Log($"[{(IsHost ? "Host" : "Client")}] CameraElasticSway spawned for player {OwnerClientId}");
     }
 }
