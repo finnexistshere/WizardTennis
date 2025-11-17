@@ -29923,7 +29923,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3436609252
+  GlobalObjectIdHash: 3448150186
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -29951,7 +29951,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   player1Spawn: {fileID: 1376262019}
   player2Spawn: {fileID: 265336819}
-  playerPrefab: {fileID: 7574428254200817810, guid: 6e9a03eac8df60841a94e2173463a58f, type: 3}
+  playerPrefab: {fileID: 5267886797547245765, guid: 852e54a05a5c0074b8bcff94ed5048e4, type: 3}
 --- !u!1 &1299915522
 GameObject:
   m_ObjectHideFlags: 0
@@ -41485,7 +41485,6 @@ GameObject:
   - component: {fileID: 1594825193}
   - component: {fileID: 1594825194}
   - component: {fileID: 1594825195}
-  - component: {fileID: 1594825196}
   m_Layer: 0
   m_Name: Game Manager
   m_TagString: Untagged
@@ -41588,18 +41587,6 @@ MonoBehaviour:
   stoneWallPrefab: {fileID: 6431261414360197309, guid: 0b4927277a528a04a88b24971fd682e3, type: 3}
   singleplayerOpponent: {fileID: 0}
   allowTimescale: 1
---- !u!114 &1594825196
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1594825190}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 168fc490cb0d4cd4e92adb895ec38a42, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0

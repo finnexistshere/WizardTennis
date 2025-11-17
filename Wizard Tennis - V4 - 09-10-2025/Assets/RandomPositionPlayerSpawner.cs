@@ -9,7 +9,7 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     public Transform player2Spawn;
 
     [Header("Player Prefab")]
-    public GameObject playerPrefab; // Must have NetworkObject and PlayerInput
+    public GameObject playerPrefab; // Must have NetworkObject and LocalPlayerSetup
 
     private static readonly Dictionary<ulong, GameObject> spawnedPlayers = new Dictionary<ulong, GameObject>();
     private int spawnIndex = 0;
@@ -37,6 +37,7 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        // Spawn player for this client
         SpawnPlayer(clientId);
     }
 
@@ -76,6 +77,8 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
         // Spawn and assign ownership
         netObj.SpawnAsPlayerObject(clientId, true);
         spawnedPlayers[clientId] = playerInstance;
+
+        Debug.Log($"[Spawner] Spawned player for client {clientId} at {spawnPos}");
     }
 
     private Vector3 GetNextSpawnPosition()
