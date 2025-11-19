@@ -83,6 +83,7 @@ GameObject:
   - component: {fileID: -5980794017454463943}
   - component: {fileID: 8439326317665925018}
   - component: {fileID: -339827697620475669}
+  - component: {fileID: 3024964220325081763}
   m_Layer: 0
   m_Name: PlayerNetworked 1
   m_TagString: Player
@@ -325,7 +326,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
-  playerInputPrefab: {fileID: 0}
   playerCameraPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
 --- !u!114 &-5980794017454463943
 MonoBehaviour:
@@ -424,6 +424,19 @@ MonoBehaviour:
   minInterval: 0.08
   pitchJitter: 0.09
   volumeJitter: 0.06
+--- !u!114 &3024964220325081763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7574428254200817810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3423b58bf2f0cf47816f424d18e1336, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ClientSyncUnfreeze
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1001 &264232937392678132
 PrefabInstance:
   m_ObjectHideFlags: 0

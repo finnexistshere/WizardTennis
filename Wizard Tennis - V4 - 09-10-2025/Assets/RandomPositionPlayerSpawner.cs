@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -9,10 +10,9 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     public Transform player2Spawn;
 
     [Header("Player Prefab")]
-    public GameObject playerPrefab; // Must have NetworkObject and LocalPlayerSetup
+    public GameObject playerPrefab; // Must have NetworkObject, NetworkTransform, and Rigidbody
 
     private static readonly Dictionary<ulong, GameObject> spawnedPlayers = new Dictionary<ulong, GameObject>();
-    private int spawnIndex = 0;
 
     public override void OnNetworkSpawn()
     {
@@ -21,7 +21,7 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
 
-        // Spawn host manually, or skip this and rely on callback
+        // Spawn host manually
         if (!spawnedPlayers.ContainsKey(NetworkManager.Singleton.LocalClientId))
             SpawnPlayer(NetworkManager.Singleton.LocalClientId);
     }
@@ -37,10 +37,7 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     private void OnClientConnected(ulong clientId)
     {
         if (!IsServer) return;
-
-        // Skip host if already spawned
-        if (clientId == NetworkManager.Singleton.LocalClientId && spawnedPlayers.ContainsKey(clientId))
-            return;
+        if (spawnedPlayers.ContainsKey(clientId)) return;
 
         SpawnPlayer(clientId);
     }
@@ -63,33 +60,36 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     {
         if (playerPrefab == null) return;
 
-        Transform spawnPoint = GetNextSpawnTransform();
-        GameObject playerInstance = Instantiate(playerPrefab, spawnPoint.position, spawnPoint.rotation); // rotation set here
-        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+        Transform spawnPoint = GetSpawnTransformForClient(clientId);
 
+        // Instantiate on server at spawn position
+        GameObject playerInstance = Instantiate(playerPrefab, spawnPoint.position, spawnPoint.rotation);
+
+        NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
         if (netObj == null)
         {
-            Debug.LogError("[Spawner] Player prefab is missing NetworkObject!");
+            Debug.LogError("[Spawner] Player prefab missing NetworkObject!");
             Destroy(playerInstance);
             return;
+        }
+
+        // Make Rigidbody kinematic initially to prevent falling on client
+        if (playerInstance.TryGetComponent<Rigidbody>(out Rigidbody rb))
+        {
+            rb.isKinematic = true;
         }
 
         netObj.SpawnAsPlayerObject(clientId, true);
         spawnedPlayers[clientId] = playerInstance;
 
+        // Let client unfreeze Rigidbody after first position sync
+        playerInstance.AddComponent<ClientSyncUnfreeze>();
+
         Debug.Log($"[Spawner] Spawned player for client {clientId} at {spawnPoint.position}");
     }
 
-    private Transform GetNextSpawnTransform()
+    private Transform GetSpawnTransformForClient(ulong clientId)
     {
-        Transform spawnTransform;
-
-        if (spawnIndex == 0 && player1Spawn != null)
-            spawnTransform = player1Spawn;
-        else
-            spawnTransform = player2Spawn;
-
-        spawnIndex = (spawnIndex + 1) % 2;
-        return spawnTransform;
+        return (clientId % 2 == 0 && player1Spawn != null) ? player1Spawn : player2Spawn;
     }
 }
