@@ -59,16 +59,12 @@ public class PlayerReferenceRelay : MonoBehaviour
         // Per-player references
         if (NetworkManager.Singleton.IsHost)
         {
-            ball.aimTarget = hostAimTarget;
             ball.OppIKRig = hostIKRig;
-            ball.opponent = hostOpponent;
             ball.servingBarriers = hostBarriers;
         }
         else
         {
-            ball.aimTarget = clientAimTarget;
             ball.OppIKRig = clientIKRig;
-            ball.opponent = clientOpponent;
             ball.servingBarriers = clientBarriers;
         }
 

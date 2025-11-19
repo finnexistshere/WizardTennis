@@ -10,12 +10,11 @@ public class NetworkedPlayerHitting : NetworkBehaviour
     public SpellEffects spellEffects;
     public ScoreManager scoreManager;
     public AudioSource audioSource;
-    public GameObject opponent;
     public GameObject servingBarriers;
 
-[Header("Ball Settings")]
+    [Header("Ball Settings")]
     public Transform ballSpawnPoint;
-    public GameObject ballPrefab; // pre-spawned ball recommended
+    public GameObject ballPrefab; // pre-spawned recommended  
 
     private static GameObject currentBall;
     private bool nearBall = false;
@@ -45,25 +44,26 @@ public class NetworkedPlayerHitting : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        try
+        if (PlayerReferenceRelay.Instance != null)
         {
-            if (PlayerReferenceRelay.Instance != null)
-                PlayerReferenceRelay.Instance.ApplyTo(this);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"[NetworkedPlayerHitting] Relay ApplyTo threw: {e.Message}");
+            try { PlayerReferenceRelay.Instance.ApplyTo(this); }
+            catch { }
         }
 
         if (IsOwner && cam == null)
         {
             cam = Camera.main;
-            if (cam == null)
-                Debug.LogWarning("[NetworkedPlayerHitting] Camera.main is null on owner.");
+            if (cam == null) Debug.LogWarning("[NetworkedPlayerHitting] Camera.main is null on owner.");
         }
 
+        // Assign aim targets **after network ownership is guaranteed**  
+        GameObject playerAimObj = GameObject.Find("PlayerAim");
+        GameObject oppAimObj = GameObject.Find("OppAim");
+
         if (IsOwner)
-            Debug.Log($"[NetworkedPlayerHitting] Owner ({OwnerClientId}) initialized references.");
+            aimTarget = playerAimObj?.transform;
+        else
+            aimTarget = oppAimObj?.transform;
     }
 
     private void Update()
@@ -72,14 +72,13 @@ public class NetworkedPlayerHitting : NetworkBehaviour
 
         if (Input.GetKeyDown(KeyCode.E))
         {
-            if (currentBall == null && IsOwner)
+            if (currentBall == null)
             {
-                RequestBallSpawnServerRpc(); // spawn the ball on the server
-
+                RequestBallSpawnServerRpc();
                 ServeBallLocal();
                 ServeBallServerRpc();
             }
-            else if (nearBall && serving && currentBall != null)
+            else if (nearBall && serving)
             {
                 ServeBallLocal();
                 ServeBallServerRpc();
@@ -90,9 +89,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
     [ServerRpc]
     private void RequestBallSpawnServerRpc(ServerRpcParams rpcParams = default)
     {
-        if (!IsServer) return;
-        if (currentBall != null) return;
-        if (ballPrefab == null || ballSpawnPoint == null) return;
+        if (!IsServer || currentBall != null || ballPrefab == null || ballSpawnPoint == null) return;
 
         currentBall = Instantiate(ballPrefab, ballSpawnPoint.position, ballSpawnPoint.rotation);
         var netObj = currentBall.GetComponent<NetworkObject>();
@@ -105,7 +102,6 @@ public class NetworkedPlayerHitting : NetworkBehaviour
         nearBall = true;
     }
 
-    // Move the pre-spawned ball to spawn point (no instantiation)
     public void ResetBallPosition()
     {
         if (currentBall == null && ballPrefab != null && ballSpawnPoint != null)
@@ -145,8 +141,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
     [ServerRpc]
     private void ServeBallServerRpc(ServerRpcParams rpcParams = default)
     {
-        if (!IsServer) return;
-        if (currentBall == null) return;
+        if (!IsServer || currentBall == null) return;
 
         Rigidbody rb = currentBall.GetComponent<Rigidbody>();
         if (rb == null) return;
@@ -156,8 +151,6 @@ public class NetworkedPlayerHitting : NetworkBehaviour
 
         serving = false;
         if (servingBarriers != null) servingBarriers.SetActive(false);
-
-        Debug.Log("[Server] Ball served.");
     }
 
     private void OnTriggerEnter(Collider other)
@@ -167,41 +160,23 @@ public class NetworkedPlayerHitting : NetworkBehaviour
         nearBall = true;
         if (!hitting || serving) return;
 
-        // Calculate upForce
-        try
-        {
-            upForce = ogUpForce;
-            if (35.5f < transform.position.x) upForce += 2f;
-            if (-6.25f < transform.position.z || transform.position.z < 6.25f) upForce += 2f;
-        }
-        catch { upForce = ogUpForce; }
+        // Calculate upForce  
+        upForce = ogUpForce;
+        if (transform.position.x > 35.5f) upForce += 2f;
+        if (transform.position.z > -6.25f && transform.position.z < 6.25f) upForce += 2f;
 
-        // Spell effects
+        // Spell effects  
         if (spellEffects != null && spellEffects.plrHitSpell)
-        {
-            try { spellEffects.castSpell(); } catch { }
-        }
+            spellEffects.castSpell();
 
-        Vector3 aimTargetPos = aimTarget != null ? aimTarget.position : transform.position + transform.forward;
-        Vector3 oppPos = opponent != null ? opponent.transform.position : transform.position;
-        float xPos = oppPos.x > 0f ? -2f : 2f;
-        if (transform.position.z < 5f || transform.position.x < -5f || transform.position.x > 5f)
-            xPos = 0f;
-        if (aimTarget != null)
-            aimTarget.position = new Vector3(xPos, aimTargetPos.y, aimTargetPos.z);
+        Vector3 targetPos = aimTarget != null ? aimTarget.position : transform.position + transform.forward;
 
-        Vector3 contactPoint = other.ClosestPoint(transform.position);
-        PlayHitSound(contactPoint);
-
-        // Apply physics locally for prediction
-        ApplyHitPhysicsLocally(aimTarget != null ? aimTarget.position : transform.position + transform.forward, upForce, strength);
-        // Apply physics server-authoritative
-        HitBallServerRpc(aimTarget != null ? aimTarget.position : transform.position + transform.forward, upForce, strength);
+        PlayHitSound(other.ClosestPoint(transform.position));
+        ApplyHitPhysicsLocally(targetPos, upForce, strength);
+        HitBallServerRpc(targetPos, upForce, strength);
 
         if (spellEffects != null && spellEffects.resetOnPlrHit)
-        {
-            try { spellEffects.resetSpellEffect(); } catch { }
-        }
+            spellEffects.resetSpellEffect();
 
         if (collisionTracker != null)
         {
@@ -229,8 +204,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
     [ServerRpc]
     private void HitBallServerRpc(Vector3 aimPos, float upF, float force)
     {
-        if (!IsServer) return;
-        if (currentBall == null) return;
+        if (!IsServer || currentBall == null) return;
 
         Rigidbody rb = currentBall.GetComponent<Rigidbody>();
         if (rb == null) return;
@@ -253,7 +227,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
         if (Time.time - lastHitSfxTime < minInterval) return;
         lastHitSfxTime = Time.time;
 
-        int index = (hitSounds.Length == 1) ? 0 : Random.Range(0, hitSounds.Length);
+        int index = hitSounds.Length == 1 ? 0 : Random.Range(0, hitSounds.Length);
         audioSource.transform.position = contactPoint;
         float pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
         float vol = Mathf.Clamp01(1f + Random.Range(-volumeJitter, volumeJitter));
@@ -262,7 +236,6 @@ public class NetworkedPlayerHitting : NetworkBehaviour
     }
 
     private static bool isHitSlowActive = false;
-    private Coroutine hitSlowCoroutine;
     private IEnumerator HitSlowdown()
     {
         if (isHitSlowActive) yield break;
@@ -272,11 +245,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
             yield return new WaitUntil(() => SpellEffects.isSpellSlowdownActive == false);
 
         if (cam == null) cam = Camera.main;
-        if (cam == null)
-        {
-            isHitSlowActive = false;
-            yield break;
-        }
+        if (cam == null) { isHitSlowActive = false; yield break; }
 
         float originalFOV = cam.fieldOfView;
         float originalTimeScale = Time.timeScale;

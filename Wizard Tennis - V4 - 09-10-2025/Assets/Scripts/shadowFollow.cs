@@ -59,7 +59,8 @@ public class shadowFollow : MonoBehaviour
     private void FollowTarget()
     {
         // Position shadow directly below the target, locked to ground height
-        transform.position = new Vector3(follow.transform.position.x, groundY, follow.transform.position.z);
+        // TEMPORARILY SET THE GROUND LEVEL TO 0 HERE - Ed
+        transform.position = new Vector3(follow.transform.position.x, 0, follow.transform.position.z);
         transform.rotation = Quaternion.Euler(-90, 0, 0);
 
         // Scale shadow based on height difference
