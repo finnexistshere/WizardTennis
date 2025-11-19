@@ -1,46 +1,115 @@
-using UnityEngine;
 using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections;
 
 public class LocalPlayerSetup : NetworkBehaviour
 {
-    [Header("Camera Prefab")]
+    [Header("Spawn Points (Assign in Inspector)")]
+    public Transform player1Spawn;
+    public Transform player2Spawn;
+
+[Header("Optional Prefabs")]
+    public PlayerInput playerInputPrefab;
     public GameObject playerCameraPrefab;
 
-    private GameObject spawnedCamera;
+    public GameObject spawnedCamera;
+
+    private void Awake()
+    {
+        Debug.Log($"[LocalPlayerSetup] Awake called for client {OwnerClientId}");
+    }
 
     public override void OnNetworkSpawn()
     {
-        if (!IsOwner) return;
-        StartCoroutine(SetupWhenReady());
+        Debug.Log($"[LocalPlayerSetup] OnNetworkSpawn called. IsOwner={IsOwner}, OwnerClientId={OwnerClientId}, IsServer={IsServer}");
+
+        if (!IsOwner)
+        {
+            Debug.Log($"[LocalPlayerSetup] Not owner, skipping transform setup for client {OwnerClientId}");
+            return;
+        }
+
+        Transform spawnPoint = GetSpawnPoint();
+        if (spawnPoint == null)
+        {
+            Debug.LogWarning($"[LocalPlayerSetup] Spawn point not assigned for client {OwnerClientId}");
+        }
+        else
+        {
+            Debug.Log($"[LocalPlayerSetup] Setting client {OwnerClientId} position to {spawnPoint.position} and rotation to {spawnPoint.rotation.eulerAngles}");
+            transform.position = spawnPoint.position;
+            transform.rotation = spawnPoint.rotation;
+        }
+
+        StartCoroutine(SetupOwnerPlayer());
     }
 
-    private IEnumerator SetupWhenReady()
+    private Transform GetSpawnPoint()
     {
-        // Wait until this client owns the object and it is fully spawned
-        yield return new WaitUntil(() => IsOwner && NetworkObject.IsSpawned);
+        // Determine spawn point based on client ID (simple 2-player logic)
+        if (OwnerClientId == 0 && player1Spawn != null)
+        {
+            Debug.Log($"[LocalPlayerSetup] Client {OwnerClientId} using player1Spawn");
+            return player1Spawn;
+        }
+        else if (OwnerClientId != 0 && player2Spawn != null)
+        {
+            Debug.Log($"[LocalPlayerSetup] Client {OwnerClientId} using player2Spawn");
+            return player2Spawn;
+        }
+        else
+        {
+            Debug.LogWarning($"[LocalPlayerSetup] No valid spawn point for client {OwnerClientId}");
+            return null;
+        }
+    }
 
-        // Wait a couple of frames for NetworkTransform to sync
-        yield return null;
-        yield return null;
+    private IEnumerator SetupOwnerPlayer()
+    {
+        // Wait until this player is fully spawned
+        yield return new WaitUntil(() => IsSpawned && IsOwner);
 
+        Debug.Log($"[LocalPlayerSetup] Starting player input and camera setup for client {OwnerClientId}");
+
+        SetupPlayerInput();
         SetupCamera();
+    }
 
-        Debug.Log($"[{(IsHost ? "Host" : "Client")}] Player camera setup complete for {OwnerClientId}");
+    private void SetupPlayerInput()
+    {
+        if (playerInputPrefab == null)
+        {
+            Debug.LogWarning($"[LocalPlayerSetup] PlayerInput prefab not assigned for client {OwnerClientId}");
+            return;
+        }
+
+        PlayerInput inputInstance = Instantiate(playerInputPrefab);
+        inputInstance.gameObject.name = $"PlayerInput_{OwnerClientId}";
+        inputInstance.transform.SetParent(transform, false);
+        inputInstance.enabled = true;
+
+        try
+        {
+            inputInstance.ActivateInput();
+            Debug.Log($"[LocalPlayerSetup] PlayerInput activated for client {OwnerClientId}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LocalPlayerSetup] Failed to activate PlayerInput for client {OwnerClientId}: {e}");
+        }
     }
 
     private void SetupCamera()
     {
         if (playerCameraPrefab == null)
         {
-            Debug.LogWarning("Player Camera Prefab not assigned!");
+            Debug.LogWarning($"[LocalPlayerSetup] Player Camera prefab not assigned for client {OwnerClientId}");
             return;
         }
 
         spawnedCamera = Instantiate(playerCameraPrefab);
         spawnedCamera.transform.SetParent(null);
-
-        // Force camera to match player position
         spawnedCamera.transform.position = transform.position;
         spawnedCamera.transform.rotation = transform.rotation;
 
@@ -49,8 +118,11 @@ public class LocalPlayerSetup : NetworkBehaviour
         {
             sway.player = transform;
             sway.spawnPoint = transform;
+            Debug.Log($"[LocalPlayerSetup] CameraElasticSway linked for client {OwnerClientId}");
         }
 
         spawnedCamera.SetActive(true);
+        Debug.Log($"[LocalPlayerSetup] Camera spawned and active for client {OwnerClientId}");
     }
+
 }
