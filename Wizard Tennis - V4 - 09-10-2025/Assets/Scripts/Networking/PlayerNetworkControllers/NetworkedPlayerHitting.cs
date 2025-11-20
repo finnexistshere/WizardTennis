@@ -36,6 +36,10 @@ public class NetworkedPlayerHitting : NetworkBehaviour
     private Camera cam;
     private CollisionTrackerBall collisionTracker;
 
+    // spawn immunity to prevent immediate accidental hits right after spawn
+    private bool justSpawnedBall = false;
+    private float spawnImmunitySeconds = 0.15f; // tweak to taste
+
     private void Awake()
     {
         cam = Camera.main;
@@ -68,7 +72,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // Spawn a new ball if none exists
+        // Spawn a new ball if none exists (player requests manager spawn at their spawn point)
         if (Input.GetKeyDown(KeyCode.E))
         {
             if (NetworkBallManager.Instance == null)
@@ -77,20 +81,12 @@ public class NetworkedPlayerHitting : NetworkBehaviour
             }
             else
             {
-                NetworkBallManager.Instance.RequestSpawnBallServerRpc(
-                    ballSpawnPoint != null ? ballSpawnPoint.position : transform.position,
-                    ballSpawnPoint != null ? ballSpawnPoint.rotation : transform.rotation
-                );
-                // Forcing a serve at spawn
-                NetworkBallManager.Instance.ServeBallServerRpc(upForce, strength);
-                serving = false;
-                if (servingBarriers != null) servingBarriers.SetActive(false);
-                  
+                // Start spawn-and-serve coroutine so we don't immediately hit the spawned ball
+                StartCoroutine(SpawnAndServeCoroutine());
             }
         }
 
-
-        // Serve if near the ball
+        // Serve if near the ball and not already serving (fallback if you want manual serve)
         if (Input.GetKeyDown(KeyCode.E) && nearBall && serving)
         {
             if (NetworkBallManager.Instance != null)
@@ -102,10 +98,40 @@ public class NetworkedPlayerHitting : NetworkBehaviour
         }
     }
 
+    private IEnumerator SpawnAndServeCoroutine()
+    {
+        // protect from double-start
+        if (justSpawnedBall) yield break;
+
+        justSpawnedBall = true;
+        serving = true; // temporarily treat as serving phase (no hits)
+
+        // Request server to spawn at this player's spawn point (or player transform if null)
+        Vector3 spawnPos = ballSpawnPoint != null ? ballSpawnPoint.position : transform.position;
+        Quaternion spawnRot = ballSpawnPoint != null ? ballSpawnPoint.rotation : transform.rotation;
+        NetworkBallManager.Instance.RequestSpawnBallServerRpc(spawnPos, spawnRot);
+
+        // Wait a short time so physics colliders settle and the player isn't overlapping the ball
+        yield return new WaitForSeconds(spawnImmunitySeconds);
+
+        // Now tell the server to perform the upward serve
+        NetworkBallManager.Instance.ServeBallServerRpc(upForce, strength);
+        serving = false;
+
+        // remove spawn immunity after a little more time (ensure serve has started)
+        yield return new WaitForSeconds(0.05f);
+        justSpawnedBall = false;
+
+        if (servingBarriers != null) servingBarriers.SetActive(false);
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         // Only owner runs the detection & requests a server hit
-        if (!IsOwner || other == null || other.tag != "Ball") return;
+        if (!IsOwner || other == null || !other.CompareTag("Ball")) return;
+
+        // If we just spawned the ball, ignore triggers for a short time to allow serving
+        if (justSpawnedBall) return;
 
         nearBall = true;
         if (!hitting || serving) return;
