@@ -1,6 +1,8 @@
 using UnityEngine;
+using Unity.Netcode;
 
-public class MainCharacterMovement : MonoBehaviour
+[RequireComponent(typeof(CharacterController))]
+public class MainCharacterMovement : NetworkBehaviour
 {
     [Header("Movement Settings")]
     public float speed = 6.0f;
@@ -8,69 +10,108 @@ public class MainCharacterMovement : MonoBehaviour
     public float gravity = 20.0f;
 
     [Header("Bounce Settings")]
-    public Transform meshChild;          // Assign the character mesh here
-    public float bounceAmplitude = 0.05f; // How high it bounces
-    public float bounceFrequency = 8.0f;  // How fast it bounces
+    public Transform meshChild;
+    public float bounceAmplitude = 0.05f;
+    public float bounceFrequency = 8.0f;
 
-    private Vector3 moveDirection = Vector3.zero;
+    [Header("Prediction Settings")]
+    public float correctionSpeed = 10f; // how fast client snaps to server position
+
     private CharacterController controller;
-    private float bounceTimer = 0f;
     private Vector3 meshOriginalLocalPos;
+    private float bounceTimer = 0f;
+
+    // Client-side predicted position
+    private Vector3 predictedPosition;
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
-
         if (meshChild != null)
             meshOriginalLocalPos = meshChild.localPosition;
+
+        predictedPosition = transform.position;
     }
 
-    void Update()
+    private void Update()
     {
-        if (controller.isGrounded)
+        if (!IsOwner) return;
+
+        Vector3 input = GetInputVector();
+        bool jump = Input.GetKey(KeyCode.Space);
+
+        // Apply client-side prediction
+        Vector3 moveDir = transform.TransformDirection(input.normalized * speed);
+        if (controller.isGrounded && jump)
+            moveDir.y = jumpSpeed;
+        moveDir.y -= gravity * Time.deltaTime;
+
+        controller.Move(moveDir * Time.deltaTime);
+
+        predictedPosition = transform.position; // store predicted position
+
+        HandleMeshBounce(moveDir);
+
+        // Send input to server
+        SendInputServerRpc(input, jump);
+    }
+
+    private Vector3 GetInputVector()
+    {
+        Vector3 input = Vector3.zero;
+        KeyCode forward = KeyCode.W;
+        KeyCode backward = KeyCode.S;
+        KeyCode left = KeyCode.A;
+        KeyCode right = KeyCode.D;
+
+        if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
         {
-            Vector3 input = Vector3.zero;
-
-            // Default movement keys (WASD)
-            KeyCode forward = KeyCode.W;
-            KeyCode backward = KeyCode.S;
-            KeyCode left = KeyCode.A;
-            KeyCode right = KeyCode.D;
-
-            // If OptionsManager exists, swap keys for left-handed mode
-            if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
-            {
-                forward = KeyCode.UpArrow;
-                backward = KeyCode.DownArrow;
-                left = KeyCode.LeftArrow;
-                right = KeyCode.RightArrow;
-            }
-
-            if (Input.GetKey(forward)) input.z += 1;
-            if (Input.GetKey(backward)) input.z -= 1;
-            if (Input.GetKey(right)) input.x += 1;
-            if (Input.GetKey(left)) input.x -= 1;
-
-            moveDirection = transform.TransformDirection(input.normalized * speed);
-
-            // Jump
-            if (Input.GetKey(KeyCode.Space))
-                moveDirection.y = jumpSpeed;
+            forward = KeyCode.UpArrow;
+            backward = KeyCode.DownArrow;
+            left = KeyCode.LeftArrow;
+            right = KeyCode.RightArrow;
         }
 
-        moveDirection.y -= gravity * Time.deltaTime;
-        controller.Move(moveDirection * Time.deltaTime);
+        if (Input.GetKey(forward)) input.z += 1;
+        if (Input.GetKey(backward)) input.z -= 1;
+        if (Input.GetKey(right)) input.x += 1;
+        if (Input.GetKey(left)) input.x -= 1;
 
-        // Bounce effect when moving
-        HandleMeshBounce();
+        return input;
     }
 
-    private void HandleMeshBounce()
+    [ServerRpc]
+    private void SendInputServerRpc(Vector3 input, bool jump)
     {
-        if (meshChild == null)
-            return;
+        if (controller == null) return;
 
-        Vector3 horizontalVelocity = new Vector3(controller.velocity.x, 0, controller.velocity.z);
+        // Compute movement on server
+        Vector3 moveDir = transform.TransformDirection(input.normalized * speed);
+        if (controller.isGrounded && jump)
+            moveDir.y = jumpSpeed;
+        moveDir.y -= gravity * Time.deltaTime;
+
+        controller.Move(moveDir * Time.deltaTime);
+
+        // After server moves, update clients
+        UpdateClientPositionClientRpc(transform.position);
+    }
+
+    [ClientRpc]
+    private void UpdateClientPositionClientRpc(Vector3 serverPosition)
+    {
+        if (!IsOwner) return; // only correct the owning client
+
+        // Smoothly correct client prediction
+        transform.position = Vector3.Lerp(predictedPosition, serverPosition, Time.deltaTime * correctionSpeed);
+        predictedPosition = transform.position;
+    }
+
+    private void HandleMeshBounce(Vector3 moveVelocity)
+    {
+        if (meshChild == null) return;
+
+        Vector3 horizontalVelocity = new Vector3(moveVelocity.x, 0, moveVelocity.z);
         float moveSpeed = horizontalVelocity.magnitude;
 
         if (moveSpeed > 0.1f && controller.isGrounded)
@@ -81,7 +122,6 @@ public class MainCharacterMovement : MonoBehaviour
         }
         else
         {
-            // Reset bounce when idle or in air
             bounceTimer = 0f;
             meshChild.localPosition = Vector3.Lerp(
                 meshChild.localPosition,
