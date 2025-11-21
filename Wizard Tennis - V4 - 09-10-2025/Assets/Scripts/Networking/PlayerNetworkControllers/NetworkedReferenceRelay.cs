@@ -1,13 +1,14 @@
 using UnityEngine;
 using Unity.Netcode;
-using Unity.Netcode.Components;
+using System.Collections.Generic;
 
 public class PlayerReferenceRelay : MonoBehaviour
 {
+    [Header("Global Scene References")]
     public SpellEffects spellEffects;
     public ScoreManager scoreManager;
 
-    // These are name-based and found automatically
+    [Header("Player-Specific References")]
     public Transform hostAimTarget;
     public Transform clientAimTarget;
 
@@ -20,7 +21,8 @@ public class PlayerReferenceRelay : MonoBehaviour
     public GameObject hostBarriers;
     public GameObject clientBarriers;
 
-    public AudioSource audioSource;
+    [Header("Shared Audio")]
+    public AudioSource audioSource; // assign in inspector
 
     private static PlayerReferenceRelay instance;
     public static PlayerReferenceRelay Instance => instance;
@@ -34,59 +36,40 @@ public class PlayerReferenceRelay : MonoBehaviour
         }
 
         instance = this;
-
-        // AUTO-FIND ALL NEEDED OBJECTS
-        hostAimTarget = GameObject.Find("PlayerAim")?.transform;
-        clientAimTarget = GameObject.Find("OppAim")?.transform;
-
-        hostIKRig = GameObject.Find("PlayerIKRig")?.GetComponent<TwoHandIKController_Opponent>();
-        clientIKRig = GameObject.Find("OppIKRig")?.GetComponent<TwoHandIKController_Opponent>();
-
-        hostOpponent = GameObject.Find("PlayerOpponent");
-        clientOpponent = GameObject.Find("OppOpponent");
-
-        hostBarriers = GameObject.Find("PlayerBarriers");
-        clientBarriers = GameObject.Find("OppBarriers");
-
-        Debug.Log("[Relay] Auto-located all reference objects.");
     }
 
-    // CORE: Apply references to a newly spawned player
-    public void ApplyTo(NetworkedPlayerHitting player)
+    // Core method: applies correct references based on who owns this NetworkedBall
+    public void ApplyTo(NetworkedPlayerHitting ball)
     {
-        if (player == null)
+        // Defensive guard
+        if (ball == null)
         {
-            Debug.LogWarning("[Relay] Tried to apply to a NULL player!");
+            Debug.LogWarning("[Relay] Tried to apply to a null NetworkedBall!");
             return;
         }
 
-        ulong ownerId = player.OwnerClientId;
-        bool isHostPlayer = (NetworkManager.Singleton.IsHost &&
-                             ownerId == NetworkManager.Singleton.LocalClientId);
+        ulong ownerId = ball.OwnerClientId;
+        bool isHost = ownerId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost;
 
-        // Shared references
-        // player.spellEffects = spellEffects;
-        //  player.scoreManager = scoreManager;
-        //  player.audioSource = audioSource;
+        // Assign shared references
+        ball.spellEffects = spellEffects;
+        ball.scoreManager = scoreManager;
+        ball.audioSource = audioSource;
 
-        // Host player setup
-        if (isHostPlayer)
+        // Per-player references
+        if (NetworkManager.Singleton.IsHost)
         {
-            player.aimTarget = hostAimTarget;
-           // player.OppIKRig = hostIKRig;
-           // player.opponent = hostOpponent;
-          //  player.servingBarriers = hostBarriers;
-
-            Debug.Log("[Relay] Assigned HOST references to player with owner ID: " + ownerId);
+            ball.aimTarget = hostAimTarget;
+            ball.OppIKRig = hostIKRig;
+            ball.servingBarriers = hostBarriers;
         }
-        else // Client player setup
+        else
         {
-            player.aimTarget = clientAimTarget;
-         //   player.OppIKRig = clientIKRig;
-          //  player.opponent = clientOpponent;
-          //  player.servingBarriers = clientBarriers;
-
-            Debug.Log("[Relay] Assigned CLIENT references to player with owner ID: " + ownerId);
+            ball.aimTarget = clientAimTarget;
+            ball.OppIKRig = clientIKRig;
+            ball.servingBarriers = clientBarriers;
         }
+
+        Debug.Log($"[Relay] Applied references to NetworkedBall ({(isHost ? "Host" : "Client")})");
     }
 }
