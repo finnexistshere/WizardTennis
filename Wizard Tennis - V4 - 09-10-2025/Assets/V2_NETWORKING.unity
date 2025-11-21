@@ -16798,8 +16798,8 @@ MonoBehaviour:
   clientIKRig: {fileID: 0}
   hostOpponent: {fileID: 0}
   clientOpponent: {fileID: 0}
-  hostBarriers: {fileID: 584352478}
-  clientBarriers: {fileID: 584352478}
+  hostBarriers: {fileID: 0}
+  clientBarriers: {fileID: 0}
   audioSource: {fileID: 546744925}
 --- !u!4 &259505485
 Transform:
@@ -54676,10 +54676,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
   ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
-  defaultSpawnPoint: {fileID: 1376262019}
-  hitParticlePrefab: {fileID: 8730164143838520366, guid: 0969430af3e17c444b1f282991c1e4bc, type: 3}
-  defaultUpForce: 11
-  defaultStrength: 25
 --- !u!1 &2115178750
 GameObject:
   m_ObjectHideFlags: 0

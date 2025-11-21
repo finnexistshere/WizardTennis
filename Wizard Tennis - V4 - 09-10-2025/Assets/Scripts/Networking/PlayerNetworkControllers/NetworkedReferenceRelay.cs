@@ -1,14 +1,13 @@
 using UnityEngine;
 using Unity.Netcode;
-using System.Collections.Generic;
+using Unity.Netcode.Components;
 
 public class PlayerReferenceRelay : MonoBehaviour
 {
-    [Header("Global Scene References")]
     public SpellEffects spellEffects;
     public ScoreManager scoreManager;
 
-    [Header("Player-Specific References")]
+    // These are name-based and found automatically
     public Transform hostAimTarget;
     public Transform clientAimTarget;
 
@@ -21,8 +20,7 @@ public class PlayerReferenceRelay : MonoBehaviour
     public GameObject hostBarriers;
     public GameObject clientBarriers;
 
-    [Header("Shared Audio")]
-    public AudioSource audioSource; // assign in inspector
+    public AudioSource audioSource;
 
     private static PlayerReferenceRelay instance;
     public static PlayerReferenceRelay Instance => instance;
@@ -36,40 +34,59 @@ public class PlayerReferenceRelay : MonoBehaviour
         }
 
         instance = this;
+
+        // AUTO-FIND ALL NEEDED OBJECTS
+        hostAimTarget = GameObject.Find("PlayerAim")?.transform;
+        clientAimTarget = GameObject.Find("OppAim")?.transform;
+
+        hostIKRig = GameObject.Find("PlayerIKRig")?.GetComponent<TwoHandIKController_Opponent>();
+        clientIKRig = GameObject.Find("OppIKRig")?.GetComponent<TwoHandIKController_Opponent>();
+
+        hostOpponent = GameObject.Find("PlayerOpponent");
+        clientOpponent = GameObject.Find("OppOpponent");
+
+        hostBarriers = GameObject.Find("PlayerBarriers");
+        clientBarriers = GameObject.Find("OppBarriers");
+
+        Debug.Log("[Relay] Auto-located all reference objects.");
     }
 
-    // Core method: applies correct references based on who owns this NetworkedBall
-    public void ApplyTo(NetworkedPlayerHitting ball)
+    // CORE: Apply references to a newly spawned player
+    public void ApplyTo(NetworkedPlayerHitting player)
     {
-        // Defensive guard
-        if (ball == null)
+        if (player == null)
         {
-            Debug.LogWarning("[Relay] Tried to apply to a null NetworkedBall!");
+            Debug.LogWarning("[Relay] Tried to apply to a NULL player!");
             return;
         }
 
-        ulong ownerId = ball.OwnerClientId;
-        bool isHost = ownerId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost;
+        ulong ownerId = player.OwnerClientId;
+        bool isHostPlayer = (NetworkManager.Singleton.IsHost &&
+                             ownerId == NetworkManager.Singleton.LocalClientId);
 
-        // Assign shared references
-        ball.spellEffects = spellEffects;
-        ball.scoreManager = scoreManager;
-        ball.audioSource = audioSource;
+        // Shared references
+        // player.spellEffects = spellEffects;
+        //  player.scoreManager = scoreManager;
+        //  player.audioSource = audioSource;
 
-        // Per-player references
-        if (NetworkManager.Singleton.IsHost)
+        // Host player setup
+        if (isHostPlayer)
         {
-            ball.aimTarget = hostAimTarget;
-            ball.OppIKRig = hostIKRig;
-            ball.servingBarriers = hostBarriers;
-        }
-        else
-        {
-            ball.aimTarget = clientAimTarget;
-            ball.OppIKRig = clientIKRig;
-            ball.servingBarriers = clientBarriers;
-        }
+            player.aimTarget = hostAimTarget;
+           // player.OppIKRig = hostIKRig;
+           // player.opponent = hostOpponent;
+          //  player.servingBarriers = hostBarriers;
 
-        Debug.Log($"[Relay] Applied references to NetworkedBall ({(isHost ? "Host" : "Client")})");
+            Debug.Log("[Relay] Assigned HOST references to player with owner ID: " + ownerId);
+        }
+        else // Client player setup
+        {
+            player.aimTarget = clientAimTarget;
+         //   player.OppIKRig = clientIKRig;
+          //  player.opponent = clientOpponent;
+          //  player.servingBarriers = clientBarriers;
+
+            Debug.Log("[Relay] Assigned CLIENT references to player with owner ID: " + ownerId);
+        }
     }
 }
