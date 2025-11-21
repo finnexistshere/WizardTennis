@@ -263,8 +263,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BallTriggerHit
   ShowTopMostFoldoutHeaderGroup: 1
-  autoHitStrength: 15
-  autoHitUpForce: 1.1
+  autoHitStrength: 20
+  autoHitUpForce: 0.0001
   minHitInterval: 0.1
 --- !u!1 &6566581645874027722
 GameObject:

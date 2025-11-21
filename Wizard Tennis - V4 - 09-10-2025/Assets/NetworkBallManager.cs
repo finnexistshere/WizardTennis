@@ -46,7 +46,7 @@ public class NetworkBallManager : NetworkBehaviour
             return;
         }
 
-        // Instantiate at the client-provided spawn point
+        // Instantiate at the client?s provided spawn point
         GameObject go = Instantiate(ballPrefab, spawnPos, spawnRot);
         go.tag = "Ball";
 
@@ -66,7 +66,6 @@ public class NetworkBallManager : NetworkBehaviour
             ballRb.linearVelocity = Vector3.zero;
             ballRb.angularVelocity = Vector3.zero;
             ballRb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            ballRb.interpolation = RigidbodyInterpolation.Interpolate;
         }
 
         netObj.Spawn(true);
@@ -78,10 +77,12 @@ public class NetworkBallManager : NetworkBehaviour
         NotifyClientsBallSpawnedClientRpc();
     }
 
+
     [ClientRpc]
     private void NotifyClientsBallSpawnedClientRpc(ClientRpcParams rpcParams = default)
     {
-        // Clients can react to a new ball spawn here (destroy ghosts / assign IK)
+        // clients can use this callback to assign IK rigs or destroy any ghost objects
+        // players' local scripts will find the ball by tag or via NetworkManager's spawned objects
     }
 
     // ---------- Server: Serve Ball ----------
@@ -100,12 +101,7 @@ public class NetworkBallManager : NetworkBehaviour
         ballRb.useGravity = true;
         Vector3 upVec = new Vector3(0f, upF, 0f);
         if (upVec.sqrMagnitude <= 0.0001f) upVec = Vector3.up * defaultUpForce;
-
-        // Apply a clean upward serve velocity; server authoritative
         ballRb.linearVelocity = upVec.normalized * (force / 2f);
-
-        // small server-side "tweak" to ensure consistent arc: slight forward bias if desired
-        // ballRb.velocity += currentBallNetObj.transform.forward * (force * 0.05f);
 
         Debug.Log("[NetworkBallManager] Ball served (server authority).");
     }
@@ -124,6 +120,7 @@ public class NetworkBallManager : NetworkBehaviour
         }
 
         // Compute direction using server-side player transform snapshot (we trust the server's transform)
+        // Find the player object that issued the RPC (sender)
         ulong senderId = rpcParams.Receive.SenderClientId;
         NetworkObject playerNetObj = null;
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClients.ContainsKey(senderId))
@@ -136,7 +133,6 @@ public class NetworkBallManager : NetworkBehaviour
         if (dir.sqrMagnitude < 0.0001f) dir = playerNetObj != null ? playerNetObj.transform.forward : Vector3.forward;
         dir = dir.normalized;
 
-        // Apply authoritative hit velocity
         ballRb.linearVelocity = dir * force + new Vector3(0f, upF, 0f);
 
         // Update collision tracker
@@ -163,6 +159,9 @@ public class NetworkBallManager : NetworkBehaviour
             if (ps != null) ps.Play();
             Destroy(p, 3f);
         }
+
+        // Optional: play a global sfx or local sfx via an AudioSource in the scene
+        // (players can still play their own localized audio from their Player script)
     }
 
     // ---------- Utility ----------
