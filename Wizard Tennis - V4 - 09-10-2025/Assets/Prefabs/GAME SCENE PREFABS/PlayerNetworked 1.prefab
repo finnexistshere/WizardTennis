@@ -177,7 +177,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3411430673
+  GlobalObjectIdHash: 1020495472
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 7
@@ -211,9 +211,9 @@ MonoBehaviour:
   opponent: {fileID: 0}
   servingBarriers: {fileID: 0}
   ballSpawnPoint: {fileID: 7169873694817178116}
-  ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
-  strength: 15
-  ogUpForce: 5
+  ballPrefab: {fileID: 0}
+  strength: 2
+  ogUpForce: 1
   hitSounds:
   - {fileID: 8300000, guid: 820b22098d554f7469ab14c7d191ccf8, type: 3}
   - {fileID: 8300000, guid: a22eccf48dfd3f04caabd2e671a3d836, type: 3}
@@ -231,13 +231,13 @@ CapsuleCollider:
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
   m_IsTrigger: 1
-  m_ProvidesContacts: 0
+  m_ProvidesContacts: 1
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 1.5
@@ -254,7 +254,7 @@ CharacterController:
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -262,13 +262,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 3
-  m_Radius: 1.5
+  m_Height: 2
+  m_Radius: 0.5
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0.5, z: 0}
+  m_Center: {x: 0, y: 0.2, z: 0}
 --- !u!114 &8434956346218930837
 MonoBehaviour:
   m_ObjectHideFlags: 0
