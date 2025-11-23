@@ -204,20 +204,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
   aimTarget: {fileID: 0}
+  opponent: {fileID: 0}
   OppIKRig: {fileID: 0}
   spellEffects: {fileID: 0}
   scoreManager: {fileID: 0}
-  audioSource: {fileID: 0}
-  opponent: {fileID: 0}
-  servingBarriers: {fileID: 0}
   ballSpawnPoint: {fileID: 7169873694817178116}
-  ballPrefab: {fileID: 0}
-  strength: 0
-  ogUpForce: 0
-  hitSounds:
-  - {fileID: 8300000, guid: 820b22098d554f7469ab14c7d191ccf8, type: 3}
-  - {fileID: 8300000, guid: a22eccf48dfd3f04caabd2e671a3d836, type: 3}
-  - {fileID: 8300000, guid: 5b6527dd77a73ea41ac001c83bf9d2e0, type: 3}
+  ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
+  servingBarriers: {fileID: 0}
+  strength: 11
+  ogUpForce: 5
+  audioSource: {fileID: 0}
+  hitsounds: []
   pitchJitter: 0.07
   volumeJitter: 0.12
   minInterval: 0.08

@@ -54678,8 +54678,8 @@ MonoBehaviour:
   ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
   defaultSpawnPoint: {fileID: 1376262019}
   hitParticlePrefab: {fileID: 8730164143838520366, guid: 0969430af3e17c444b1f282991c1e4bc, type: 3}
-  defaultUpForce: 11
-  defaultStrength: 25
+  defaultUpForce: 0
+  defaultStrength: 0
 --- !u!1 &2115178750
 GameObject:
   m_ObjectHideFlags: 0

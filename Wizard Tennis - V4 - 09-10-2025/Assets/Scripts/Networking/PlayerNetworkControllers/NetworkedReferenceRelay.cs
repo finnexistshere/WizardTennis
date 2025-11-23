@@ -1,6 +1,5 @@
 using UnityEngine;
 using Unity.Netcode;
-using System.Collections.Generic;
 
 public class PlayerReferenceRelay : MonoBehaviour
 {
@@ -11,18 +10,15 @@ public class PlayerReferenceRelay : MonoBehaviour
     [Header("Player-Specific References")]
     public Transform hostAimTarget;
     public Transform clientAimTarget;
-
     public TwoHandIKController_Opponent hostIKRig;
     public TwoHandIKController_Opponent clientIKRig;
-
     public GameObject hostOpponent;
     public GameObject clientOpponent;
-
     public GameObject hostBarriers;
     public GameObject clientBarriers;
 
     [Header("Shared Audio")]
-    public AudioSource audioSource; // assign in inspector
+    public AudioSource audioSource;
 
     private static PlayerReferenceRelay instance;
     public static PlayerReferenceRelay Instance => instance;
@@ -34,42 +30,42 @@ public class PlayerReferenceRelay : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-
         instance = this;
     }
 
-    // Core method: applies correct references based on who owns this NetworkedBall
-    public void ApplyTo(NetworkedPlayerHitting ball)
+    public void ApplyTo(NetworkedBall ball)
     {
-        // Defensive guard
         if (ball == null)
         {
             Debug.LogWarning("[Relay] Tried to apply to a null NetworkedBall!");
             return;
         }
 
-        ulong ownerId = ball.OwnerClientId;
-        bool isHost = ownerId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsHost;
-
         // Assign shared references
         ball.spellEffects = spellEffects;
         ball.scoreManager = scoreManager;
         ball.audioSource = audioSource;
 
-        // Per-player references
-        if (NetworkManager.Singleton.IsHost)
+        // Determine which player this is (host = client 0, client = client 1)
+        ulong ownerId = ball.OwnerClientId;
+        bool isHostPlayer = (ownerId == 0);
+
+        // Assign player-specific references
+        if (isHostPlayer)
         {
             ball.aimTarget = hostAimTarget;
             ball.OppIKRig = hostIKRig;
+            ball.opponent = clientOpponent; // Host's opponent is the client
             ball.servingBarriers = hostBarriers;
+            Debug.Log($"[Relay] Applied HOST references to NetworkedBall (OwnerClientId: {ownerId})");
         }
         else
         {
             ball.aimTarget = clientAimTarget;
             ball.OppIKRig = clientIKRig;
+            ball.opponent = hostOpponent; // Client's opponent is the host
             ball.servingBarriers = clientBarriers;
+            Debug.Log($"[Relay] Applied CLIENT references to NetworkedBall (OwnerClientId: {ownerId})");
         }
-
-        Debug.Log($"[Relay] Applied references to NetworkedBall ({(isHost ? "Host" : "Client")})");
     }
 }

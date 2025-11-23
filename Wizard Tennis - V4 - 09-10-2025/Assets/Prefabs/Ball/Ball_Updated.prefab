@@ -17,7 +17,8 @@ GameObject:
   - component: {fileID: -4872240932906499296}
   - component: {fileID: 7322249843954201516}
   - component: {fileID: 4855094407017637972}
-  - component: {fileID: 3603224971107300147}
+  - component: {fileID: -2072467869804857903}
+  - component: {fileID: 915862009352411559}
   m_Layer: 6
   m_Name: Ball_Updated
   m_TagString: Ball
@@ -247,10 +248,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.Components.NetworkRigidbody
   ShowTopMostFoldoutHeaderGroup: 1
   NetworkRigidbodyBaseExpanded: 0
-  UseRigidBodyForMotion: 1
+  UseRigidBodyForMotion: 0
   AutoUpdateKinematicState: 1
-  AutoSetKinematicOnDespawn: 1
---- !u!114 &3603224971107300147
+  AutoSetKinematicOnDespawn: 0
+--- !u!114 &-2072467869804857903
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -259,13 +260,22 @@ MonoBehaviour:
   m_GameObject: {fileID: 4511917398390109774}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7f51a127f95c4a24f966766ddc93794a, type: 3}
+  m_Script: {fileID: 11500000, guid: d85bb889f6e70e54db810668091ff13d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BallTriggerHit
+  m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
-  autoHitStrength: 20
-  autoHitUpForce: 0.0001
-  minHitInterval: 0.1
+--- !u!114 &915862009352411559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4511917398390109774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1f0281f30c02ce46b820ee87febeb66, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
 --- !u!1 &6566581645874027722
 GameObject:
   m_ObjectHideFlags: 0
