@@ -8,6 +8,6 @@ public class Orbiter : MonoBehaviour
     
     void Update()
     {
-        this.transform.rotation *= Quaternion.AngleAxis((speed * Time.deltaTime), Vector3.up);
+        this.transform.rotation *= Quaternion.AngleAxis(-(speed * Time.deltaTime), Vector3.up);
     }
 }
