@@ -15,7 +15,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
 
     [Header("Ball Settings")]
     public Transform ballSpawnPoint;
-    public GameObject ballPrefab; // kept for ghosting if you want
+    public GameObject ballPrefab;
 
     private bool nearBall = false;
     private bool serving = true;
@@ -44,58 +44,21 @@ public class NetworkedPlayerHitting : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        try
-        {
-            if (PlayerReferenceRelay.Instance != null)
-                PlayerReferenceRelay.Instance.ApplyTo(this);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"[NetworkedPlayerHitting] Relay ApplyTo threw: {e.Message}");
-        }
-
-        if (IsOwner && cam == null)
-        {
-            cam = Camera.main;
-            if (cam == null) Debug.LogWarning("[NetworkedPlayerHitting] Camera.main is null on owner.");
-        }
-
-        if (IsOwner)
-            Debug.Log($"[NetworkedPlayerHitting] Owner ({OwnerClientId}) initialized references.");
+        if (PlayerReferenceRelay.Instance != null)
+            PlayerReferenceRelay.Instance.ApplyTo(this);
     }
 
     private void Update()
     {
         if (!IsOwner) return;
 
-        // Spawn a new ball if none exists
         if (Input.GetKeyDown(KeyCode.E))
-        {
-            if (NetworkBallManager.Instance == null)
-            {
-                Debug.LogWarning("[NetworkedPlayerHitting] No NetworkBallManager present.");
-            }
-            else
-            {
-                NetworkBallManager.Instance.RequestSpawnBallServerRpc(
-                    ballSpawnPoint != null ? ballSpawnPoint.position : transform.position,
-                    ballSpawnPoint != null ? ballSpawnPoint.rotation : transform.rotation
-                );
-
-                NetworkBallManager.Instance.ServeBallServerRpc(upForce, strength);
-                serving = false;
-                if (servingBarriers != null) servingBarriers.SetActive(false);
-                  
-            }
-        }
-
-
-        // Serve if near the ball
-        if (Input.GetKeyDown(KeyCode.E) && nearBall && serving)
         {
             if (NetworkBallManager.Instance != null)
             {
-                NetworkBallManager.Instance.ServeBallServerRpc(upForce, strength);
+                Vector3 pos = ballSpawnPoint != null ? ballSpawnPoint.position : transform.position;
+                Quaternion rot = ballSpawnPoint != null ? ballSpawnPoint.rotation : transform.rotation;
+                NetworkBallManager.Instance.SpawnAndServeServerRpc(pos, rot, upForce, strength);
                 serving = false;
                 if (servingBarriers != null) servingBarriers.SetActive(false);
             }
@@ -104,67 +67,47 @@ public class NetworkedPlayerHitting : NetworkBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // Only owner runs the detection & requests a server hit
-        if (!IsOwner || other == null || other.tag != "Ball") return;
+        // Ignore non-ball objects
+        if (other == null || other.tag != "Ball") return;
 
         nearBall = true;
         if (!hitting || serving) return;
 
-        // calculate upForce safely
+        // Safely adjust upForce
         try
         {
-            if (35.5f < transform.position.x) upForce = ogUpForce + 2f;
-            else upForce = ogUpForce;
-            if (-6.25f < transform.position.z || transform.position.z < 6.25f) upForce += 2f;
+            upForce = ogUpForce;
+            if (transform.position.x > 35.5f) upForce += 2f;
+            if (transform.position.z > -6.25f && transform.position.z < 6.25f) upForce += 2f;
         }
         catch { upForce = ogUpForce; }
 
-        // If spellEffects is assigned and this is a player-hit spell, run it locally
+        // Optional: local spell effect
         if (spellEffects != null && spellEffects.plrHitSpell)
-        {
-            try { spellEffects.castSpell(); } catch (System.Exception e) { Debug.LogWarning($"[NetworkedPlayerHitting] spellEffects.castSpell threw: {e.Message}"); }
-        }
+            spellEffects.castSpell();
 
-        // Aim target adjustments (local visual)
-        Vector3 aimTargetPos = aimTarget != null ? aimTarget.position : transform.position + transform.forward;
-        Vector3 oppPos = opponent != null ? opponent.transform.position : transform.position;
-        float xPos = oppPos.x > 0f ? -2f : 2f;
-        if (transform.position.z < 5f || transform.position.x < -5f || transform.position.x > 5f)
-            xPos = 0f;
-        if (aimTarget != null)
-            aimTarget.position = new Vector3(xPos, aimTargetPos.y, aimTargetPos.z);
-
-        // Audio local feedback (instant)
+        // Local audio/visual feedback
         Vector3 contactPoint = other.ClosestPoint(transform.position);
         PlayHitSound(contactPoint);
 
-        // Request server to apply physics via manager
-        Vector3 aimPos = aimTarget != null ? aimTarget.position : transform.position + transform.forward;
+        // Always tell server: ball hit by this player
         if (NetworkBallManager.Instance != null)
         {
-            NetworkBallManager.Instance.HitBallServerRpc(aimPos, upForce, strength);
-        }
-        else
-        {
-            Debug.LogWarning("[NetworkedPlayerHitting] Hit requested but no NetworkBallManager found.");
+            ulong playerId = IsOwner ? OwnerClientId : NetworkManager.Singleton.LocalClientId;
+            Vector3 aimPos = aimTarget != null ? aimTarget.position : transform.position + transform.forward;
+            NetworkBallManager.Instance.HitBallServerRpc(aimPos, upForce, strength, playerId);
         }
 
-        // Reset spell if needed
+        // Optional: reset spell effect
         if (spellEffects != null && spellEffects.resetOnPlrHit)
-        {
-            try { spellEffects.resetSpellEffect(); } catch (System.Exception e) { Debug.LogWarning($"[NetworkedPlayerHitting] resetSpellEffect threw: {e.Message}"); }
-        }
+            spellEffects.resetSpellEffect();
 
-        // Collision tracker (local copy attempt)
+        // Collision tracker
         if (collisionTracker != null)
         {
             collisionTracker.LastHitWizard = "Player";
             collisionTracker.hasBounced = false;
         }
-
-        // Trigger local slowdown effect if spell flagged as hit
-        if (spellEffects != null && spellEffects.spellHit)
-            StartCoroutine(HitSlowdown());
     }
 
     private void OnTriggerExit(Collider other)
@@ -175,7 +118,7 @@ public class NetworkedPlayerHitting : NetworkBehaviour
 
     private void PlayHitSound(Vector3 contactPoint)
     {
-        if (audioSource == null || hitSounds == null || hitSounds.Length == 0) return;
+        if (audioSource == null || hitSounds.Length == 0) return;
         if (Time.time - lastHitSfxTime < minInterval) return;
         lastHitSfxTime = Time.time;
 
@@ -185,38 +128,5 @@ public class NetworkedPlayerHitting : NetworkBehaviour
         float vol = Mathf.Clamp01(1f + Random.Range(-volumeJitter, volumeJitter));
         audioSource.pitch = pitch;
         audioSource.PlayOneShot(hitSounds[index], vol);
-    }
-
-    private static bool isHitSlowActive = false;
-    private IEnumerator HitSlowdown()
-    {
-        if (isHitSlowActive) yield break;
-        isHitSlowActive = true;
-
-        if (SpellEffects.isSpellSlowdownActive)
-            yield return new WaitUntil(() => SpellEffects.isSpellSlowdownActive == false);
-
-        if (cam == null) cam = Camera.main;
-        if (cam == null)
-        {
-            isHitSlowActive = false;
-            yield break;
-        }
-
-        float originalFOV = cam.fieldOfView;
-        float originalTimeScale = Time.timeScale;
-
-        try
-        {
-            cam.fieldOfView = 60.5f;
-            Time.timeScale = 0.1f;
-            yield return new WaitForSecondsRealtime(0.08f);
-        }
-        finally
-        {
-            Time.timeScale = originalTimeScale;
-            if (cam != null) cam.fieldOfView = originalFOV;
-            isHitSlowActive = false;
-        }
     }
 }
