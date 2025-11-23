@@ -46,6 +46,7 @@ public class NetworkBallManager : NetworkBehaviour
             return;
         }
 
+        // Instantiate at the client?s provided spawn point
         GameObject go = Instantiate(ballPrefab, spawnPos, spawnRot);
         go.tag = "Ball";
 
@@ -57,6 +58,7 @@ public class NetworkBallManager : NetworkBehaviour
             return;
         }
 
+        // Configure physics server-side
         ballRb = go.GetComponent<Rigidbody>();
         if (ballRb != null)
         {
@@ -64,7 +66,6 @@ public class NetworkBallManager : NetworkBehaviour
             ballRb.linearVelocity = Vector3.zero;
             ballRb.angularVelocity = Vector3.zero;
             ballRb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            ballRb.interpolation = RigidbodyInterpolation.Interpolate;
         }
 
         netObj.Spawn(true);
@@ -76,86 +77,16 @@ public class NetworkBallManager : NetworkBehaviour
         NotifyClientsBallSpawnedClientRpc();
     }
 
+
     [ClientRpc]
     private void NotifyClientsBallSpawnedClientRpc(ClientRpcParams rpcParams = default)
     {
-        // clients can use this callback to assign IK rigs or destroy ghost objects
+        // clients can use this callback to assign IK rigs or destroy any ghost objects
+        // players' local scripts will find the ball by tag or via NetworkManager's spawned objects
     }
 
-    // ---------- Server: Spawn AND Serve (atomic) ----------
-    // Use this when the client wants the ball created and immediately served.
-    [ServerRpc(RequireOwnership = false)]
-    public void SpawnAndServeServerRpc(Vector3 spawnPos, Quaternion spawnRot, float upF, float force, ServerRpcParams rpcParams = default)
-    {
-        if (!IsServer) return;
-
-        // Spawn if missing
-        if (currentBallNetObj == null)
-        {
-            if (ballPrefab == null)
-            {
-                Debug.LogError("[NetworkBallManager] Missing ballPrefab.");
-                return;
-            }
-
-            GameObject go = Instantiate(ballPrefab, spawnPos, spawnRot);
-            go.tag = "Ball";
-
-            NetworkObject netObj = go.GetComponent<NetworkObject>();
-            if (netObj == null)
-            {
-                Debug.LogError("[NetworkBallManager] Ball prefab missing NetworkObject.");
-                Destroy(go);
-                return;
-            }
-
-            ballRb = go.GetComponent<Rigidbody>();
-            if (ballRb != null)
-            {
-                ballRb.useGravity = false;
-                ballRb.linearVelocity = Vector3.zero;
-                ballRb.angularVelocity = Vector3.zero;
-                ballRb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-                ballRb.interpolation = RigidbodyInterpolation.Interpolate;
-            }
-
-            netObj.Spawn(true);
-            currentBallNetObj = netObj;
-            collisionTracker = go.GetComponent<CollisionTrackerBall>();
-
-            Debug.Log("[NetworkBallManager] SpawnAndServe: spawned new ball.");
-        }
-        else
-        {
-            if (ballRb == null) ballRb = currentBallNetObj.GetComponent<Rigidbody>();
-            Debug.Log("[NetworkBallManager] SpawnAndServe: found existing ball.");
-        }
-
-        // Serve (server authoritative) - apply gravity and velocity
-        if (currentBallNetObj == null)
-        {
-            Debug.LogWarning("[NetworkBallManager] SpawnAndServe: no currentBallNetObj to serve.");
-            return;
-        }
-
-        if (ballRb == null) ballRb = currentBallNetObj.GetComponent<Rigidbody>();
-        if (ballRb == null)
-        {
-            Debug.LogWarning("[NetworkBallManager] SpawnAndServe: missing Rigidbody.");
-            return;
-        }
-
-        ballRb.useGravity = true;
-        Vector3 upVec = new Vector3(0f, upF, 0f);
-        if (upVec.sqrMagnitude <= 0.0001f) upVec = Vector3.up * defaultUpForce;
-
-        // Keep same semantics as previous ServeBall: linear upward component scaled by force/2
-        ballRb.linearVelocity = upVec.normalized * (force / 2f);
-
-        Debug.Log("[NetworkBallManager] SpawnAndServe: ball served (server authority).");
-    }
-
-    // ---------- Server: Serve Ball (existing) ----------
+    // ---------- Server: Serve Ball ----------
+    // Clients call this when they want to serve. We accept upF/force to allow client-side calculated power.
     [ServerRpc(RequireOwnership = false)]
     public void ServeBallServerRpc(float upF, float force, ServerRpcParams rpcParams = default)
     {
@@ -177,34 +108,44 @@ public class NetworkBallManager : NetworkBehaviour
 
     // ---------- Server: Hit Ball (called by players) ----------
     [ServerRpc(RequireOwnership = false)]
-    public void HitBallServerRpc(Vector3 aimPos, float upF, float force, ulong playerId, ServerRpcParams rpcParams = default)
+    public void HitBallServerRpc(Vector3 aimPos, float upF, float force, ServerRpcParams rpcParams = default)
     {
         if (!IsServer || currentBallNetObj == null) return;
 
         if (ballRb == null) ballRb = currentBallNetObj.GetComponent<Rigidbody>();
-        if (ballRb == null) return;
-
-        Vector3 sourcePos = Vector3.zero;
-        if (NetworkManager.Singleton.ConnectedClients.ContainsKey(playerId))
+        if (ballRb == null)
         {
-            var playerObj = NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject;
-            if (playerObj != null) sourcePos = playerObj.transform.position;
+            Debug.LogWarning("[NetworkBallManager] Hit failed - no Rigidbody.");
+            return;
         }
 
-        Vector3 dir = (aimPos - sourcePos).normalized;
-        if (dir.sqrMagnitude < 0.0001f) dir = Vector3.forward;
+        // Compute direction using server-side player transform snapshot (we trust the server's transform)
+        // Find the player object that issued the RPC (sender)
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        NetworkObject playerNetObj = null;
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.ConnectedClients.ContainsKey(senderId))
+        {
+            playerNetObj = NetworkManager.Singleton.ConnectedClients[senderId].PlayerObject;
+        }
 
-        ballRb.linearVelocity = dir * force + Vector3.up * upF;
+        Vector3 sourcePos = playerNetObj != null ? playerNetObj.transform.position : Vector3.zero;
+        Vector3 dir = (aimPos - sourcePos);
+        if (dir.sqrMagnitude < 0.0001f) dir = playerNetObj != null ? playerNetObj.transform.forward : Vector3.forward;
+        dir = dir.normalized;
 
-        // Optional: track hit
+        ballRb.linearVelocity = dir * force + new Vector3(0f, upF, 0f);
+
+        // Update collision tracker
         if (collisionTracker != null)
         {
-            collisionTracker.LastHitWizard = $"Player_{playerId}";
+            collisionTracker.LastHitWizard = playerNetObj != null ? $"Player_{senderId}" : "Player";
             collisionTracker.hasBounced = false;
         }
 
+        // Let clients play particles/sfx at the hit point
         PlayHitEffectsClientRpc(currentBallNetObj.transform.position);
-        Debug.Log($"[NetworkBallManager] Ball hit by client {playerId}.");
+
+        Debug.Log($"[NetworkBallManager] Ball hit by client {senderId}.");
     }
 
     [ClientRpc]
@@ -218,6 +159,9 @@ public class NetworkBallManager : NetworkBehaviour
             if (ps != null) ps.Play();
             Destroy(p, 3f);
         }
+
+        // Optional: play a global sfx or local sfx via an AudioSource in the scene
+        // (players can still play their own localized audio from their Player script)
     }
 
     // ---------- Utility ----------
