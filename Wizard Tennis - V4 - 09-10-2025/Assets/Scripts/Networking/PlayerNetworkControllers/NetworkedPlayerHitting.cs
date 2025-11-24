@@ -31,6 +31,8 @@ public class NetworkedBall : NetworkBehaviour
     private float lastHitSfxTime = -999f;
     private float lastHitTime = -999f;
     private float hitDebounce = 0.15f;
+    private float lastServeTime = -999f;
+    private float serveProtectionWindow = 0.3f; // Can't hit for 0.3s after serving
 
     // Local state
     private bool nearBall = false;
@@ -94,6 +96,7 @@ public class NetworkedBall : NetworkBehaviour
         {
             ServeBallServerRpc();
             localServing = false;
+            lastServeTime = Time.time; // Record serve time
             if (servingBarriers != null) servingBarriers.SetActive(false);
         }
     }
@@ -157,8 +160,14 @@ public class NetworkedBall : NetworkBehaviour
         if (rb != null)
         {
             rb.useGravity = true;
-            rb.linearVelocity = new Vector3(0, ogUpForce, 0).normalized * strength / 2;
-            Debug.Log($"[Server] Ball served by client {rpcParams.Receive.SenderClientId}");
+
+            // Match original Ball.cs exactly: gentle upward toss
+            // new Vector3(0, upForce, 0).normalized gives (0, 1, 0)
+            // multiplied by strength/2 gives a gentle upward velocity
+            Vector3 upVector = new Vector3(0, ogUpForce, 0);
+            rb.linearVelocity = upVector.normalized * (strength / 2f);
+
+            Debug.Log($"[Server] Ball served by client {rpcParams.Receive.SenderClientId} - velocity: {rb.linearVelocity}");
         }
 
         NotifyServeCompleteClientRpc();
@@ -168,6 +177,7 @@ public class NetworkedBall : NetworkBehaviour
     private void NotifyServeCompleteClientRpc()
     {
         localServing = false;
+        lastServeTime = Time.time; // All clients record the serve time
         if (servingBarriers != null) servingBarriers.SetActive(false);
     }
 
@@ -188,8 +198,14 @@ public class NetworkedBall : NetworkBehaviour
         Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.linearVelocity = direction.normalized * force + new Vector3(0, upwardForce, 0);
-            Debug.Log($"[Server] Ball hit by client {rpcParams.Receive.SenderClientId} - velocity: {rb.linearVelocity}");
+            // Ensure gravity is always on during gameplay
+            rb.useGravity = true;
+
+            // Apply velocity: normalized direction * force + upward component
+            Vector3 velocity = direction.normalized * force + new Vector3(0, upwardForce, 0);
+            rb.linearVelocity = velocity;
+
+            Debug.Log($"[Server] Ball hit by client {rpcParams.Receive.SenderClientId} - velocity: {velocity}, gravity: {rb.useGravity}");
         }
 
         // Notify all clients to play effects
@@ -218,7 +234,14 @@ public class NetworkedBall : NetworkBehaviour
 
         if (other == null || other.tag != "Ball") return;
 
-        Debug.Log($"[NetworkedBall] Player {OwnerClientId} detected ball - nearBall: {nearBall}, hitting: {hitting}, timeSinceLastHit: {Time.time - lastHitTime:F2}s");
+        Debug.Log($"[NetworkedBall] Player {OwnerClientId} detected ball - nearBall: {nearBall}, hitting: {hitting}, timeSinceLastHit: {Time.time - lastHitTime:F2}s, timeSinceServe: {Time.time - lastServeTime:F2}s");
+
+        // Protection window: don't hit immediately after serving
+        if (Time.time - lastServeTime < serveProtectionWindow)
+        {
+            Debug.Log($"[NetworkedBall] Player {OwnerClientId} in serve protection window");
+            return;
+        }
 
         // Debounce
         if (Time.time - lastHitTime < hitDebounce)
@@ -277,6 +300,7 @@ public class NetworkedBall : NetworkBehaviour
 
         // Request server to apply physics
         Vector3 direction = targetPos - transform.position;
+        Debug.Log($"[NetworkedBall] Player {OwnerClientId} hitting - direction: {direction}, targetPos: {targetPos}, myPos: {transform.position}, force: {strength}, upForce: {upForce}");
         HitBallServerRpc(direction, strength, upForce);
 
         // Reset spell effects
