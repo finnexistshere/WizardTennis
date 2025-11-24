@@ -156,7 +156,8 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
             // prefer finding by name first (spellAddressText could be multiple TMPs in scene)
             var go = GameObject.Find("SpellAddressText");
             if (go != null) spellAddressText = go.GetComponent<TextMeshProUGUI>();
-            else spellAddressText = FindObjectOfType<TextMeshProUGUI>();
+            else
+                spellAddressText = GameObject.Find("SpellAddress").GetComponent<TMPro.TextMeshProUGUI>();
             Debug.Log(spellAddressText ? "[Spellcasting] Found spellAddressText." : "[Spellcasting] No TextMeshProUGUI found!");
         }
 

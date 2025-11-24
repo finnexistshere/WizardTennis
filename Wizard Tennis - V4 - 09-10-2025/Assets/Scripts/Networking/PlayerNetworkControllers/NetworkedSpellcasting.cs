@@ -1,15 +1,15 @@
 using UnityEngine;
-using Unity.Netcode;
 using TMPro;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 
 public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 {
-    [Header("Racket Shader Reference")]
+    // --- Racket Shader Reference ---
     [SerializeField] public Material racketShader;
 
-    [Header("Spell Dictionaries")]
+    // --- Spell Dictionaries ---
     public Dictionary<string, string> spellBook { get; private set; } = new Dictionary<string, string>();
     public Dictionary<string, float> debuffBook = new Dictionary<string, float>();
     public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>();
@@ -20,11 +20,13 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     public Dictionary<string, AudioClip> wizardAudio = new Dictionary<string, AudioClip>();
     public Dictionary<string, float> spellDurations = new Dictionary<string, float>();
 
+    // --- UI References ---
     [Header("UI References")]
     public GameObject spellBookPanel;
     public TextMeshProUGUI spellAddressText;
     public SpellTextEntry spellTextPrefab;
 
+    // --- Ball Visuals ---
     [Header("Ball Visual")]
     public GameObject parentObject;
     public GameObject baseEffectObject;
@@ -32,67 +34,113 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     [Header("Spell Settings")]
     public float spellDuration = 5f;
-    public float inputTimeout = 2f;
 
     [Header("Particle Systems")]
     public ParticleSystem hitParticle;
     public SpellParticleColor spellParticleColor;
+    public float inputTimeout = 2f;
 
     [Header("Audio")]
     public AudioSource audioSource;
     public AudioClip SpellInputClick;
     public AudioClip spellRegisterSound;
 
-    [Header("References")]
+    // --- Linked Components ---
     public TennisAI TennisAi;
     public SpellFloorImage spellFloorImage;
     public SpellEffects SpellEffects;
 
+    // --- Internal State ---
     private string inputSpellAddress = "";
     private string currentActiveSpell = "";
     private float lastInputTime;
     private bool isCasting = false;
+    private GameObject currentBall;
 
+    [Header("Settings")]
     public bool leftHandedMode = false;
 
-    private GameObject currentBall;
-    private float ballCheckInterval = 0.5f;
-    private float nextBallCheckTime = 0f;
+    private NetworkedUIManager uiManager;
+
+    private void Awake()
+    {
+        AutoSetupReferences();
+        InitializeRacketShader();
+    }
 
     public override void OnNetworkSpawn()
     {
-        Debug.Log("[NetworkedSpellcasting] OnNetworkSpawn called.");
+        // Only the owner manages their own spellcasting
+        if (!IsOwner) return;
 
-        if (NetworkedSpellcastingRelay.Instance != null)
-            NetworkedSpellcastingRelay.Instance.ApplyTo(this);
+        uiManager = GetComponent<NetworkedUIManager>();
+        if (uiManager == null)
+            Debug.LogWarning($"[NetworkedSpellcasting] Player {OwnerClientId} missing NetworkedUIManager!");
 
-        // Safe defaults for visuals
+        Debug.Log($"[NetworkedSpellcasting] Player {OwnerClientId} spellcasting initialized.");
+    }
+
+    private void AutoSetupReferences()
+    {
+        // --- Racket Shader ---
+        if (racketShader == null)
+        {
+            Debug.LogWarning("[NetworkedSpellcasting] Racket shader missing!");
+        }
+
+        // --- Audio ---
+        if (audioSource == null)
+        {
+            var audioGO = GameObject.Find("audiosource");
+            if (audioGO != null)
+                audioSource = audioGO.GetComponent<AudioSource>();
+        }
+
+        // --- Spell Effects ---
+        if (SpellEffects == null)
+        {
+            SpellEffects = FindObjectOfType<SpellEffects>();
+        }
+
+        // --- Spell Floor Image ---
+        if (spellFloorImage == null)
+        {
+            spellFloorImage = FindObjectOfType<SpellFloorImage>();
+        }
+
+        // --- Spell Particle Color ---
+        if (spellParticleColor == null)
+        {
+            spellParticleColor = FindObjectOfType<SpellParticleColor>();
+        }
+
+        // --- TennisAI ---
+        if (TennisAi == null)
+        {
+            TennisAi = FindObjectOfType<TennisAI>();
+        }
+    }
+
+    private void InitializeRacketShader()
+    {
         if (racketShader != null)
         {
             racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
             racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
         }
-
-        // Allow only owner to handle input + spell logic
-        if (!IsOwner)
-            enabled = false;
-
-        TryFindAndLinkBall();
     }
 
     private void Update()
     {
+        // Only owner can cast spells
         if (!IsOwner) return;
 
-        // Regular spell logic
-        if (Time.time >= nextBallCheckTime)
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            nextBallCheckTime = Time.time + ballCheckInterval;
             TryFindAndLinkBall();
         }
 
-        if (isCasting)
-            return;
+        if (isCasting) return;
 
         UpdateSpellBook();
 
@@ -117,7 +165,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         GameObject ballObj = GameObject.FindWithTag("Ball");
         if (ballObj == null)
         {
-            Debug.Log("[NetworkedSpellcasting] No Ball found with tag 'Ball'.");
+            Debug.LogWarning("[NetworkedSpellcasting] No Ball found with tag 'Ball'.");
             return;
         }
 
@@ -129,10 +177,6 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         {
             baseEffectObject = visualChild.gameObject;
             Debug.Log("[NetworkedSpellcasting] Linked Ball visuals: " + baseEffectObject.name);
-        }
-        else
-        {
-            Debug.LogWarning("[NetworkedSpellcasting] Could not find child named 'sm_Ball' under Ball prefab.");
         }
 
         Debug.Log("[NetworkedSpellcasting] Connected to active Ball GameObject.");
@@ -165,7 +209,11 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private void RegisterInput(string direction)
     {
-        audioSource?.PlayOneShot(SpellInputClick);
+        if (audioSource != null && SpellInputClick != null)
+        {
+            audioSource.PlayOneShot(SpellInputClick);
+        }
+
         inputSpellAddress += direction;
         lastInputTime = Time.time;
         UpdateSpellBook();
@@ -180,26 +228,44 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
         if (isCasting)
         {
-            Debug.Log("[NetworkedSpellcasting] Spell blocked: another spell is still active.");
+            Debug.Log("[NetworkedSpellcasting] Spell blocked, another is active.");
             return;
         }
 
         isCasting = true;
         currentActiveSpell = spellName;
 
-        audioSource?.PlayOneShot(spellRegisterSound);
-        SpellEffects.spellName = spellName;
+        if (audioSource && spellRegisterSound)
+            audioSource.PlayOneShot(spellRegisterSound);
 
-        bool isHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
-        SpellEffects.plrHitSpell = isHitSpell;
-        SpellEffects.castSpell();
+        if (SpellEffects != null)
+        {
+            GameObject opponent = FindOpponent();
+            try
+            {
+                SpellEffects.SetContext(this.gameObject, opponent, TennisAi);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[NetworkedSpellcasting] SpellEffects.SetContext threw: {e.Message}");
+            }
 
-        if (UIManager.Instance != null)
+            SpellEffects.spellName = spellName;
+            SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
+
+            if (!SpellEffects.plrHitSpell)
+            {
+                try { SpellEffects.castSpell(); }
+                catch (System.Exception e) { Debug.LogWarning($"[NetworkedSpellcasting] castSpell threw: {e.Message}"); }
+            }
+        }
+
+        if (uiManager != null)
         {
             Color uiSpellColor = spellColors.ContainsKey(inputSpellAddress)
                 ? spellColors[inputSpellAddress]
                 : Color.white;
-            UIManager.Instance.UpdateSpellStatus(spellName, uiSpellColor);
+            uiManager.UpdateSpellStatus(spellName, uiSpellColor);
         }
 
         float duration = spellDurations.ContainsKey(inputSpellAddress)
@@ -209,71 +275,6 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, inputSpellAddress));
         inputSpellAddress = "";
         UpdateSpellBook();
-    }
-
-    public void CastSpellNormal(string spellName)
-    {
-        if (!IsOwner) return;
-
-        bool found = false;
-        string spellAddress = "";
-
-        foreach (var spell in spellBook)
-        {
-            if (spell.Value == spellName)
-            {
-                spellAddress = spell.Key;
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            Debug.LogWarning($"[NetworkedSpellcasting] Spell '{spellName}' not found in spell book.");
-            return;
-        }
-
-        if (baseEffectObject != null)
-            baseEffectObject.SetActive(false);
-
-        float value = debuffBook[spellAddress];
-        Debug.Log($"[NetworkedSpellcasting] {spellName} cast!");
-
-        if (UIManager.Instance != null)
-        {
-            Color uiSpellColor = spellColors.ContainsKey(spellAddress)
-                ? spellColors[spellAddress]
-                : Color.white;
-            UIManager.Instance.UpdateSpellStatus(spellName, uiSpellColor);
-        }
-
-        Color spellColor = spellColors[spellAddress];
-        Color spellColor2 = spellColors2[spellAddress];
-
-        racketShader.SetColor("_Racket_Color_Top", spellColor);
-        racketShader.SetColor("_Racket_Color_Bottom", spellColor2);
-
-        spellFloorImage.ShowSpell(spellName, spellColor);
-        spellParticleColor.SetSpellColor(spellColor);
-
-        if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizclip) && wizclip != null)
-        {
-            spellAudio.TryGetValue(spellAddress, out AudioClip spellClip);
-            StartCoroutine(PlaySpellSequence(wizclip, spellClip, 0.35f));
-        }
-        else if (spellAudio.TryGetValue(spellAddress, out AudioClip spellClipOnly) && spellClipOnly != null)
-        {
-            audioSource?.PlayOneShot(spellClipOnly);
-        }
-
-        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
-            SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
-
-        SpellEffects.spellHit = true;
-
-        float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
-        StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, spellAddress));
     }
 
     private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
@@ -289,35 +290,113 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         if (baseEffect != null)
             baseEffect.SetActive(true);
 
-        spellParticleColor.ResetColor();
+        if (spellParticleColor != null)
+        {
+            try { spellParticleColor.ResetColor(); }
+            catch (System.Exception e) { Debug.LogWarning($"[NetworkedSpellcasting] ResetColor threw: {e.Message}"); }
+        }
 
-        racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
-        racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+        if (racketShader != null)
+        {
+            racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
+            racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+        }
 
         if (!string.IsNullOrEmpty(currentActiveSpell))
         {
-            TennisAi.ClearEffects();
+            try { TennisAi?.ClearEffects(); } catch { }
             currentActiveSpell = "";
-            UIManager.Instance?.UpdateSpellStatus("None", Color.white);
+
+            if (uiManager != null)
+                uiManager.UpdateSpellStatus("None", Color.white);
         }
 
         RemoveSpell(spellAddress);
         isCasting = false;
-        Debug.Log("[NetworkedSpellcasting] Spellcasting unlocked.");
     }
 
     private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
     {
+        if (newPrefab == null) return;
+
         if (currentVisualInstance != null)
             Destroy(currentVisualInstance);
 
-        if (baseEffect != null)
-            baseEffect.SetActive(false);
+        if (baseEffect != null) baseEffect.SetActive(false);
 
         currentVisualInstance = Instantiate(newPrefab, parentTransform);
         currentVisualInstance.transform.localPosition = Vector3.zero;
         currentVisualInstance.transform.localRotation = Quaternion.identity;
         currentVisualInstance.transform.localScale = Vector3.one;
+    }
+
+    public void CastSpellNormal(string spellName)
+    {
+        string spellAddress = "";
+        foreach (var spell in spellBook)
+        {
+            if (spell.Value == spellName)
+            {
+                spellAddress = spell.Key;
+                break;
+            }
+        }
+
+        if (string.IsNullOrEmpty(spellAddress))
+        {
+            Debug.LogWarning($"Spell '{spellName}' not found in spell book.");
+            return;
+        }
+
+        if (baseEffectObject != null)
+            baseEffectObject.SetActive(false);
+
+        Debug.Log($"{spellName} cast!");
+
+        Color spellColor = spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white;
+        Color spellColor2 = spellColors2.ContainsKey(spellAddress) ? spellColors2[spellAddress] : spellColor;
+
+        if (uiManager != null)
+        {
+            uiManager.UpdateSpellStatus(spellName, spellColor);
+        }
+
+        if (racketShader != null)
+        {
+            racketShader.SetColor("_Racket_Color_Top", spellColor);
+            racketShader.SetColor("_Racket_Color_Bottom", spellColor2);
+        }
+
+        if (spellFloorImage != null)
+        {
+            try { spellFloorImage.ShowSpell(spellName, spellColor); } catch { }
+        }
+
+        if (spellParticleColor != null)
+        {
+            try { spellParticleColor.SetSpellColor(spellColor); } catch { }
+        }
+
+        if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizclip) && wizclip != null)
+        {
+            spellAudio.TryGetValue(spellAddress, out AudioClip spellClip);
+            StartCoroutine(PlaySpellSequence(wizclip, spellClip, 0.35f));
+        }
+        else if (spellAudio.TryGetValue(spellAddress, out AudioClip spellClipOnly) && spellClipOnly != null)
+        {
+            audioSource?.PlayOneShot(spellClipOnly);
+        }
+
+        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
+            SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
+
+        if (SpellEffects != null)
+        {
+            try { SpellEffects.spellHit = true; } catch { }
+        }
+
+        float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
+        StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, spellAddress));
     }
 
     private void UpdateSpellBook()
@@ -332,28 +411,30 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         {
             if (item.Key.StartsWith(inputSpellAddress))
             {
-                SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
-                newEntry.gameObject.tag = "SpellUI";
-                newEntry.SetText(item.Value, item.Key);
+                if (spellBookPanel != null && spellTextPrefab != null)
+                {
+                    SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
+                    newEntry.gameObject.tag = "SpellUI";
+                    newEntry.SetText(item.Value, item.Key);
+                }
             }
         }
     }
 
     private void RemoveSpell(string address)
     {
-        if (spellBook.ContainsKey(address))
-        {
-            string spellName = spellBook[address];
-            spellBook.Remove(address);
-            debuffBook.Remove(address);
-            spellVisuals.Remove(address);
-            spellColors.Remove(address);
-            spellAudio.Remove(address);
-            wizardAudio.Remove(address);
-            boolBook.Remove(spellName);
-            Debug.Log($"[NetworkedSpellcasting] Removed spell '{spellName}' ({address}).");
-        }
+        if (!spellBook.ContainsKey(address)) return;
 
+        string spellName = spellBook[address];
+        spellBook.Remove(address);
+        debuffBook.Remove(address);
+        spellVisuals.Remove(address);
+        spellColors.Remove(address);
+        spellAudio.Remove(address);
+        wizardAudio.Remove(address);
+        boolBook.Remove(spellName);
+
+        Debug.Log($"[NetworkedSpellcasting] Removed spell '{spellName}' ({address}).");
         UpdateSpellBook();
     }
 
@@ -373,6 +454,8 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             spellAudio[address] = spellCastAudio;
             wizardAudio[address] = wizardSpellSound;
             spellDurations[address] = duration;
+
+            Debug.Log($"[NetworkedSpellcasting] Player {OwnerClientId} added spell: {name} ({address})");
         }
     }
 
@@ -385,5 +468,15 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
         if (spellClip != null)
             audioSource?.PlayOneShot(spellClip);
+    }
+
+    private GameObject FindOpponent()
+    {
+        foreach (var sc in FindObjectsOfType<NetworkedSpellcasting>())
+        {
+            if (sc != this)
+                return sc.gameObject;
+        }
+        return null;
     }
 }

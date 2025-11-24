@@ -15548,7 +15548,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1594825193}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: QuitMenu
         m_Mode: 1
@@ -15806,7 +15806,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1594825193}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: ResumeGame
         m_Mode: 1
@@ -17446,7 +17446,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1594825193}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: QuitGame
         m_Mode: 1
@@ -17639,7 +17639,7 @@ Transform:
   m_GameObject: {fileID: 319551047}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.57, y: 0, z: -7.73}
+  m_LocalPosition: {x: 0.57, y: 1, z: -7.73}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23352,7 +23352,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1594825193}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: NextRound
         m_Mode: 1
@@ -25112,7 +25112,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1594825193}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: QuitMenu
         m_Mode: 1
@@ -35805,7 +35805,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1594825193}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: RestartGame
         m_Mode: 1
@@ -41714,9 +41714,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1594825192}
-  - component: {fileID: 1594825193}
   - component: {fileID: 1594825195}
   - component: {fileID: 1594825196}
+  - component: {fileID: 1594825197}
   m_Layer: 0
   m_Name: Game Manager
   m_TagString: Untagged
@@ -41739,38 +41739,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1594825193
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1594825190}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1150c558b837a0246ad4026887fb53ef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  pickupPrefabs:
-  - {fileID: 7109859178366572936, guid: a227066672fbdf248ad3205225023abe, type: 3}
-  - {fileID: 2459800992572170402, guid: 91e928701712ec243ba310cdad928c54, type: 3}
-  - {fileID: 7109859178366572936, guid: f59d810aa651e6240ae499e5587d48da, type: 3}
-  - {fileID: 2459800992572170402, guid: fff5a79dc4be55a48861a22405a31cc9, type: 3}
-  - {fileID: 8121200742715402744, guid: 7965b561e9ee54e4daa18a154d641cf2, type: 3}
-  - {fileID: 7109859178366572936, guid: 8de44abb723e28845a8363bf8122bb5e, type: 3}
-  - {fileID: 7109859178366572936, guid: 041b102b8f230424c9305a22b619402b, type: 3}
-  spawnInterval: 5
-  spawnRadius: 6
-  maxActivePickups: 4
-  spawnCenter: {fileID: 658361824}
-  spellcasting: {fileID: 0}
-  ballPrefab: {fileID: 0}
-  ballSpawnPoint: {fileID: 0}
-  pauseMenuUI: {fileID: 265330815}
-  gameOverUI: {fileID: 947538467}
-  WinLoseText: {fileID: 168140767}
-  tutorialPanel: {fileID: 579273216}
-  playerInput: {fileID: 0}
 --- !u!114 &1594825195
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -41814,9 +41782,53 @@ MonoBehaviour:
   m_GameObject: {fileID: 1594825190}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 168fc490cb0d4cd4e92adb895ec38a42, type: 3}
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 4010968477
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &1594825197
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1594825190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7ab9862e954fa645a6e54f3998014a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  ShowTopMostFoldoutHeaderGroup: 1
+  pickupPrefabs:
+  - {fileID: 7109859178366572936, guid: 041b102b8f230424c9305a22b619402b, type: 3}
+  - {fileID: 7109859178366572936, guid: a227066672fbdf248ad3205225023abe, type: 3}
+  - {fileID: 8121200742715402744, guid: 7965b561e9ee54e4daa18a154d641cf2, type: 3}
+  - {fileID: 2459800992572170402, guid: fff5a79dc4be55a48861a22405a31cc9, type: 3}
+  - {fileID: 2459800992572170402, guid: 91e928701712ec243ba310cdad928c54, type: 3}
+  - {fileID: 7109859178366572936, guid: f59d810aa651e6240ae499e5587d48da, type: 3}
+  - {fileID: 7109859178366572936, guid: 8de44abb723e28845a8363bf8122bb5e, type: 3}
+  spawnInterval: 7
+  spawnRadius: 5
+  maxActivePickupsPerPlayer: 4
+  hostSpawnCenter: {fileID: 2036865726}
+  clientSpawnCenter: {fileID: 319551048}
+  pauseMenuUI: {fileID: 265330815}
+  gameOverUI: {fileID: 947538467}
+  WinLoseText: {fileID: 168140767}
+  tutorialPanel: {fileID: 579273216}
+  playerInput: {fileID: 0}
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0
@@ -49278,7 +49290,7 @@ Transform:
   m_GameObject: {fileID: 2036865725}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.12, y: 0.93, z: 5.96}
+  m_LocalPosition: {x: -0.12, y: 1, z: 5.96}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -54695,7 +54707,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1594825193}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: QuitGame
         m_Mode: 1
