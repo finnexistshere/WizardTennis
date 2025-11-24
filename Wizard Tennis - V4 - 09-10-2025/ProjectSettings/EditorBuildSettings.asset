@@ -12,7 +12,7 @@ EditorBuildSettings:
     path: Assets/Scenes/V2.unity
     guid: 2972b1d6baf932d49af3eb3f7d67374a
   - enabled: 1
-    path: Assets/V2_NETWORKING.unity
+    path: Assets/Scenes/V2_NETWORKING.unity
     guid: 392a4e223c6cbbc4f82b0ea23c474293
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: cc14a0fc5b4213449a6a0f77695fbbac, type: 2}

@@ -83,6 +83,7 @@ GameObject:
   - component: {fileID: 8439326317665925018}
   - component: {fileID: -339827697620475669}
   - component: {fileID: 5782747520428295493}
+  - component: {fileID: 818260011169314898}
   m_Layer: 0
   m_Name: PlayerNetworked 1
   m_TagString: Player
@@ -177,7 +178,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1020495472
+  GlobalObjectIdHash: 3411430673
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 7
@@ -208,13 +209,17 @@ MonoBehaviour:
   OppIKRig: {fileID: 0}
   spellEffects: {fileID: 0}
   scoreManager: {fileID: 0}
+  green: 0
   ballSpawnPoint: {fileID: 7169873694817178116}
   ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
   servingBarriers: {fileID: 0}
   strength: 11
   ogUpForce: 5
   audioSource: {fileID: 0}
-  hitsounds: []
+  hitsounds:
+  - {fileID: 8300000, guid: 820b22098d554f7469ab14c7d191ccf8, type: 3}
+  - {fileID: 8300000, guid: a22eccf48dfd3f04caabd2e671a3d836, type: 3}
+  - {fileID: 8300000, guid: 5b6527dd77a73ea41ac001c83bf9d2e0, type: 3}
   pitchJitter: 0.07
   volumeJitter: 0.12
   minInterval: 0.08
@@ -423,6 +428,27 @@ MonoBehaviour:
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
+--- !u!114 &818260011169314898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7574428254200817810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f744272d8e1e6943823b532713d0768, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  ShowTopMostFoldoutHeaderGroup: 1
+  spellStatusText: {fileID: 0}
+  rallyCountText: {fileID: 0}
+  greenPointsText: {fileID: 0}
+  greenPointsParent: {fileID: 0}
+  spellStatusName: SpellStatusText
+  rallyCountName: RallyCountText
+  greenPointsNumbersName: GreenPointsNumbers
+  greenPointsParentName: GreenPointsText
 --- !u!1001 &264232937392678132
 PrefabInstance:
   m_ObjectHideFlags: 0

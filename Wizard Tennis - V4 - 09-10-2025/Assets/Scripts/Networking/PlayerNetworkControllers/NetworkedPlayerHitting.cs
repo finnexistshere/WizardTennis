@@ -10,6 +10,13 @@ public class NetworkedBall : NetworkBehaviour
     public TwoHandIKController_Opponent OppIKRig;
     public SpellEffects spellEffects;
     public ScoreManager scoreManager;
+    private NetworkedUIManager uiManager;
+
+    [Header("Rally Tracking")]
+    private NetworkVariable<int> rallyCount = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<int> greenRallyCount = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public bool green = false;
+    private NetworkVariable<int> greenPoints = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     [Header("Ball Spawn")]
     public Transform ballSpawnPoint;
@@ -75,9 +82,56 @@ public class NetworkedBall : NetworkBehaviour
             Debug.LogWarning("[NetworkedBall] PlayerReferenceRelay.Instance is null!");
         }
 
+        // Get this player's UI manager
+        if (IsOwner)
+        {
+            uiManager = GetComponent<NetworkedUIManager>();
+            if (uiManager == null)
+                Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} has no NetworkedUIManager component!");
+        }
+
+        // Subscribe to NetworkVariable changes to update UI
+        rallyCount.OnValueChanged += OnRallyCountChanged;
+        greenPoints.OnValueChanged += OnGreenPointsChanged;
+
+        // Initialize UI with current values
+        if (IsOwner && uiManager != null)
+        {
+            uiManager.UpdateRallyCount(rallyCount.Value);
+            if (greenPoints.Value > 0)
+            {
+                uiManager.UpdateGreenPoints(greenPoints.Value);
+            }
+        }
+
         if (IsOwner)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} spawned and ready.");
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        // Unsubscribe from NetworkVariable changes
+        rallyCount.OnValueChanged -= OnRallyCountChanged;
+        greenPoints.OnValueChanged -= OnGreenPointsChanged;
+    }
+
+    private void OnRallyCountChanged(int previousValue, int newValue)
+    {
+        // Update UI when rally count changes
+        if (IsOwner && uiManager != null)
+        {
+            uiManager.UpdateRallyCount(newValue);
+        }
+    }
+
+    private void OnGreenPointsChanged(int previousValue, int newValue)
+    {
+        // Update UI when green points change
+        if (IsOwner && uiManager != null)
+        {
+            uiManager.UpdateGreenPoints(newValue);
         }
     }
 
@@ -228,6 +282,29 @@ public class NetworkedBall : NetworkBehaviour
         }
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    private void IncrementRallyCountServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+
+        rallyCount.Value++;
+        Debug.Log($"[Server] Rally count incremented to {rallyCount.Value}");
+
+        if (green)
+        {
+            greenRallyCount.Value++;
+            if (greenRallyCount.Value % 4 == 0)
+            {
+                greenPoints.Value++;
+                if (scoreManager != null)
+                {
+                    scoreManager.greenPoints = greenPoints.Value;
+                }
+                Debug.Log($"[Server] Green points incremented to {greenPoints.Value}");
+            }
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} OnTriggerEnter with tag: {other?.tag}");
@@ -302,6 +379,9 @@ public class NetworkedBall : NetworkBehaviour
         Vector3 direction = targetPos - transform.position;
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} hitting - direction: {direction}, targetPos: {targetPos}, myPos: {transform.position}, force: {strength}, upForce: {upForce}");
         HitBallServerRpc(direction, strength, upForce);
+
+        // Update rally count via server
+        IncrementRallyCountServerRpc();
 
         // Reset spell effects
         if (spellEffects != null && spellEffects.resetOnPlrHit)
