@@ -17,6 +17,11 @@ public class OptionsManager : MonoBehaviour
     private Slider volumeSlider;
     private Toggle leftHandedToggle;
     private TextMeshProUGUI modeLabel;
+    private TMP_Dropdown dropdown;
+
+    public int bgmValue;
+    public AudioClip[] bgmOptions;
+    public AudioClip bgm;
 
     private void Awake()
     {
@@ -37,11 +42,12 @@ public class OptionsManager : MonoBehaviour
     /// Call this whenever the options menu is opened in the scene.
     /// Pass the UI references from the scene.
     /// </summary>
-    public void OnOptionsMenuOpened(Slider slider, Toggle toggle, TextMeshProUGUI label)
+    public void OnOptionsMenuOpened(Slider slider, Toggle toggle, TextMeshProUGUI label, TMP_Dropdown drop)
     {
         volumeSlider = slider;
         leftHandedToggle = toggle;
         modeLabel = label;
+        dropdown = drop;
 
         HookUI();
     }
@@ -60,6 +66,13 @@ public class OptionsManager : MonoBehaviour
             leftHandedToggle.onValueChanged.RemoveAllListeners();
             leftHandedToggle.isOn = leftHandedMode;
             leftHandedToggle.onValueChanged.AddListener(SetLeftHandedMode);
+        }
+
+        if (dropdown != null)
+        {
+            dropdown.onValueChanged.RemoveAllListeners();
+            dropdown.value = bgmValue;
+            dropdown.onValueChanged.AddListener(delegate { musicDropDownChange(); });
         }
 
         UpdateUILabel();
@@ -98,6 +111,15 @@ public class OptionsManager : MonoBehaviour
     {
         volume = PlayerPrefs.GetFloat("Volume", 0.75f);
         leftHandedMode = PlayerPrefs.GetInt("LeftHandedMode", 0) == 1;
+        bgmValue = PlayerPrefs.GetInt("bgm", 0);
+        bgm = bgmOptions[bgmValue];
         AudioListener.volume = volume;
+    }
+
+    public void musicDropDownChange() 
+    {
+        bgmValue = dropdown.value;
+        PlayerPrefs.SetInt("bgm", bgmValue);
+        bgm = bgmOptions[dropdown.value];
     }
 }

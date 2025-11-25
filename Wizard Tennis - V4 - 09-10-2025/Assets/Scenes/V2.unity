@@ -15966,6 +15966,8 @@ GameObject:
   - component: {fileID: 153926195}
   - component: {fileID: 153926194}
   - component: {fileID: 153926193}
+  - component: {fileID: 153926202}
+  - component: {fileID: 153926201}
   - component: {fileID: 153926192}
   - component: {fileID: 153926191}
   - component: {fileID: 153926190}
@@ -16040,6 +16042,7 @@ MonoBehaviour:
   aimTarget: {fileID: 319551048}
   strength: 15
   ogUpForce: 5
+  upForce: 5
   ballSpeed: 2.5
   serving: 1
   OppIKRig: {fileID: 1207922161}
@@ -16082,6 +16085,7 @@ MonoBehaviour:
   meshChild: {fileID: 802809286}
   bounceAmplitude: 0.1
   bounceFrequency: 20
+  rb: {fileID: 0}
   gemini: 0
 --- !u!143 &153926192
 CharacterController:
@@ -16103,7 +16107,7 @@ CharacterController:
   m_Enabled: 1
   serializedVersion: 3
   m_Height: 2
-  m_Radius: 0.50000095
+  m_Radius: 0.25
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
@@ -16418,6 +16422,48 @@ MonoBehaviour:
   followThroughAmount: 5
   swingTriggerDistance: 0.4
   debugLogs: 0
+--- !u!65 &153926201
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 153926187}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 1
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 2.79, z: 1}
+  m_Center: {x: 0, y: -1.4, z: 0}
+--- !u!65 &153926202
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 153926187}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.1, y: 1, z: 1.1}
+  m_Center: {x: 0, y: -0.5, z: 0}
 --- !u!1 &168140766
 GameObject:
   m_ObjectHideFlags: 0

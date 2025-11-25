@@ -150,6 +150,8 @@ public class OppHitting : MonoBehaviour
                     upForce += 1;
                 }
 
+                if (other.transform.position.y < 2) upForce += 1;
+
                 ParticleSystem particle = GameObject.FindGameObjectWithTag("Opponent Hit Particle").GetComponent<ParticleSystem>(); // Plays opponent hit particle
 
                 particle.transform.position = other.transform.position;

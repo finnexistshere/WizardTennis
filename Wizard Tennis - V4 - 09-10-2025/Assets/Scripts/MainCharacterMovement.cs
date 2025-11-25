@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Windows;
 
 public class MainCharacterMovement : MonoBehaviour
 {
@@ -14,6 +15,7 @@ public class MainCharacterMovement : MonoBehaviour
 
     private Vector3 moveDirection = Vector3.zero;
     private CharacterController controller;
+    public Rigidbody rb;
     private float bounceTimer = 0f;
     private Vector3 meshOriginalLocalPos;
 
@@ -22,6 +24,7 @@ public class MainCharacterMovement : MonoBehaviour
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+        rb = GetComponent<Rigidbody>();
 
         if (meshChild != null)
             meshOriginalLocalPos = meshChild.localPosition;
@@ -48,22 +51,23 @@ public class MainCharacterMovement : MonoBehaviour
                 right = KeyCode.RightArrow;
             }
 
-            if (Input.GetKey(forward)) input.z += 1;
-            if (Input.GetKey(backward)) input.z -= 1;
+            if (UnityEngine.Input.GetKey(forward)) input.z += 1;
+            if (UnityEngine.Input.GetKey(backward)) input.z -= 1;
             if (gemini)
             {
-                if (Input.GetKey(right)) input.x -= 1;
-                if (Input.GetKey(left)) input.x += 1;
-            } else
+                if (UnityEngine.Input.GetKey(right)) input.x -= 1;
+                if (UnityEngine.Input.GetKey(left)) input.x += 1;
+            }
+            else
             {
-                if (Input.GetKey(right)) input.x += 1;
-                if (Input.GetKey(left)) input.x -= 1;
+                if (UnityEngine.Input.GetKey(right)) input.x += 1;
+                if (UnityEngine.Input.GetKey(left)) input.x -= 1;
             }
 
             moveDirection = transform.TransformDirection(input.normalized * speed);
 
             // Jump
-            if (Input.GetKey(KeyCode.Space))
+            if (UnityEngine.Input.GetKey(KeyCode.Space))
                 moveDirection.y = jumpSpeed;
         }
 

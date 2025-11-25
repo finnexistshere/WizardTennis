@@ -8,7 +8,7 @@ public class Ball : MonoBehaviour
     public Transform aimTarget; // point on the opposite side
     public float strength = 15;
     public float ogUpForce = 5;
-    private float upForce = 5;
+    public float upForce = 5;
     public float ballSpeed = 5;
 
     private bool hitting = true;
@@ -176,6 +176,8 @@ public class Ball : MonoBehaviour
                 else upForce = ogUpForce;
 
                 if (-6.25 < transform.position.z || transform.position.z < 6.25) upForce += 2;
+
+                if (other.transform.position.y < 2) upForce += 1;
 
                 float aimTargety = aimTarget.transform.position.y;
                 float aimTargetz = aimTarget.transform.position.z;
