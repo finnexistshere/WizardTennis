@@ -41856,6 +41856,7 @@ MonoBehaviour:
   - {fileID: 9079658379876589094, guid: e328815db9acfad46b9b8ddee4b16016, type: 3}
   - {fileID: 1755797482189511185, guid: 0b106650e60baa147b743fdb409c5668, type: 3}
   - {fileID: 7928743636784295957, guid: 0e92ddd96f9aaff4d8df25b00ecc9d6f, type: 3}
+  - {fileID: 868981292451749341, guid: 9fe50058100e7004b8b9186bef88f3e4, type: 3}
   spawnInterval: 5
   spawnRadius: 6
   maxActivePickups: 4
@@ -41921,6 +41922,9 @@ MonoBehaviour:
   mudPrefab: {fileID: 6622199852326541046, guid: 2e4ad7e8bdb68b248869e973c529e432, type: 3}
   orbiterPrefab: {fileID: 1664898280556804845, guid: 7e0753e70f131dd429aff91289e199c5, type: 3}
   tetherPrefab: {fileID: 7245028594593329606, guid: 43847781cb6a7244f9c92d25630a510f, type: 3}
+  jollyPrefab: {fileID: 6974429216218887945, guid: 6931c73d6b9e40f449e0c1b8ce25993d, type: 3}
+  BallPrefab: {fileID: 5499011774259568949, guid: 23daab679bb69d54c9d92efa7a6a88d0, type: 3}
+  flamePrefab: {fileID: 8057782250999151861, guid: cc56ac6547b79a940b3636f73d6eb516, type: 3}
   spellHit: 0
 --- !u!1 &1596896129
 GameObject:
@@ -55297,6 +55301,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
       propertyPath: m_LocalPosition.x
       value: -6.85

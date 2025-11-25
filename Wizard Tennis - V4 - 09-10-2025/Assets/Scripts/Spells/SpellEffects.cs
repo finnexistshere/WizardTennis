@@ -54,6 +54,13 @@ public class SpellEffects : MonoBehaviour
     private GameObject activeOrbiter;
     public GameObject tetherPrefab;
     private GameObject activeTether;
+    public GameObject jollyPrefab;
+    private GameObject activeJolly;
+    private GameObject Gorbino;
+    public GameObject BallPrefab;
+    private GameObject activeBall;
+    public GameObject flamePrefab;
+    private GameObject activeFlame;
 
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
@@ -62,6 +69,8 @@ public class SpellEffects : MonoBehaviour
     public bool spellHit;
 
     public static bool isSpellSlowdownActive = false;
+
+    private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether" };
 
     private void Awake()
     {
@@ -212,6 +221,16 @@ public class SpellEffects : MonoBehaviour
                 break;
             case "Jolly":
                 Player.GetComponent<CapsuleCollider>().radius = 2;
+                Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
+
+                activeJolly = Instantiate(jollyPrefab, Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform.position, Quaternion.identity);
+                activeJolly.transform.parent = Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform;
+                activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
+                activeJolly.transform.localRotation = jollyRot;
+                activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+
+                Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(false);
+
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
             case "Mud":
@@ -254,6 +273,19 @@ public class SpellEffects : MonoBehaviour
                     Debug.LogWarning("Tether Prefab not assigned!");
                 }
                 break;
+            case "Gorbino":
+                Gorbino = GameObject.Find("Gorbino");
+
+                activeBall = Instantiate(BallPrefab, Gorbino.transform.position, Quaternion.identity);
+
+                Gorbino.SetActive(false);
+                Invoke(nameof(resetSpellEffect), 5f);
+                break;
+            case "Gambit":
+                int spellInt = Random.Range(0, allSpells.Length);
+                spellName = allSpells[spellInt];
+                castSpell();
+                return;
         }
         if (!oppHitSpell)
             Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
@@ -277,6 +309,18 @@ public class SpellEffects : MonoBehaviour
                 break;
 
             case "Fireball":
+                if (flamePrefab != null)
+                {
+                    activeFlame = Instantiate(flamePrefab, Opponent.transform.position, Quaternion.identity);
+                    activeFlame.transform.parent = Opponent.transform;
+                    activeFlame.transform.localPosition = new Vector3(0, 1.65f, 0);
+                    StartCoroutine(HandleMud(activeFlame, 3f));
+                }
+                else
+                {
+                    Debug.LogWarning("Flame Prefab not assigned!");
+                }
+                break;
             case "Shadow":
                 resetOnOppHit = false;
                 break;
@@ -290,6 +334,8 @@ public class SpellEffects : MonoBehaviour
                 break;
             case "Jolly":
                 Player.GetComponent<CapsuleCollider>().radius = 1;
+                Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(true);
+                Destroy(activeJolly);
                 break;
             case "Mud":
                 resetOnOppHit = false;
@@ -342,6 +388,10 @@ public class SpellEffects : MonoBehaviour
                 break;
             case "Tether":
                 Opponent.GetComponent<OppHitting>().tether = null;
+                break;
+            case "Gorbino":
+                Destroy(activeBall);
+                Gorbino.SetActive(true);
                 break;
         }
 
