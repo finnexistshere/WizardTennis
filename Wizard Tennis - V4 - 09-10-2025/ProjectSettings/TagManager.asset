@@ -17,6 +17,7 @@ TagManager:
   - Audio Source
   - Music Manager
   - SpawnPoint
+  - Mud
   layers:
   - Default
   - TransparentFX

@@ -83,7 +83,7 @@ GameObject:
   - component: {fileID: -339827697620475669}
   - component: {fileID: 5782747520428295493}
   - component: {fileID: 818260011169314898}
-  - component: {fileID: 5586226819390006926}
+  - component: {fileID: -4604589612311379872}
   m_Layer: 0
   m_Name: PlayerNetworked 1
   m_TagString: Player
@@ -386,7 +386,7 @@ MonoBehaviour:
   RotationMaxInterpolationTime: 0.1
   ScaleLerpSmoothing: 1
   ScaleMaxInterpolationTime: 0.1
-  AuthorityMode: 0
+  AuthorityMode: 1
   TickSyncChildren: 0
   UseUnreliableDeltas: 0
   SyncPositionX: 1
@@ -429,7 +429,7 @@ MonoBehaviour:
   rallyCountName: RallyCountText
   greenPointsNumbersName: GreenPointsNumbers
   greenPointsParentName: GreenPointsText
---- !u!114 &5586226819390006926
+--- !u!114 &-4604589612311379872
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -438,15 +438,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 7574428254200817810}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 561c6b1e7d556f5408510dedc9dd9b47, type: 3}
+  m_Script: {fileID: 11500000, guid: 833e21e252a7a4a428d628493f0e2d01, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MainCharacterMovement_V1
+  m_EditorClassIdentifier: Assembly-CSharp::MainCharacterMovement
+  ShowTopMostFoldoutHeaderGroup: 1
   speed: 6
   jumpSpeed: 8
   gravity: 20
   meshChild: {fileID: 2277041728426686444}
-  bounceAmplitude: 0.05
-  bounceFrequency: 8
+  bounceAmplitude: 0.1
+  bounceFrequency: 20
   gemini: 0
 --- !u!1001 &264232937392678132
 PrefabInstance:
