@@ -11,8 +11,23 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     [Header("Player Prefab")]
     public GameObject playerPrefab; // Must have NetworkObject and LocalPlayerSetup
 
-    private static readonly Dictionary<ulong, GameObject> spawnedPlayers = new Dictionary<ulong, GameObject>();
+    // Public accessor for other scripts
+    public static Dictionary<ulong, GameObject> SpawnedPlayers => spawnedPlayers;
+
+    private static readonly Dictionary<ulong, GameObject> spawnedPlayers =
+        new Dictionary<ulong, GameObject>();
+
+    // NEW: map client -> spawn transform (public so game manager can read)
+    public static readonly Dictionary<ulong, Transform> PlayerSpawnPoints = new Dictionary<ulong, Transform>();
+
     private int spawnIndex = 0;
+
+    public static NetworkPlayerSpawner_Better Instance;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     public override void OnNetworkSpawn()
     {
@@ -57,6 +72,10 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
             Destroy(playerObj);
             spawnedPlayers.Remove(clientId);
         }
+
+        // cleanup spawn point record
+        if (PlayerSpawnPoints.ContainsKey(clientId))
+            PlayerSpawnPoints.Remove(clientId);
     }
 
     private void SpawnPlayer(ulong clientId)
@@ -73,6 +92,9 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
             Destroy(playerInstance);
             return;
         }
+
+        // record spawn transform for this client BEFORE SpawnAsPlayerObject
+        PlayerSpawnPoints[clientId] = spawnPoint;
 
         netObj.SpawnAsPlayerObject(clientId, true);
         spawnedPlayers[clientId] = playerInstance;

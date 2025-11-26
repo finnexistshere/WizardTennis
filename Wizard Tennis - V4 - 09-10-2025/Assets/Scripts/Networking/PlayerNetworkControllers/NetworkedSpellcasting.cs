@@ -479,4 +479,10 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         }
         return null;
     }
+
+    public void ResetForNewRound()
+    {
+        // Called by the Networked Game Manager for any resetting we may need
+    }
+
 }

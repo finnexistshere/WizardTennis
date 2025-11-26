@@ -427,4 +427,135 @@ public class NetworkedGameManager : NetworkBehaviour
         if (gameOverUI != null) gameOverUI.SetActive(true);
         if (WinLoseText != null) WinLoseText.text = message;
     }
+
+    // ----------------------------------------------------------
+    // PUBLIC: Call this when a round ends (e.g. ball hits ground)
+    // ----------------------------------------------------------
+    public void ResetRound()
+    {
+        if (!IsServer) return;   // Only server controls reset
+
+        StartCoroutine(ResetRoundRoutine());
+    }
+
+    private IEnumerator ResetRoundRoutine()
+    {
+        // Use realtime so coroutine continues even if timeScale == 0
+        yield return new WaitForSecondsRealtime(1.0f);
+
+        // Make sure game unpauses
+        Time.timeScale = 1f;
+
+        Debug.Log("[GameManager] Resetting round...");
+
+        // ------------------------------------------------------
+        // 1. REMOVE ALL BALLS (networked OR non-networked)
+        // ------------------------------------------------------
+        foreach (var ball in GameObject.FindGameObjectsWithTag("Ball"))
+        {
+            var netObj = ball.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned)
+            {
+                netObj.Despawn(true);
+            }
+            else
+            {
+                Destroy(ball);
+            }
+        }
+
+        // ------------------------------------------------------
+        // 2. RESET PLAYER POSITIONS
+        // ------------------------------------------------------
+        ResetPlayerPositionsServerRpc();
+
+        // ------------------------------------------------------
+        // 3. RESET PICKUPS
+        // ------------------------------------------------------
+        foreach (var p in hostActivePickups)
+            if (p != null) Destroy(p);
+        hostActivePickups.Clear();
+
+        foreach (var p in clientActivePickups)
+            if (p != null) Destroy(p);
+        clientActivePickups.Clear();
+
+        hostSpawnTimer = spawnInterval;
+        clientSpawnTimer = spawnInterval;
+
+        pickupsUnlocked = true;
+
+
+        // ------------------------------------------------------
+        // 4. RESET SPELL SYSTEMS
+        // ------------------------------------------------------
+        if (hostSpellcasting != null) hostSpellcasting.ResetForNewRound();
+        if (clientSpellcasting != null) clientSpellcasting.ResetForNewRound();
+
+        // ------------------------------------------------------
+        // 5. HIDE ROUND UI
+        // ------------------------------------------------------
+        // Reset UI + time on both clients
+        ResetRoundClientRpc();
+
+        Debug.Log("[GameManager] Round reset complete.");
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void ResetPlayerPositionsServerRpc()
+    {
+        ResetPlayerPositionsClientRpc();
+    }
+
+    [ClientRpc]
+    private void ResetRoundClientRpc()
+    {
+        Time.timeScale = 1f;
+
+        if (gameOverUI != null)
+            gameOverUI.SetActive(false);
+
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(false);
+
+        if (playerInput != null)
+            playerInput.SwitchCurrentActionMap("Player");
+    }
+
+    [ClientRpc]
+    private void ResetPlayerPositionsClientRpc()
+    {
+        var spawner = NetworkPlayerSpawner_Better.Instance;
+        if (spawner == null)
+        {
+            Debug.LogError("[GameManager] No NetworkPlayerSpawner_Better in scene!");
+            return;
+        }
+
+        // Use the public SpawnedPlayers dictionary
+        foreach (var kvp in NetworkPlayerSpawner_Better.SpawnedPlayers)
+        {
+            ulong clientId = kvp.Key;
+            GameObject player = kvp.Value;
+
+            if (player == null) continue;
+
+            // Try to get the spawn transform we recorded when that player was spawned
+            if (NetworkPlayerSpawner_Better.PlayerSpawnPoints.TryGetValue(clientId, out Transform spawn))
+            {
+                player.transform.SetPositionAndRotation(spawn.position, spawn.rotation);
+                // If you have a CharacterController or Rigidbody, zero velocities if necessary:
+                if (player.TryGetComponent<Rigidbody>(out var rb))
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                    rb.isKinematic = false; // if you temporarily use kinematic states, adjust as needed
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[GameManager] No spawn point recorded for client {clientId}");
+            }
+        }
+    }
 }
