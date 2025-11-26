@@ -33,6 +33,10 @@ public class NetworkedGameManager : NetworkBehaviour
     public TextMeshProUGUI WinLoseText;
     public GameObject tutorialPanel;
 
+    [Header("Player Spawn Points (Inspector Assigned)")]
+    public Transform player1Spawn;
+    public Transform player2Spawn;
+
     private bool isPaused = false;
     public PlayerInput playerInput;
 
@@ -441,7 +445,7 @@ public class NetworkedGameManager : NetworkBehaviour
     private IEnumerator ResetRoundRoutine()
     {
         // Use realtime so coroutine continues even if timeScale == 0
-        yield return new WaitForSecondsRealtime(1.0f);
+        yield return new WaitForSecondsRealtime(0.01f);
 
         // Make sure game unpauses
         Time.timeScale = 1f;
@@ -525,6 +529,7 @@ public class NetworkedGameManager : NetworkBehaviour
     [ClientRpc]
     private void ResetPlayerPositionsClientRpc()
     {
+        // Reset player positions based on the spawn points recorded in the spawner
         var spawner = NetworkPlayerSpawner_Better.Instance;
         if (spawner == null)
         {
@@ -532,7 +537,6 @@ public class NetworkedGameManager : NetworkBehaviour
             return;
         }
 
-        // Use the public SpawnedPlayers dictionary
         foreach (var kvp in NetworkPlayerSpawner_Better.SpawnedPlayers)
         {
             ulong clientId = kvp.Key;
@@ -540,16 +544,24 @@ public class NetworkedGameManager : NetworkBehaviour
 
             if (player == null) continue;
 
-            // Try to get the spawn transform we recorded when that player was spawned
             if (NetworkPlayerSpawner_Better.PlayerSpawnPoints.TryGetValue(clientId, out Transform spawn))
             {
                 player.transform.SetPositionAndRotation(spawn.position, spawn.rotation);
-                // If you have a CharacterController or Rigidbody, zero velocities if necessary:
+
+                // Reset physics if present
                 if (player.TryGetComponent<Rigidbody>(out var rb))
                 {
                     rb.linearVelocity = Vector3.zero;
                     rb.angularVelocity = Vector3.zero;
-                    rb.isKinematic = false; // if you temporarily use kinematic states, adjust as needed
+                    rb.isKinematic = false;
+                }
+
+                // Reset CharacterController if present
+                if (player.TryGetComponent<CharacterController>(out var cc))
+                {
+                    cc.enabled = false;
+                    cc.transform.position = spawn.position;
+                    cc.enabled = true;
                 }
             }
             else
@@ -557,5 +569,11 @@ public class NetworkedGameManager : NetworkBehaviour
                 Debug.LogWarning($"[GameManager] No spawn point recorded for client {clientId}");
             }
         }
+
+        // Reset UI + time on both clients
+        Time.timeScale = 1f;
+        if (gameOverUI != null) gameOverUI.SetActive(false);
+        if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+        if (playerInput != null) playerInput.SwitchCurrentActionMap("Player");
     }
 }
