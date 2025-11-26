@@ -1,48 +1,63 @@
 using UnityEngine;
+using Unity.Netcode;
 
 public class BounceChecker : MonoBehaviour
 {
-    private CollisionTrackerBall collisionTrackerBall;
+    private CollisionTrackerBall localTracker;
+    private NetworkedCollisionTrackerBall networkTracker;
+
     private bool justOnce = true;
 
     private void Awake()
     {
-        // Get reference to the CollisionTrackerBall on this object or its parent
-        collisionTrackerBall = GetComponent<CollisionTrackerBall>();
-        if (collisionTrackerBall == null)
-        {
-            collisionTrackerBall = GetComponentInParent<CollisionTrackerBall>();
-        }
+        // Try to find the offline tracker
+        localTracker = GetComponent<CollisionTrackerBall>();
+        if (localTracker == null)
+            localTracker = GetComponentInParent<CollisionTrackerBall>();
 
-        if (collisionTrackerBall == null)
+        // Try to find the networked tracker
+        networkTracker = GetComponent<NetworkedCollisionTrackerBall>();
+        if (networkTracker == null)
+            networkTracker = GetComponentInParent<NetworkedCollisionTrackerBall>();
+
+        if (localTracker == null && networkTracker == null)
         {
-            Debug.LogError("BounceChecker: No CollisionTrackerBall found!");
+            Debug.LogError("BounceChecker: No CollisionTrackerBall or NetworkedCollisionTrackerBall found!");
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (collisionTrackerBall == null) return;
+        // Detect ground bounce
+        if (!other.CompareTag("Ground"))
+            return;
 
-        // If the ball hits the ground, mark as bounced
-        if (other.CompareTag("Ground"))
+        if (!justOnce)
+            return;
+
+        justOnce = false;
+
+        // ---- NON-NETWORKED BALL ----
+        if (localTracker != null)
         {
-            if (justOnce)
-            {
-                collisionTrackerBall.HandleBounceCheck();
-                justOnce = false;
-            }
+            localTracker.HandleBounceCheck();
+            return;
         }
-        else
+
+        // ---- NETWORKED BALL ----  
+        if (networkTracker != null)
         {
-            //collisionTrackerBall.hasbounced = false;
+            // Only the server should process bounce rules
+            if (networkTracker.IsServer)
+            {
+                networkTracker.HandleBounceCheck();
+            }
+            return;
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (collisionTrackerBall == null) return;
-
         if (other.CompareTag("Ground"))
         {
             justOnce = true;

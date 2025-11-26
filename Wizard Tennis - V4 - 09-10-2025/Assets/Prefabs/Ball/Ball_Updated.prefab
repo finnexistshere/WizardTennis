@@ -10,13 +10,13 @@ GameObject:
   m_Component:
   - component: {fileID: 5809240692903498973}
   - component: {fileID: 8748540750897104403}
-  - component: {fileID: 6498023344037591117}
   - component: {fileID: 3780717064356172620}
   - component: {fileID: 2312225277774927468}
   - component: {fileID: 4105260682208742391}
   - component: {fileID: -4872240932906499296}
   - component: {fileID: 7322249843954201516}
   - component: {fileID: 4855094407017637972}
+  - component: {fileID: 2312081306120557149}
   m_Layer: 6
   m_Name: Ball_Updated
   m_TagString: Ball
@@ -50,22 +50,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4511917398390109774}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &6498023344037591117
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4511917398390109774}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e4e3925355be2824cb3d9b1d816a7c99, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gameManager: {fileID: 0}
-  spellEffects: {fileID: 0}
-  LastHitWizard: 
-  hasBounced: 0
 --- !u!23 &3780717064356172620
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -250,6 +234,23 @@ MonoBehaviour:
   UseRigidBodyForMotion: 0
   AutoUpdateKinematicState: 1
   AutoSetKinematicOnDespawn: 0
+--- !u!114 &2312081306120557149
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4511917398390109774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9bfaea89e7c702429ecce5ea12d4b71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  ShowTopMostFoldoutHeaderGroup: 1
+  gameManager: {fileID: 0}
+  spellEffects: {fileID: 0}
+  LastHitWizard: 
+  hasBounced: 0
 --- !u!1 &6566581645874027722
 GameObject:
   m_ObjectHideFlags: 0
@@ -260,7 +261,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2732620493066899712}
   - component: {fileID: 1278554756815242679}
-  - component: {fileID: 4453320641484318127}
+  - component: {fileID: 795282780599035363}
   m_Layer: 6
   m_Name: BounceChecker
   m_TagString: Untagged
@@ -302,9 +303,9 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.15
+  m_Radius: 0.5
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &4453320641484318127
+--- !u!114 &795282780599035363
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -315,7 +316,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0a8112ac38b465f4d88e7fd1e04df61a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::BounceChecker
 --- !u!1001 &3823208990441496191
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -535,15 +536,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.2
+      value: 0.25
       objectReference: {fileID: 0}
     - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.2
+      value: 0.25
       objectReference: {fileID: 0}
     - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.2
+      value: 0.25
       objectReference: {fileID: 0}
     - target: {fileID: 7471471119193982474, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
       propertyPath: m_LocalPosition.x
