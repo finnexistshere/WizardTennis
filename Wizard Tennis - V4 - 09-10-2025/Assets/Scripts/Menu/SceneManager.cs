@@ -17,6 +17,7 @@ public class SceneChanger : MonoBehaviour
     public Toggle leftHandedToggle;
     public TextMeshProUGUI modeLabel;
     public TMP_Dropdown dropdown;
+    public Toggle spellTipsToggle;
 
     [Header("Camera Movement")]
     public Camera menuCamera;                       // Assign your background camera
@@ -69,7 +70,7 @@ public class SceneChanger : MonoBehaviour
 
         if (OptionsManager.Instance != null)
         {
-            OptionsManager.Instance.OnOptionsMenuOpened(volumeSlider, leftHandedToggle, modeLabel, dropdown);
+            OptionsManager.Instance.OnOptionsMenuOpened(volumeSlider, leftHandedToggle, modeLabel, dropdown, spellTipsToggle);
         }
     }
 

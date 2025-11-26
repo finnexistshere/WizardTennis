@@ -82,7 +82,7 @@ public class SpellEffects : MonoBehaviour
     public void castSpell()
     {
         // Show explanation only once per round per spell
-        if (!spellsUsedThisRound.Contains(spellName))
+        if (!spellsUsedThisRound.Contains(spellName) && OptionsManager.Instance.spellTips)
         {
             spellsUsedThisRound.Add(spellName);
             explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
