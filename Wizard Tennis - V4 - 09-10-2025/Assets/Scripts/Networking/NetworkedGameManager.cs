@@ -100,8 +100,6 @@ public class NetworkedGameManager : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsOwner) return;
-
         if (tutorialPanel != null && tutorialPanel.activeSelf && Input.GetKeyDown(KeyCode.E))
             tutorialPanel.SetActive(false);
 
@@ -298,8 +296,7 @@ public class NetworkedGameManager : NetworkBehaviour
             ulong clientId = kvp.Key;
             if (!NetworkPlayerSpawner_Better.PlayerSpawnPoints.TryGetValue(clientId, out Transform spawn)) continue;
 
-            // Send targeted RPC to each client
-            ResetPlayerPositionClientRpc(clientId, spawn.position, spawn.rotation, new ClientRpcParams
+            ResetPlayerPositionClientRpc(spawn.position, spawn.rotation, new ClientRpcParams
             {
                 Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { clientId } }
             });
@@ -307,25 +304,35 @@ public class NetworkedGameManager : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void ResetPlayerPositionClientRpc(ulong clientId, Vector3 position, Quaternion rotation, ClientRpcParams rpcParams = default)
+    public void ResetPlayerPositionClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams rpcParams = default)
     {
-        if (!NetworkPlayerSpawner_Better.SpawnedPlayers.TryGetValue(clientId, out GameObject player) || player == null) return;
+        // Identify which player this RPC was sent TO
+        ulong playerId = NetworkManager.Singleton.LocalClientId;
 
-        if (player.TryGetComponent<CharacterController>(out var cc))
+        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(playerId))
+            return;
+
+        NetworkObject netObj = NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject;
+        if (netObj == null) return;
+
+        GameObject player = netObj.gameObject;
+
+        player.transform.SetPositionAndRotation(position, rotation);
+
+        if (player.TryGetComponent<CharacterController>(out var controller))
         {
-            cc.enabled = false;
-            player.transform.SetPositionAndRotation(position, rotation);
-            cc.enabled = true;
+            controller.enabled = false;
+            controller.enabled = true;
+            controller.Move(Vector3.zero);
         }
-        else player.transform.SetPositionAndRotation(position, rotation);
 
-        if (player.TryGetComponent<Rigidbody>(out var rb))
+        if (player.TryGetComponent<MainCharacterMovement>(out var movement))
         {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            movement.ForceMovementRefresh();
+            movement.Nudge(Vector3.zero);
         }
 
-        Debug.Log($"[Client {NetworkManager.Singleton.LocalClientId}] Reset player {clientId} to {position}");
+        Debug.Log($"[RPC] Reset position for player {playerId} ? {position}");
     }
 
     [ClientRpc]

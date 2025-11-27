@@ -114,4 +114,24 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
         spawnIndex = (spawnIndex + 1) % 2;
         return spawnTransform;
     }
+
+    public void RespawnSpecificPlayer(ulong clientId)
+    {
+        if (!IsServer) return;
+
+        // Get spawn location (already stored in dictionary)
+        if (!PlayerSpawnPoints.TryGetValue(clientId, out Transform spawn))
+            spawn = GetNextSpawnTransform();
+
+        GameObject newPlayer = Instantiate(playerPrefab, spawn.position, spawn.rotation);
+        NetworkObject netObj = newPlayer.GetComponent<NetworkObject>();
+
+        netObj.SpawnAsPlayerObject(clientId, true);
+
+        // Update record
+        if (spawnedPlayers.ContainsKey(clientId))
+            spawnedPlayers[clientId] = newPlayer;
+        else
+            spawnedPlayers.Add(clientId, newPlayer);
+    }
 }
