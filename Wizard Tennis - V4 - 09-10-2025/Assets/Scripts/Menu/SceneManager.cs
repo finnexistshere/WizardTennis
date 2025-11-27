@@ -83,11 +83,15 @@ public class SceneChanger : MonoBehaviour
     public void OpenMultiplayerMenu()
     {
         MainMenu.SetActive(false);
+        MultiplayerMenu.SetActive(true);
+        MoveCameraTo(MultiplayerCamPos);
     }
 
     public void BackToMainFromMultiplayer()
     {
         MainMenu.SetActive(true);
+        MultiplayerMenu.SetActive(false);
+        MoveCameraTo(mainMenuCamPos);
     }
 
     public void OpenSpellBookMenu()
