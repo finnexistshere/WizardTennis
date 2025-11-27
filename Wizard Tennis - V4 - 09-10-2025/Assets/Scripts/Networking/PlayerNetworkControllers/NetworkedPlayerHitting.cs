@@ -470,4 +470,16 @@ public class NetworkedBall : NetworkBehaviour
         cam.fieldOfView = originalFOV;
         isHitSlowActive = false;
     }
+
+    public void SetToServingState()
+    {
+        hitting = false;      // Not hitting yet
+        localServing = true;  // Ready to serve the next ball
+
+        // Optional: re-enable serving barriers
+        if (servingBarriers != null)
+            servingBarriers.SetActive(true);
+
+        Debug.Log($"[NetworkedBall] Player {OwnerClientId} set to SERVING state.");
+    }
 }

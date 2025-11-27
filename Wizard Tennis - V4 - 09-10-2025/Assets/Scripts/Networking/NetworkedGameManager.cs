@@ -270,6 +270,10 @@ public class NetworkedGameManager : NetworkBehaviour
         // Reset players
         ResetAllPlayerPositionsServerRpc();
 
+        // Set both players to serving
+        SetPlayersToServingServerRpc();
+
+
         // Reset pickups
         foreach (var p in hostActivePickups) if (p != null) Destroy(p);
         hostActivePickups.Clear();
@@ -286,6 +290,30 @@ public class NetworkedGameManager : NetworkBehaviour
 
         // Reset UI
         ResetRoundClientRpc();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void SetPlayersToServingServerRpc()
+    {
+        SetPlayersToServingClientRpc();
+    }
+
+    [ClientRpc]
+    private void SetPlayersToServingClientRpc()
+    {
+        ulong localId = NetworkManager.Singleton.LocalClientId;
+
+        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(localId))
+            return;
+
+        var netObj = NetworkManager.Singleton.ConnectedClients[localId].PlayerObject;
+        if (netObj == null) return;
+
+        var ball = netObj.GetComponent<NetworkedBall>();
+        if (ball == null) return;
+
+        // Force serving state
+        ball.SetToServingState();
     }
 
     [ServerRpc(RequireOwnership = false)]
