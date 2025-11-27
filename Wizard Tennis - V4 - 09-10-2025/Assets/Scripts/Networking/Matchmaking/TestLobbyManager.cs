@@ -24,6 +24,7 @@ public class LobbyManager : MonoBehaviour
 
     private float heartbeatTimer;
     private float lobbyPollTimer;
+    private bool isLoadingGame = false; // Prevent polling during scene load
 
     public event Action<List<string>> OnPlayerListChanged;
     public event Action OnJoinedLobby;
@@ -208,24 +209,42 @@ public class LobbyManager : MonoBehaviour
 
     private async void HandleLobbyPolling()
     {
-        if (joinedLobby == null) return;
+        if (joinedLobby == null || isLoadingGame) return;
 
         lobbyPollTimer -= Time.deltaTime;
         if (lobbyPollTimer <= 0f)
         {
-            lobbyPollTimer = 1.5f;
-            await UpdatePlayerList();
+            lobbyPollTimer = 3f; // Increased from 1.5s to 3s to avoid rate limits
 
-            // Check if host has started the game (for clients only)
-            if (!IsHost() && joinedLobby.Data.ContainsKey(KEY_RELAY_JOIN_CODE))
+            try
             {
-                string status = joinedLobby.Data[KEY_RELAY_JOIN_CODE].Value;
+                await UpdatePlayerList();
 
-                // If host has started the game
-                if (status == "STARTING")
+                // Check if host has started the game (for clients only)
+                if (!IsHost() && joinedLobby.Data.ContainsKey(KEY_RELAY_JOIN_CODE))
                 {
-                    Debug.Log("Host started game, auto-joining...");
-                    JoinGame();
+                    string status = joinedLobby.Data[KEY_RELAY_JOIN_CODE].Value;
+
+                    // If host has started the game
+                    if (status == "STARTING")
+                    {
+                        Debug.Log("Host started game, auto-joining...");
+                        isLoadingGame = true; // Stop polling
+                        JoinGame();
+                    }
+                }
+            }
+            catch (LobbyServiceException e)
+            {
+                // Handle rate limiting gracefully
+                if (e.Reason == LobbyExceptionReason.RateLimited)
+                {
+                    Debug.LogWarning("Lobby polling rate limited, increasing interval...");
+                    lobbyPollTimer = 5f; // Back off even more
+                }
+                else
+                {
+                    Debug.LogWarning($"Lobby polling error: {e.Message}");
                 }
             }
         }
@@ -244,6 +263,7 @@ public class LobbyManager : MonoBehaviour
         }
 
         Debug.Log("Host starting game...");
+        isLoadingGame = true; // Stop polling
 
         try
         {
@@ -258,12 +278,16 @@ public class LobbyManager : MonoBehaviour
 
             Debug.Log("Host marked game as starting, loading scene...");
 
+            // Small delay to ensure clients see the update
+            await Task.Delay(500);
+
             // Load the game scene (which has the NetworkManager)
             SceneManager.LoadScene(gameSceneName);
         }
         catch (Exception e)
         {
             Debug.LogError("Failed to start game: " + e);
+            isLoadingGame = false;
         }
     }
 
@@ -276,32 +300,20 @@ public class LobbyManager : MonoBehaviour
         }
 
         Debug.Log("Client joining game...");
+        isLoadingGame = true; // Stop polling
 
         try
         {
-            // Get latest lobby data
-            joinedLobby = await LobbyService.Instance.GetLobbyAsync(joinedLobby.Id);
+            // Small delay before loading to avoid race condition
+            await Task.Delay(300);
 
-            if (joinedLobby.Data.ContainsKey(KEY_RELAY_JOIN_CODE))
-            {
-                string status = joinedLobby.Data[KEY_RELAY_JOIN_CODE].Value;
-
-                if (status == "STARTING") // Host has started the game
-                {
-                    Debug.Log("Host started game, loading scene...");
-
-                    // Load the game scene (which has the NetworkManager)
-                    SceneManager.LoadScene(gameSceneName);
-                }
-                else
-                {
-                    Debug.Log("Waiting for host to start...");
-                }
-            }
+            // Load the game scene (which has the NetworkManager)
+            SceneManager.LoadScene(gameSceneName);
         }
         catch (Exception e)
         {
             Debug.LogError("Failed to join game: " + e);
+            isLoadingGame = false;
         }
     }
 

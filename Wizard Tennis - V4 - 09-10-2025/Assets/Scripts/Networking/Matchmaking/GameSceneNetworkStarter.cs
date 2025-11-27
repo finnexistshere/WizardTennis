@@ -75,10 +75,17 @@ public class GameSceneNetworkStarter : MonoBehaviour
     {
         Debug.Log("Waiting for host connection data...");
 
-        // Poll for connection data
-        for (int i = 0; i < 30; i++) // Try for 15 seconds
+        // Poll for connection data with exponential backoff
+        int retryCount = 0;
+        int maxRetries = 20; // 20 attempts over ~30 seconds
+
+        while (retryCount < maxRetries)
         {
-            await Task.Delay(500);
+            retryCount++;
+
+            // Exponential backoff: start at 1s, increase to 3s max
+            int delayMs = Mathf.Min(1000 + (retryCount * 100), 3000);
+            await Task.Delay(delayMs);
 
             try
             {
@@ -112,9 +119,21 @@ public class GameSceneNetworkStarter : MonoBehaviour
                     }
                 }
             }
+            catch (LobbyServiceException e)
+            {
+                if (e.Reason == LobbyExceptionReason.RateLimited)
+                {
+                    Debug.LogWarning($"Rate limited on attempt {retryCount}, backing off...");
+                    await Task.Delay(3000); // Extra delay on rate limit
+                }
+                else
+                {
+                    Debug.LogWarning($"Polling error (attempt {retryCount}): {e.Message}");
+                }
+            }
             catch (System.Exception e)
             {
-                Debug.LogWarning("Polling error: " + e.Message);
+                Debug.LogWarning($"Polling error (attempt {retryCount}): {e.Message}");
             }
         }
 
