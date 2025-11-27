@@ -878,11 +878,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: b616bf8b-35db-4581-85c4-1b0e84d28aa5
+  cloudProjectId: fbec1203-5a99-4aaf-97d2-0456711d0bc2
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Wizard Tennis 2025-07-31_21-14-32
-  organizationId: jasperpringle
+  projectName: Wizards of the Court
+  organizationId: runawaytrain_488
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
