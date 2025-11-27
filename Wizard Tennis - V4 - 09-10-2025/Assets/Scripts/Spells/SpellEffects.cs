@@ -582,8 +582,17 @@ public class SpellEffects : MonoBehaviour
             case "Fireball": return "Fireball: Fiery attack!";
             case "Shadow": return "Shadow: Return your hit!";
             case "Green": return "Green: Mysteriously green!";
-            case "Stone": return "Stone: Rock solid Defense!";
+            case "Stone": return "Stone: Rock solid defense!";
             case "Chronos": return "Chronos: Time itself bends!";
+            case "Gemini": return "Gemini: Summon a clone!";
+            case "Blink": return "Blink: Blink and you'll miss it!";
+            case "Jolly": return "Jolly: Joyfully large range!";
+            case "Mud": return "Mud: Muddy attack!";
+            case "Warp": return "Warp: Portal-hopping ball!";
+            case "Pisces": return "Pisces: Fishy defense!";
+            case "Tether": return "Tether: Tied-down attack!";
+            case "Gorbino": return "Gorbino: Gorbino.";
+            case "Gambit": return "Gambit: Take a gamble!";
             default: return "A mysterious spell...";
         }
     }
