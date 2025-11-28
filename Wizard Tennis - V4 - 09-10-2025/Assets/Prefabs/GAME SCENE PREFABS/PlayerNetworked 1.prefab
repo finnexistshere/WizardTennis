@@ -56,7 +56,7 @@ Transform:
   m_GameObject: {fileID: 3723782497690210857}
   serializedVersion: 2
   m_LocalRotation: {x: 0.19747658, y: -0, z: -0, w: 0.98030764}
-  m_LocalPosition: {x: 0, y: 2.52, z: -5.03}
+  m_LocalPosition: {x: 0, y: 5.7, z: -9.03}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -311,6 +311,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   playerInputPrefab: {fileID: 0}
   playerCameraPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
+  cameraSpawnTransform: {fileID: 5797967983157082458}
 --- !u!114 &8439326317665925018
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -441,13 +442,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 833e21e252a7a4a428d628493f0e2d01, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainCharacterMovement
-  ShowTopMostFoldoutHeaderGroup: 1
   speed: 6
   jumpSpeed: 8
   gravity: 20
   meshChild: {fileID: 2277041728426686444}
   bounceAmplitude: 0.1
   bounceFrequency: 20
+  rb: {fileID: 0}
   gemini: 0
 --- !u!1001 &264232937392678132
 PrefabInstance:

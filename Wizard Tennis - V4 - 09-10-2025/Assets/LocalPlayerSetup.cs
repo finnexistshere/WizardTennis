@@ -9,6 +9,9 @@ public class LocalPlayerSetup : NetworkBehaviour
     public PlayerInput playerInputPrefab;
     public GameObject playerCameraPrefab;
 
+    [Header("Camera Settings")]
+    public Transform cameraSpawnTransform; // Assign in Inspector to control camera spawn
+
     private GameObject spawnedCamera;
 
     public override void OnNetworkSpawn()
@@ -19,13 +22,9 @@ public class LocalPlayerSetup : NetworkBehaviour
 
     private IEnumerator SetupOwnerPlayer()
     {
-        // Wait until this player object is fully spawned and owned
         yield return new WaitUntil(() => IsSpawned && IsOwner);
 
-        // Setup input
         SetupPlayerInput();
-
-        // Setup camera
         SetupCamera();
 
         Debug.Log($"[{(IsHost ? "Host" : "Client")}] Player setup complete for client {OwnerClientId}");
@@ -41,10 +40,7 @@ public class LocalPlayerSetup : NetworkBehaviour
 
         PlayerInput inputInstance = Instantiate(playerInputPrefab);
         inputInstance.gameObject.name = $"PlayerInput_{OwnerClientId}";
-
-        // Parent under this player
         inputInstance.transform.SetParent(transform, false);
-
         inputInstance.enabled = true;
 
         try
@@ -72,20 +68,30 @@ public class LocalPlayerSetup : NetworkBehaviour
         // Detach from prefab
         spawnedCamera.transform.SetParent(null);
 
-        // Set initial position/rotation to match spawn
-        spawnedCamera.transform.position = transform.position;
-        spawnedCamera.transform.rotation = transform.rotation;
+        // Set initial position/rotation
+        if (cameraSpawnTransform != null)
+        {
+            spawnedCamera.transform.position = cameraSpawnTransform.position;
+            spawnedCamera.transform.rotation = cameraSpawnTransform.rotation;
+        }
+        else
+        {
+            // Default to player position if no transform assigned
+            spawnedCamera.transform.position = transform.position;
+            spawnedCamera.transform.rotation = transform.rotation;
+        }
 
         // Initialize CameraElasticSway
         var sway = spawnedCamera.GetComponent<CameraElasticSway>();
         if (sway != null)
         {
             sway.player = transform;
-            sway.spawnPoint = transform; // optional, makes it start at spawn
+
+            // Use cameraSpawnTransform if assigned, otherwise default to player
+            sway.spawnPoint = cameraSpawnTransform != null ? cameraSpawnTransform : transform;
         }
 
         spawnedCamera.SetActive(true);
-
         Debug.Log($"[{(IsHost ? "Host" : "Client")}] CameraElasticSway spawned for player {OwnerClientId}");
     }
 }
