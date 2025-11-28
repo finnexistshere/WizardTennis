@@ -14,14 +14,17 @@ public class UINavigationController : MonoBehaviour
     private int currentIndex = -1;
     private GameObject currentPanel;
 
+    // NEW: do not select anything until first keyboard input
+    private bool selectionActivated = false;
+
     private void OnEnable()
     {
+        selectionActivated = false;
         UpdateActivePanel();
     }
 
     private void Update()
     {
-        // If the active panel changes (eg. switching menus)
         if (currentPanel == null || !currentPanel.activeInHierarchy)
         {
             UpdateActivePanel();
@@ -30,17 +33,29 @@ public class UINavigationController : MonoBehaviour
 
         if (currentButtons.Count == 0) return;
 
-        if (Input.GetKeyDown(upKey))
-            MoveSelection(-1);
-        else if (Input.GetKeyDown(downKey))
-            MoveSelection(1);
-        else if (Input.GetKeyDown(confirmKey))
-            ConfirmSelection();
+        bool up = Input.GetKeyDown(upKey);
+        bool down = Input.GetKeyDown(downKey);
+        bool confirm = Input.GetKeyDown(confirmKey);
+
+        // FIRST INPUT ACTIVATES SELECTION
+        if (!selectionActivated)
+        {
+            if (up || down || confirm)
+            {
+                selectionActivated = true;
+                SelectButton(0);  // now we can highlight the first button
+            }
+            return; // ignore until first input happens
+        }
+
+        // Normal navigation after first activation
+        if (up) MoveSelection(-1);
+        else if (down) MoveSelection(1);
+        else if (confirm) ConfirmSelection();
     }
 
     void UpdateActivePanel()
     {
-        // Find the first active canvas or panel containing buttons
         Canvas[] canvases = FindObjectsOfType<Canvas>(true);
         foreach (Canvas canvas in canvases)
         {
@@ -59,13 +74,15 @@ public class UINavigationController : MonoBehaviour
                 {
                     currentPanel = canvas.gameObject;
                     currentButtons = activeButtons;
-                    SelectButton(0);
+
+                    // DO NOT select a button yet — wait until user presses a key
+                    currentIndex = -1;
+                    EventSystem.current.SetSelectedGameObject(null);
                     return;
                 }
             }
         }
 
-        // No active buttons found
         currentPanel = null;
         currentButtons.Clear();
         currentIndex = -1;
@@ -75,8 +92,8 @@ public class UINavigationController : MonoBehaviour
     {
         if (currentButtons.Count == 0) return;
 
-        // Exit current hover
-        TriggerPointerExit(currentButtons[currentIndex]);
+        if (currentIndex >= 0)
+            TriggerPointerExit(currentButtons[currentIndex]);
 
         currentIndex += direction;
 
