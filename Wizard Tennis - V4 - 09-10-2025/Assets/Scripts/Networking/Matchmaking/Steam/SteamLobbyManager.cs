@@ -80,21 +80,30 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void Start()
     {
-        SetupNetworkManager();
+        // Don't setup NetworkManager here - it may not exist yet
+        // Wait until we actually need it (when starting/joining game)
     }
 
     private void SetupNetworkManager()
     {
+        // Try to find NetworkManager when we actually need it
         netManager = NetworkManager.Singleton;
         if (netManager == null)
         {
-            Debug.LogError("[SteamLobby] NetworkManager not found!");
+            Debug.LogWarning("[SteamLobby] NetworkManager not found in scene - will be needed when starting game");
             return;
         }
+
+        // Only subscribe once
+        netManager.OnServerStarted -= OnServerStarted;
+        netManager.OnClientConnectedCallback -= OnClientConnected;
+        netManager.OnClientDisconnectCallback -= OnClientDisconnected;
 
         netManager.OnServerStarted += OnServerStarted;
         netManager.OnClientConnectedCallback += OnClientConnected;
         netManager.OnClientDisconnectCallback += OnClientDisconnected;
+
+        Debug.Log("[SteamLobby] NetworkManager configured");
     }
 
     #region Public API
@@ -244,9 +253,9 @@ public class SteamLobbyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Start the game (host only)
+    /// Start the game (host only) - loads game scene then starts network host
     /// </summary>
-    public void StartGame()
+    public async void StartGame()
     {
         if (!IsHost())
         {
@@ -254,21 +263,27 @@ public class SteamLobbyManager : MonoBehaviour
             return;
         }
 
-        Debug.Log("[SteamLobby] Starting game...");
+        Debug.Log("[SteamLobby] Host starting game...");
 
-        // Set lobby to in-game
-        SteamMatchmaking.SetLobbyData(currentLobbyId, "in_game", "true");
-
-        // Start Netcode host
-        if (netManager.StartHost())
+        try
         {
-            Debug.Log("[SteamLobby] Started as host");
-            // Load game scene
-            netManager.SceneManager.LoadScene(gameSceneName, LoadSceneMode.Single);
+            // Set lobby to in-game state
+            SteamMatchmaking.SetLobbyData(currentLobbyId, "in_game", "true");
+
+            Debug.Log("[SteamLobby] Marked game as starting, loading scene...");
+
+            // Small delay to ensure clients see the lobby update
+            await System.Threading.Tasks.Task.Delay(500);
+
+            // Load the game scene (which should have NetworkManager)
+            SceneManager.LoadScene(gameSceneName);
+
+            // After scene loads, NetworkManager will start automatically or via a GameSceneManager
+            // If you need to start it manually, do it in the game scene's Start() method
         }
-        else
+        catch (Exception e)
         {
-            Debug.LogError("[SteamLobby] Failed to start host");
+            Debug.LogError($"[SteamLobby] Failed to start game: {e}");
         }
     }
 
@@ -420,15 +435,24 @@ public class SteamLobbyManager : MonoBehaviour
         Debug.Log($"[SteamLobby] Client {clientId} disconnected from Netcode");
     }
 
-    private void ConnectAsClient()
+    private async void ConnectAsClient()
     {
-        if (netManager.StartClient())
+        Debug.Log("[SteamLobby] Game already in progress, joining...");
+
+        try
         {
-            Debug.Log("[SteamLobby] Started as client");
+            // Small delay before loading to avoid race condition
+            await System.Threading.Tasks.Task.Delay(300);
+
+            // Load the game scene (which has the NetworkManager)
+            SceneManager.LoadScene(gameSceneName);
+
+            // After scene loads, NetworkManager will start client automatically
+            // or via a GameSceneManager
         }
-        else
+        catch (Exception e)
         {
-            Debug.LogError("[SteamLobby] Failed to start client");
+            Debug.LogError($"[SteamLobby] Failed to join game: {e}");
         }
     }
 

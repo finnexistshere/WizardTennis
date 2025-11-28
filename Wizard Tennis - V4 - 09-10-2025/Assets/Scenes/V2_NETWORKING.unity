@@ -16798,6 +16798,7 @@ GameObject:
   m_Component:
   - component: {fileID: 259505485}
   - component: {fileID: 259505484}
+  - component: {fileID: 259505486}
   m_Layer: 0
   m_Name: PlayerNetworkRelay
   m_TagString: Untagged
@@ -16843,6 +16844,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &259505486
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 259505483}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5383db5d4ff264a48b600c5af9a16b0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamGameSceneManager
 --- !u!1 &260133490
 GameObject:
   m_ObjectHideFlags: 0
