@@ -40,9 +40,15 @@ public class SteamLobbyManager : MonoBehaviour
     private Callback<LobbyMatchList_t> lobbyListCallback;
     private Callback<LobbyChatUpdate_t> lobbyChatUpdateCallback;
     private Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequestedCallback;
+    private Callback<LobbyDataUpdate_t> lobbyDataUpdateCallback;
 
     // Netcode
     private NetworkManager netManager;
+
+    // Polling for game start
+    private bool isPollingLobby = false;
+    private float lobbyPollTimer = 0f;
+    private const float LOBBY_POLL_INTERVAL = 1.5f; // Check every 1.5 seconds
 
     private void Awake()
     {
@@ -76,6 +82,7 @@ public class SteamLobbyManager : MonoBehaviour
         lobbyListCallback = Callback<LobbyMatchList_t>.Create(OnLobbyList);
         lobbyChatUpdateCallback = Callback<LobbyChatUpdate_t>.Create(OnLobbyChatUpdate);
         gameLobbyJoinRequestedCallback = Callback<GameLobbyJoinRequested_t>.Create(OnGameLobbyJoinRequested);
+        lobbyDataUpdateCallback = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);
     }
 
     private void Start()
@@ -292,6 +299,8 @@ public class SteamLobbyManager : MonoBehaviour
     /// </summary>
     public void LeaveLobby()
     {
+        isPollingLobby = false; // Stop polling
+
         if (currentLobbyId.IsValid())
         {
             Debug.Log("[SteamLobby] Leaving lobby");
@@ -353,12 +362,19 @@ public class SteamLobbyManager : MonoBehaviour
         UpdateLobbyMembers();
         OnJoinedLobby?.Invoke();
 
-        // If game already started, connect as client
+        // Check if game already started
         string inGame = SteamMatchmaking.GetLobbyData(currentLobbyId, "in_game");
         if (inGame == "true" && !isHost)
         {
             Debug.Log("[SteamLobby] Game already in progress, joining...");
             ConnectAsClient();
+        }
+        else if (!isHost)
+        {
+            // Start polling for game start
+            Debug.Log("[SteamLobby] Started polling for game start...");
+            isPollingLobby = true;
+            lobbyPollTimer = LOBBY_POLL_INTERVAL;
         }
     }
 
@@ -414,6 +430,29 @@ public class SteamLobbyManager : MonoBehaviour
         // Player clicked "Join Game" from Steam friend list or invite
         Debug.Log($"[SteamLobby] Join requested from Steam overlay: {callback.m_steamIDLobby}");
         JoinLobby(callback.m_steamIDLobby);
+    }
+
+    private void OnLobbyDataUpdate(LobbyDataUpdate_t callback)
+    {
+        // This is called whenever lobby data changes
+        if (callback.m_ulSteamIDLobby != currentLobbyId.m_SteamID)
+            return;
+
+        Debug.Log("[SteamLobby] Lobby data updated!");
+
+        // Check if game has started
+        if (!IsHost())
+        {
+            string inGame = SteamMatchmaking.GetLobbyData(currentLobbyId, "in_game");
+            Debug.Log($"[SteamLobby] Received lobby data update - in_game: '{inGame}'");
+
+            if (inGame == "true")
+            {
+                Debug.Log("[SteamLobby] Host started game - loading scene...");
+                isPollingLobby = false; // Stop polling
+                ConnectAsClient();
+            }
+        }
     }
 
     #endregion
