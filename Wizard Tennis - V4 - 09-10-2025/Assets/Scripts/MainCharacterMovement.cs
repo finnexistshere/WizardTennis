@@ -104,6 +104,32 @@ public class MainCharacterMovement : MonoBehaviour
         }
     }
 
+    // These two bits of code are for forcing this script to reposition the client during a round reset
+
+    // Is this a bad way of doing this?
+
+    // Yes!
+
+    // But I'm beyond giving a shit
+    public void ForceMovementRefresh()
+    {
+        // Reset velocity so no lingering fall/gravity momentum after teleport
+        moveDirection = Vector3.zero;
+
+        // Reset bounce so mesh doesn't snap
+        bounceTimer = 0f;
+
+        // Force CharacterController to update grounding state
+        if (controller != null)
+            controller.Move(Vector3.zero);
+    }
+
+    public void Nudge(Vector3 amount)
+    {
+        if (controller != null)
+            controller.Move(amount);
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Mud")) speed = 3f;

@@ -46,7 +46,12 @@ public class OptionsManager : MonoBehaviour
     /// Call this whenever the options menu is opened in the scene.
     /// Pass the UI references from the scene.
     /// </summary>
-    public void OnOptionsMenuOpened(Slider slider, Toggle toggle, TextMeshProUGUI label, TMP_Dropdown drop, Toggle toggle2)
+    public void OnOptionsMenuOpened(
+        Slider slider,
+        Toggle toggle,
+        TextMeshProUGUI label,
+        TMP_Dropdown drop = null,  // Make optional
+        Toggle toggle2 = null)      // Make optional
     {
         volumeSlider = slider;
         leftHandedToggle = toggle;

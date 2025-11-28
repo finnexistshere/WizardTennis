@@ -79,6 +79,33 @@ public class SpellEffects : MonoBehaviour
         TennisAI = GameObject.Find("Game Manager").GetComponent<TennisAI>();
     }
 
+    [Header("Context References")]
+    private GameObject currentPlayer;
+    private GameObject currentOpponent;
+    private TennisAI currentAI;
+
+    /// <summary>
+    /// Sets the context for spell effects - which player is casting, who the opponent is, and AI reference
+    /// </summary>
+    public void SetContext(GameObject player, GameObject opponent, TennisAI ai)
+    {
+        currentPlayer = player;
+        currentOpponent = opponent;
+        currentAI = ai;
+
+        Debug.Log($"[SpellEffects] Context set - Player: {player?.name}, Opponent: {opponent?.name}, AI: {ai != null}");
+    }
+
+    /// <summary>
+    /// Clears the stored context (call when resetting or ending spells)
+    /// </summary>
+    public void ClearContext()
+    {
+        currentPlayer = null;
+        currentOpponent = null;
+        currentAI = null;
+    }
+
     public void castSpell()
     {
         // Show explanation only once per round per spell

@@ -177,7 +177,7 @@ public class PickupEffect : MonoBehaviour
         {
             Spellcasting singleSpell = other.GetComponent<Spellcasting>();
             if (singleSpell != null)
-                spellcastingRef = singleSpell;
+                spellcastingRef = (ISpellcasting)singleSpell;
         }
 
         if (spellcastingRef == null)

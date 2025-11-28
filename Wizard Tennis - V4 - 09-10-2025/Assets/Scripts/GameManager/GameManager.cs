@@ -227,7 +227,7 @@ public class GameManager : MonoBehaviour
             if (netSpell != null && netSpell.IsOwner)
                 spellcastingReference = netSpell;
             else
-                spellcastingReference = FindObjectOfType<Spellcasting>();
+                spellcastingReference = (ISpellcasting)FindObjectOfType<Spellcasting>();
 
             if (spellcastingReference == null)
                 Debug.LogWarning("[PickupSpawner] No spellcasting reference found!");
