@@ -108,212 +108,220 @@ public class SpellEffects : MonoBehaviour
 
     public void castSpell()
     {
-        // Show explanation only once per round per spell
-        if (!spellsUsedThisRound.Contains(spellName) && OptionsManager.Instance.spellTips)
+        if (OptionsManager.Instance != null)
         {
-            spellsUsedThisRound.Add(spellName);
-            explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
+            // Show explanation only once per round per spell
+            if (!spellsUsedThisRound.Contains(spellName) && OptionsManager.Instance.spellTips)
+            {
+                spellsUsedThisRound.Add(spellName);
+                explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
+            }
+        }
+        else
+        {
+            Debug.Log("Options Manager is Null! Beginning Spell cast");
         }
 
-        switch (spellName)
-        {
-            case "Lightning":
-                Player.GetComponent<MainCharacterMovement>().speed = 17;
-                Invoke(nameof(resetSpellEffect), 5f);
-                break;
+            switch (spellName)
+            {
+                case "Lightning":
+                    Player.GetComponent<MainCharacterMovement>().speed = 17;
+                    Invoke(nameof(resetSpellEffect), 5f);
+                    break;
 
-            case "Ice":
-                Opponent.GetComponent<OppHitting>().speed = 0f;
-                Player.GetComponent<Ball>().xPos = 0f;
+                case "Ice":
+                    Opponent.GetComponent<OppHitting>().speed = 0f;
+                    Player.GetComponent<Ball>().xPos = 0f;
 
-                if (iceBlockPrefab != null)
-                {
-                    activeIceBlock = Instantiate(iceBlockPrefab, Opponent.transform.position, Opponent.transform.rotation);
-                    activeIceBlock.transform.SetParent(Opponent.transform);
-                    activeIceBlock.transform.localPosition = Vector3.zero;
-                }
+                    if (iceBlockPrefab != null)
+                    {
+                        activeIceBlock = Instantiate(iceBlockPrefab, Opponent.transform.position, Opponent.transform.rotation);
+                        activeIceBlock.transform.SetParent(Opponent.transform);
+                        activeIceBlock.transform.localPosition = Vector3.zero;
+                    }
 
-                Invoke(nameof(resetSpellEffect), 0.5f);
-                break;
+                    Invoke(nameof(resetSpellEffect), 0.5f);
+                    break;
 
-            case "Fireball":
-                TennisAI.ApplyBuff(-0.2f, spellName);
-                resetOnOppHit = true;
-                StartCoroutine(FireballHitCheck());
-                break;
-
-            case "Shadow":
-                if (!oppHitSpell)
-                {
-                    oppHitSpell = true;
-                }
-                else
-                {
-                    Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
-                    OppHitting opp = Opponent.GetComponent<OppHitting>();
-                    opp.xPos = Player.transform.position.x;
-                    opp.zPos = Player.transform.position.z;
+                case "Fireball":
+                    TennisAI.ApplyBuff(-0.2f, spellName);
                     resetOnOppHit = true;
-                }
-                break;
+                    StartCoroutine(FireballHitCheck());
+                    break;
 
-            case "Green":
-                Player.GetComponent<Ball>().green = true;
-                Invoke(nameof(resetSpellEffect), 1f);
-                break;
+                case "Shadow":
+                    if (!oppHitSpell)
+                    {
+                        oppHitSpell = true;
+                    }
+                    else
+                    {
+                        Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
+                        OppHitting opp = Opponent.GetComponent<OppHitting>();
+                        opp.xPos = Player.transform.position.x;
+                        opp.zPos = Player.transform.position.z;
+                        resetOnOppHit = true;
+                    }
+                    break;
 
-            case "Stone":
-                if (stoneWallPrefab != null)
-                {
-                    Vector3 spawnPos = Player.transform.position + Player.transform.forward * 2f;
-                    Quaternion spawnRot = Quaternion.identity;
+                case "Green":
+                    Player.GetComponent<Ball>().green = true;
+                    Invoke(nameof(resetSpellEffect), 1f);
+                    break;
 
-                    activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
-                    activeStoneWall.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
-                    activeStoneWall.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
-                    StartCoroutine(HandleStoneWall(activeStoneWall, 5f)); // 5 seconds duration
+                case "Stone":
+                    if (stoneWallPrefab != null)
+                    {
+                        Vector3 spawnPos = Player.transform.position + Player.transform.forward * 2f;
+                        Quaternion spawnRot = Quaternion.identity;
+
+                        activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
+                        activeStoneWall.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                        activeStoneWall.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
+                        StartCoroutine(HandleStoneWall(activeStoneWall, 5f)); // 5 seconds duration
+                        Invoke(nameof(resetSpellEffect), 5f);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("Stone Wall Prefab not assigned!");
+                    }
+                    break;
+                case "Chronos":
+
+                    // Wait until explanation UI finishes before applying time slowdown
+                    StartCoroutine(ApplyChronosAfterExplanation());
+                    break;
+                case "Gemini":
+                    Vector3 gemPos = Player.transform.position;
+                    gemPos.x = -Player.transform.position.x;
+                    Quaternion gemRot = Player.transform.rotation;
+
+                    activeGemini = Instantiate(geminiPrefab, gemPos, gemRot);
+                    activeGemini.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                    activeGemini.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
                     Invoke(nameof(resetSpellEffect), 5f);
-                }
-                else
-                {
-                    Debug.LogWarning("Stone Wall Prefab not assigned!");
-                }
-                break;
-            case "Chronos":
+                    break;
+                case "Blink":
 
-                // Wait until explanation UI finishes before applying time slowdown
-                StartCoroutine(ApplyChronosAfterExplanation());
-                break;
-            case "Gemini":
-                Vector3 gemPos = Player.transform.position;
-                gemPos.x = -Player.transform.position.x;
-                Quaternion gemRot = Player.transform.rotation;
+                    Vector3 input = Vector3.zero;
 
-                activeGemini = Instantiate(geminiPrefab, gemPos, gemRot);
-                activeGemini.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
-                activeGemini.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
-                Invoke(nameof(resetSpellEffect), 5f);
-                break;
-            case "Blink":
+                    // Default movement keys (WASD)
+                    KeyCode forward = KeyCode.W;
+                    KeyCode backward = KeyCode.S;
+                    KeyCode left = KeyCode.A;
+                    KeyCode right = KeyCode.D;
 
-                Vector3 input = Vector3.zero;
+                    // If OptionsManager exists, swap keys for left-handed mode
+                    if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
+                    {
+                        forward = KeyCode.UpArrow;
+                        backward = KeyCode.DownArrow;
+                        left = KeyCode.LeftArrow;
+                        right = KeyCode.RightArrow;
+                    }
 
-                // Default movement keys (WASD)
-                KeyCode forward = KeyCode.W;
-                KeyCode backward = KeyCode.S;
-                KeyCode left = KeyCode.A;
-                KeyCode right = KeyCode.D;
+                    if (Input.GetKey(forward)) input.z += 3;
+                    if (Input.GetKey(backward)) input.z -= 3;
+                    if (Input.GetKey(right)) input.x += 3;
+                    if (Input.GetKey(left)) input.x -= 3;
+                    Vector3 moveDirection = Vector3.zero;
+                    moveDirection = new Vector3(input.x, 0, input.z);
 
-                // If OptionsManager exists, swap keys for left-handed mode
-                if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
-                {
-                    forward = KeyCode.UpArrow;
-                    backward = KeyCode.DownArrow;
-                    left = KeyCode.LeftArrow;
-                    right = KeyCode.RightArrow;
-                }
+                    Vector3 testPos = Player.transform.position - moveDirection;
 
-                if (Input.GetKey(forward)) input.z += 3;
-                if (Input.GetKey(backward)) input.z -= 3;
-                if (Input.GetKey(right)) input.x += 3;
-                if (Input.GetKey(left)) input.x -= 3;
-                Vector3 moveDirection = Vector3.zero;
-                moveDirection = new Vector3(input.x, 0, input.z);
+                    if (Player.transform.position.z > 0)
+                    {
+                        if (testPos.z > 10.9) testPos.z = 10.9f;
+                        if (testPos.z < 0.5) testPos.z = 0.5f;
+                    }
+                    else
+                    {
+                        if (testPos.z > -1) testPos.z = -1;
+                        if (testPos.z < -11.5) testPos.z = -11.5f;
+                    }
 
-                Vector3 testPos = Player.transform.position - moveDirection;
+                    if (testPos.x > 4.9) testPos.x = 4.9f;
+                    if (testPos.x < -4.9) testPos.x = -4.9f;
 
-                if (Player.transform.position.z > 0)
-                {
-                    if (testPos.z > 10.9) testPos.z = 10.9f;
-                    if (testPos.z < 0.5) testPos.z = 0.5f;
-                } else
-                {
-                    if (testPos.z > -1) testPos.z = -1;
-                    if (testPos.z < -11.5) testPos.z = -11.5f;
-                }
+                    //Player.GetComponent<MainCharacterMovement>().speed = 0;
+                    Player.GetComponent<MainCharacterMovement>().enabled = false;
+                    Player.GetComponent<CharacterController>().enabled = false;
+                    Player.transform.position = testPos;
 
-                if (testPos.x > 4.9) testPos.x = 4.9f;
-                if (testPos.x < -4.9) testPos.x = -4.9f;
+                    //Player.GetComponent<MainCharacterMovement>().speed = 7;
+                    Player.GetComponent<MainCharacterMovement>().enabled = true;
+                    Player.GetComponent<CharacterController>().enabled = true;
 
-                //Player.GetComponent<MainCharacterMovement>().speed = 0;
-                Player.GetComponent<MainCharacterMovement>().enabled = false;
-                Player.GetComponent<CharacterController>().enabled = false;
-                Player.transform.position = testPos;
-
-                //Player.GetComponent<MainCharacterMovement>().speed = 7;
-                Player.GetComponent<MainCharacterMovement>().enabled = true;
-                Player.GetComponent<CharacterController>().enabled = true;
-
-                Invoke(nameof(resetSpellEffect), 5f);
-                break;
-            case "Jolly":
-                Player.GetComponent<CapsuleCollider>().radius = 2;
-                Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
-
-                activeJolly = Instantiate(jollyPrefab, Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform.position, Quaternion.identity);
-                activeJolly.transform.parent = Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform;
-                activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
-                activeJolly.transform.localRotation = jollyRot;
-                activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-
-                Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(false);
-
-                Invoke(nameof(resetSpellEffect), 5f);
-                break;
-            case "Mud":
-                resetOnOppHit = true;
-                resetOnBounce = true;
-                break;
-            case "Warp":
-                Invoke(nameof(resetSpellEffect), 0.5f);
-                break;
-            case "Pisces":
-                Quaternion orbitRot = Player.transform.rotation;
-
-                activeOrbiter = Instantiate(orbiterPrefab, Player.transform.position, orbitRot);
-                activeOrbiter.transform.parent = Player.transform;
-                activeOrbiter.transform.localPosition = Vector3.zero;
-                SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
-                foreach (SimpleBallReturner child in children)
-                {
-                    child.aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
-                    child.opponent = Opponent.transform;
-                }
-
-                StartCoroutine(HandleOrbiter(activeOrbiter, 5f)); // 5 seconds duration
-                break;
-            case "Tether":
-                if (tetherPrefab != null)
-                {
-                    Vector3 tetherPos = Opponent.transform.position;
-                    tetherPos.y = 1.45f;
-                    Quaternion tetherRot = Quaternion.identity;
-
-                    activeTether = Instantiate(tetherPrefab, tetherPos, tetherRot);
-                    activeTether.GetComponent<Tether>().Player = Opponent.transform;
-                    Opponent.GetComponent<OppHitting>().tether = activeTether;
-                    StartCoroutine(HandleStoneWall(activeTether, 5f)); // 5 seconds duration
                     Invoke(nameof(resetSpellEffect), 5f);
-                }
-                else
-                {
-                    Debug.LogWarning("Tether Prefab not assigned!");
-                }
-                break;
-            case "Gorbino":
-                Gorbino = GameObject.Find("Gorbino");
+                    break;
+                case "Jolly":
+                    Player.GetComponent<CapsuleCollider>().radius = 2;
+                    Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
 
-                activeBall = Instantiate(BallPrefab, Gorbino.transform.position, Quaternion.identity);
+                    activeJolly = Instantiate(jollyPrefab, Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform.position, Quaternion.identity);
+                    activeJolly.transform.parent = Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform;
+                    activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
+                    activeJolly.transform.localRotation = jollyRot;
+                    activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
 
-                Gorbino.SetActive(false);
-                Invoke(nameof(resetSpellEffect), 5f);
-                break;
-            case "Gambit":
-                int spellInt = Random.Range(0, allSpells.Length);
-                spellName = allSpells[spellInt];
-                castSpell();
-                return;
-        }
+                    Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(false);
+
+                    Invoke(nameof(resetSpellEffect), 5f);
+                    break;
+                case "Mud":
+                    resetOnOppHit = true;
+                    resetOnBounce = true;
+                    break;
+                case "Warp":
+                    Invoke(nameof(resetSpellEffect), 0.5f);
+                    break;
+                case "Pisces":
+                    Quaternion orbitRot = Player.transform.rotation;
+
+                    activeOrbiter = Instantiate(orbiterPrefab, Player.transform.position, orbitRot);
+                    activeOrbiter.transform.parent = Player.transform;
+                    activeOrbiter.transform.localPosition = Vector3.zero;
+                    SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
+                    foreach (SimpleBallReturner child in children)
+                    {
+                        child.aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                        child.opponent = Opponent.transform;
+                    }
+
+                    StartCoroutine(HandleOrbiter(activeOrbiter, 5f)); // 5 seconds duration
+                    break;
+                case "Tether":
+                    if (tetherPrefab != null)
+                    {
+                        Vector3 tetherPos = Opponent.transform.position;
+                        tetherPos.y = 1.45f;
+                        Quaternion tetherRot = Quaternion.identity;
+
+                        activeTether = Instantiate(tetherPrefab, tetherPos, tetherRot);
+                        activeTether.GetComponent<Tether>().Player = Opponent.transform;
+                        Opponent.GetComponent<OppHitting>().tether = activeTether;
+                        StartCoroutine(HandleStoneWall(activeTether, 5f)); // 5 seconds duration
+                        Invoke(nameof(resetSpellEffect), 5f);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("Tether Prefab not assigned!");
+                    }
+                    break;
+                case "Gorbino":
+                    Gorbino = GameObject.Find("Gorbino");
+
+                    activeBall = Instantiate(BallPrefab, Gorbino.transform.position, Quaternion.identity);
+
+                    Gorbino.SetActive(false);
+                    Invoke(nameof(resetSpellEffect), 5f);
+                    break;
+                case "Gambit":
+                    int spellInt = Random.Range(0, allSpells.Length);
+                    spellName = allSpells[spellInt];
+                    castSpell();
+                    return;
+            }
         if (!oppHitSpell)
             Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
     }
