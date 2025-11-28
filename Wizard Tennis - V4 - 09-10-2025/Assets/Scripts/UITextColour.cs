@@ -31,6 +31,9 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     private Quaternion originalRotation;
     private Quaternion targetRotation;
 
+    private float hoverCooldown = 0.05f; // 50ms stability window
+    private float lastHoverEventTime = -1f;
+
     void Awake()
     {
         btn = GetComponent<Button>();
@@ -81,9 +84,16 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     {
         if (!btn.interactable || txt == null) return;
 
+        // Prevent edge jitter from spamming enter/exit events
+        if (Time.unscaledTime - lastHoverEventTime < hoverCooldown)
+            return;
+
+        lastHoverEventTime = Time.unscaledTime;
+
         isHovered = true;
         txt.color = highlightedColor;
         targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle);
+
         if (creakSFX != null)
             audioSource.PlayOneShot(creakSFX);
         if (sparkleSFX != null)
@@ -109,6 +119,12 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     public void OnPointerExit(PointerEventData eventData)
     {
         if (txt == null) return;
+
+        // Prevent exit spam on boundary jitter
+        if (Time.unscaledTime - lastHoverEventTime < hoverCooldown)
+            return;
+
+        lastHoverEventTime = Time.unscaledTime;
 
         isHovered = false;
         UpdateTextColor();
