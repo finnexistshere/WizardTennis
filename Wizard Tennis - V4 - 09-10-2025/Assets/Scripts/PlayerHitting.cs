@@ -6,9 +6,9 @@ using UnityEngine.InputSystem;
 public class Ball : MonoBehaviour
 {
     public Transform aimTarget; // point on the opposite side
-    public float strength = 25;
-    public float ogUpForce = 11;
-    private float upForce = 11;
+    public float strength = 15;
+    public float ogUpForce = 5;
+    public float upForce = 5;
     public float ballSpeed = 5;
 
     private bool hitting = true;
@@ -89,18 +89,9 @@ public class Ball : MonoBehaviour
 
     private void Awake()
     {
-        if (cam == null)
-        {
-            GameObject camObj = GameObject.Find("Main Camera");
-            if (camObj != null)
-                cam = camObj.GetComponent<Camera>();
-        }
-
-        if (Opponent == null)
-            Opponent = GameObject.Find("Opponent");
-
-        if (servingBarriers == null)
-            servingBarriers = GameObject.Find("ServingBarriers");
+        cam = GameObject.Find("Main Camera").GetComponent<Camera>();
+        Opponent = GameObject.Find("Opponent");
+        servingBarriers = GameObject.Find("ServingBarriers");
     }
 
     void Update()
@@ -129,7 +120,7 @@ public class Ball : MonoBehaviour
             {
                 Rigidbody rb = currentBall.GetComponent<Rigidbody>();
                 rb.useGravity = true;
-                rb.linearVelocity = new Vector3(0, upForce, 0).normalized * strength / 2;
+                rb.velocity = new Vector3(0, upForce, 0).normalized * strength / 2;
                 serving = false;
                 servingBarriers.SetActive(false);
             }
@@ -163,7 +154,7 @@ public class Ball : MonoBehaviour
 
         // Use a perceptible realtime slowdown (use WaitForSecondsRealtime so it's unaffected by timescale)
         Time.timeScale = 0.1f;
-        yield return new WaitForSecondsRealtime(0.08f); // 80ms realtime ï¿½ tweak to taste
+        yield return new WaitForSecondsRealtime(0.08f); // 80ms realtime — tweak to taste
 
         // Restore everything
         Time.timeScale = originalTimeScale;
@@ -185,6 +176,8 @@ public class Ball : MonoBehaviour
                 else upForce = ogUpForce;
 
                 if (-6.25 < transform.position.z || transform.position.z < 6.25) upForce += 2;
+
+                if (other.transform.position.y < 2) upForce += 1;
 
                 float aimTargety = aimTarget.transform.position.y;
                 float aimTargetz = aimTarget.transform.position.z;
@@ -214,8 +207,8 @@ public class Ball : MonoBehaviour
 
                 if (!serving)
                 {
-                    Vector3 dir = aimTarget.position - transform.position;
-                    other.GetComponent<Rigidbody>().linearVelocity = dir.normalized * strength + new Vector3(0, upForce, 0);
+                    Vector3 dir = aimTarget.transform.position - transform.position;
+                    other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
                     rallyCount++;
                     if (green)
                     {

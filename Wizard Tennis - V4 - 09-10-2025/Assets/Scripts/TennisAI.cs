@@ -29,7 +29,7 @@ public class TennisAI : MonoBehaviour
         Debug.Log(success ? "AI returned the ball!" : "AI missed!");
 
         // Reset one-time modifiers after use
-        ClearEffects();
+        //ClearEffects();
 
         return success;
     }

@@ -3,13 +3,13 @@ using TMPro;
 using System.Collections;
 using System.Collections.Generic;
 
-public class Spellcasting : MonoBehaviour, ISpellcasting
+public class Spellcasting : MonoBehaviour
 {
     // --- Racket Shader Reference ---
     [SerializeField] private Material racketShader;
 
     // --- Spell Dictionaries ---
-    public Dictionary<string, string> spellBook { get; private set; } = new Dictionary<string, string>();
+    public Dictionary<string, string> spellBook = new Dictionary<string, string>();
     public Dictionary<string, float> debuffBook = new Dictionary<string, float>();
     public Dictionary<string, GameObject> spellVisuals = new Dictionary<string, GameObject>();
     public Dictionary<string, bool> boolBook = new Dictionary<string, bool>();
@@ -62,6 +62,10 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
     private float ballCheckInterval = 0.5f;
     private float nextBallCheckTime = 0f;
 
+    // ================================================================
+    // INITIALIZATION
+    // ================================================================
+
     private void Awake()
     {
         AutoSetupReferences();
@@ -77,7 +81,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
             var mats = Resources.FindObjectsOfTypeAll<Material>();
             foreach (var mat in mats)
             {
-                if (mat != null && mat.name.Contains("Racket"))
+                if (mat.name.Contains("Racket"))
                 {
                     racketShader = mat;
                     Debug.Log("[Spellcasting] Found and assigned racket shader: " + mat.name);
@@ -89,10 +93,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         // --- Audio ---
         if (audioSource == null)
         {
-            var audioGO = GameObject.Find("audiosource");
-            if (audioGO != null)
-                audioSource = audioGO.GetComponent<AudioSource>();
-
+            audioSource = GetComponent<AudioSource>();
             if (audioSource != null)
                 Debug.Log("[Spellcasting] Found and linked AudioSource.");
             else
@@ -102,12 +103,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         // --- Spell Effects ---
         if (SpellEffects == null)
         {
-            try
-            {
-                SpellEffects = FindObjectOfType<SpellEffects>();
-            }
-            catch { SpellEffects = null; }
-
+            SpellEffects = FindObjectOfType<SpellEffects>();
             if (SpellEffects != null)
                 Debug.Log("[Spellcasting] Linked SpellEffects.");
             else
@@ -147,17 +143,13 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         // --- UI References ---
         if (spellBookPanel == null)
         {
-            spellBookPanel = GameObject.Find("SpellBook");
+            spellBookPanel = GameObject.Find("SpellBookPanel");
             Debug.Log(spellBookPanel ? "[Spellcasting] Found SpellBookPanel." : "[Spellcasting] SpellBookPanel not found!");
         }
 
         if (spellAddressText == null)
         {
-            // prefer finding by name first (spellAddressText could be multiple TMPs in scene)
-            var go = GameObject.Find("SpellAddressText");
-            if (go != null) spellAddressText = go.GetComponent<TextMeshProUGUI>();
-            else
-                spellAddressText = GameObject.Find("SpellAddress").GetComponent<TMPro.TextMeshProUGUI>();
+            spellAddressText = FindObjectOfType<TextMeshProUGUI>();
             Debug.Log(spellAddressText ? "[Spellcasting] Found spellAddressText." : "[Spellcasting] No TextMeshProUGUI found!");
         }
 
@@ -188,10 +180,15 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         }
     }
 
+    // ================================================================
+    // UPDATE LOOP
+    // ================================================================
+
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.E))
+        if (Time.time >= nextBallCheckTime)
         {
+            nextBallCheckTime = Time.time + ballCheckInterval;
             TryFindAndLinkBall();
         }
 
@@ -211,6 +208,10 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
             CheckSpell();
     }
+
+    // ================================================================
+    // BALL LINKING
+    // ================================================================
 
     private void TryFindAndLinkBall()
     {
@@ -244,6 +245,10 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
 
         Debug.Log("[Spellcasting] Connected to active Ball GameObject.");
     }
+
+    // ================================================================
+    // INPUT HANDLING
+    // ================================================================
 
     private bool CheckSpellInput(out string direction)
     {
@@ -286,6 +291,10 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         UpdateSpellBook();
     }
 
+    // ================================================================
+    // SPELL LOGIC
+    // ================================================================
+
     private void CheckSpell()
     {
         if (!spellBook.ContainsKey(inputSpellAddress))
@@ -314,30 +323,10 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
             return;
         }
 
-        // --- Determine player roles for this spell ---
-        GameObject caster = this.gameObject;
-        GameObject opponent = FindOpponent();
-
-        // Feed the contextual actors into SpellEffects
-        try
-        {
-            SpellEffects.SetContext(caster, opponent, TennisAi);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"[Spellcasting] SpellEffects.SetContext threw: {e.Message}");
-        }
-
-        // Pass spell metadata
         SpellEffects.spellName = spellName;
         SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
-
-        // Cast spell
         if (!SpellEffects.plrHitSpell)
-        {
-            try { SpellEffects.castSpell(); }
-            catch (System.Exception e) { Debug.LogWarning($"[Spellcasting] SpellEffects.castSpell threw: {e.Message}"); }
-        }
+            SpellEffects.castSpell();
 
         if (UIManager.Instance != null)
         {
@@ -356,6 +345,10 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         UpdateSpellBook();
     }
 
+    // ================================================================
+    // RESET
+    // ================================================================
+
     private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
     {
         yield return new WaitForSeconds(delay);
@@ -369,12 +362,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         if (baseEffect != null)
             baseEffect.SetActive(true);
 
-        // Safe particle color set/reset
-        if (spellParticleColor != null)
-        {
-            try { spellParticleColor.ResetColor(); }
-            catch (System.Exception e) { Debug.LogWarning($"[Spellcasting] spellParticleColor.ResetColor threw: {e.Message}"); }
-        }
+        spellParticleColor?.ResetColor();
 
         if (racketShader != null)
         {
@@ -384,7 +372,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
 
         if (!string.IsNullOrEmpty(currentActiveSpell))
         {
-            try { TennisAi?.ClearEffects(); } catch { }
+            TennisAi?.ClearEffects();
             currentActiveSpell = "";
 
             if (UIManager.Instance != null)
@@ -396,109 +384,9 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         Debug.Log("[Spellcasting] Spellcasting unlocked.");
     }
 
-    private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
-    {
-        if (newPrefab == null)
-        {
-            Debug.LogWarning("[Spellcasting] SwapVisual called with null prefab.");
-            return;
-        }
-
-        if (currentVisualInstance != null)
-            Destroy(currentVisualInstance);
-
-        if (baseEffect != null) baseEffect.SetActive(false);
-
-        currentVisualInstance = Instantiate(newPrefab, parentTransform);
-        currentVisualInstance.transform.localPosition = Vector3.zero;
-        currentVisualInstance.transform.localRotation = Quaternion.identity;
-        currentVisualInstance.transform.localScale = Vector3.one;
-    }
-
-    public void CastSpellNormal(string spellName)
-    {
-        bool found = false;
-        string spellAddress = "";
-
-        foreach (var spell in spellBook)
-        {
-            if (spell.Value == spellName)
-            {
-                spellAddress = spell.Key;
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            Debug.LogWarning($"Spell '{spellName}' not found in spell book.");
-            return;
-        }
-
-        if (baseEffectObject != null)
-            baseEffectObject.SetActive(false);
-
-        float value = 0f;
-        if (debuffBook.ContainsKey(spellAddress)) value = debuffBook[spellAddress];
-
-        Debug.Log($"{spellName} cast!");
-        if (UIManager.Instance != null)
-        {
-            Color uiSpellColor = spellColors.ContainsKey(spellAddress)
-                ? spellColors[spellAddress]
-                : Color.white;
-            UIManager.Instance.UpdateSpellStatus(spellName, uiSpellColor);
-        }
-
-        Color spellColor = spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white;
-        Color spellColor2 = spellColors2.ContainsKey(spellAddress) ? spellColors2[spellAddress] : spellColor;
-
-        if (racketShader != null)
-        {
-            try
-            {
-                racketShader.SetColor("_Racket_Color_Top", spellColor);
-                racketShader.SetColor("_Racket_Color_Bottom", spellColor2);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[Spellcasting] Failed to set racket shader colors: {e.Message}");
-            }
-        }
-
-        if (spellFloorImage != null)
-        {
-            try { spellFloorImage.ShowSpell(spellName, spellColor); } catch { }
-        }
-
-        if (spellParticleColor != null)
-        {
-            try { spellParticleColor.SetSpellColor(spellColor); }
-            catch (System.Exception e) { Debug.LogWarning($"[Spellcasting] SetSpellColor threw: {e.Message}"); }
-        }
-
-        if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizclip) && wizclip != null)
-        {
-            spellAudio.TryGetValue(spellAddress, out AudioClip spellClip);
-            StartCoroutine(PlaySpellSequence(wizclip, spellClip, 0.35f));
-        }
-        else if (spellAudio.TryGetValue(spellAddress, out AudioClip spellClipOnly) && spellClipOnly != null)
-        {
-            audioSource?.PlayOneShot(spellClipOnly);
-        }
-
-        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
-            SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
-
-        if (SpellEffects != null)
-        {
-            try { SpellEffects.spellHit = true; } catch { }
-        }
-
-        float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
-        StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, spellAddress));
-    }
+    // ================================================================
+    // UTILITY
+    // ================================================================
 
     private void UpdateSpellBook()
     {
@@ -543,6 +431,92 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         Debug.Log($"[Spellcasting] Removed spell '{spellName}' ({address}) from spell book.");
         UpdateSpellBook();
     }
+
+
+public void CastSpellNormal(string spellName)
+    {
+        bool found = false;
+        string spellAddress = "";
+
+        foreach (var spell in spellBook)
+        {
+            if (spell.Value == spellName)
+            {
+                spellAddress = spell.Key;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            Debug.LogWarning($"Spell '{spellName}' not found in spell book.");
+            return;
+        }
+
+        // Disable base effect
+        if (baseEffectObject != null)
+            baseEffectObject.SetActive(false);
+
+        // Apply buff/debuff
+        float value = debuffBook[spellAddress];
+
+        Debug.Log($"{spellName} cast!");
+        if (UIManager.Instance != null)
+        {
+            Color uiSpellColor = spellColors.ContainsKey(spellAddress)
+                ? spellColors[spellAddress]
+                : Color.white;
+            UIManager.Instance.UpdateSpellStatus(spellName, uiSpellColor);
+        }
+
+        Color spellColor = spellColors[spellAddress];
+        Color spellColor2 = spellColors2[spellAddress];
+
+        // Change racket color
+        racketShader.SetColor("_Racket_Color_Top", spellColor);
+        racketShader.SetColor("_Racket_Color_Bottom", spellColor2);
+
+        spellFloorImage.ShowSpell(spellName, spellColor);
+        spellParticleColor.SetSpellColor(spellColor);
+
+        if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizclip) && wizclip != null)
+        {
+            AudioClip spellClip = null;
+            spellAudio.TryGetValue(spellAddress, out spellClip);
+            StartCoroutine(PlaySpellSequence(wizclip, spellClip, 0.35f)); // waits 1 second
+        }
+        else if (spellAudio.TryGetValue(spellAddress, out AudioClip spellClipOnly) && spellClipOnly != null)
+        {
+            // If there’s no wizard clip, play the spell sound immediately
+            audioSource?.PlayOneShot(spellClipOnly);
+        }
+
+
+        // Swap visuals
+        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
+            SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
+        SpellEffects.spellHit = true;
+
+        float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
+        StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, spellAddress));
+    }
+
+
+
+    private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
+    {
+        if (currentVisualInstance != null)
+            Destroy(currentVisualInstance);
+
+        baseEffect.SetActive(false);
+
+        currentVisualInstance = Instantiate(newPrefab, parentTransform);
+        currentVisualInstance.transform.localPosition = Vector3.zero;
+        currentVisualInstance.transform.localRotation = Quaternion.identity;
+        currentVisualInstance.transform.localScale = Vector3.one;
+    }
+
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound, float duration)
     {
         if (!spellBook.ContainsKey(address))
@@ -576,13 +550,4 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
             audioSource.PlayOneShot(spellClip);
     }
 
-    private GameObject FindOpponent()
-    {
-        foreach (var sc in FindObjectsOfType<Spellcasting>())
-        {
-            if (sc != this)
-                return sc.gameObject;
-        }
-        return null;
-    }
 }

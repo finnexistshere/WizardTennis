@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class OppHitting : MonoBehaviour
 {
@@ -32,6 +34,8 @@ public class OppHitting : MonoBehaviour
     private float _lastHitSfxTime = -999f;
 
     public NPCBounceAnimator npcBounceAnimator;
+
+    public GameObject tether;
 
     private void PlayHitsound(Vector3 contactPoint)
     {
@@ -100,7 +104,16 @@ public class OppHitting : MonoBehaviour
         npcBounceAnimator.isMoving = frameMovement > 0.0001f;
 
         // Perform movement
-        transform.position = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
+        //if (barrier) targetPosition.x *= -1;
+        Vector3 testPos = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
+        if (tether != null)
+        {
+            if (testPos.x > (tether.transform.position.x + 2f) || testPos.x < (tether.transform.position.x - 2f))
+            {
+                return;
+            }
+        }
+        transform.position = testPos;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -137,6 +150,8 @@ public class OppHitting : MonoBehaviour
                     upForce += 1;
                 }
 
+                if (other.transform.position.y < 2) upForce += 1;
+
                 ParticleSystem particle = GameObject.FindGameObjectWithTag("Opponent Hit Particle").GetComponent<ParticleSystem>(); // Plays opponent hit particle
 
                 particle.transform.position = other.transform.position;
@@ -170,7 +185,15 @@ public class OppHitting : MonoBehaviour
                 CollisionTracker.hasBounced = false;
             }
         }
+
+        if (other.CompareTag("Mud")) speed = 4f;
     }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Mud")) speed = 5f;
+    }
+
     private void OnDrawGizmos()
     {
         // Draw the current target position

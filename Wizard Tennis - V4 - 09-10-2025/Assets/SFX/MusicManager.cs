@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 using UnityEngine.SceneManagement;
 
 public class MusicManager : MonoBehaviour
@@ -26,6 +27,16 @@ public class MusicManager : MonoBehaviour
         {
             musicSource = gameObject.AddComponent<AudioSource>();
             musicSource.loop = true;
+        }
+
+        if (GameObject.Find("PlayerAim") != null)
+        {
+            if (OptionsManager.Instance != null)
+            {
+                musicTrack = OptionsManager.Instance.bgm;
+                musicSource.clip = musicTrack;
+                musicSource.Play();
+            }
         }
 
         if (musicTrack != null)
