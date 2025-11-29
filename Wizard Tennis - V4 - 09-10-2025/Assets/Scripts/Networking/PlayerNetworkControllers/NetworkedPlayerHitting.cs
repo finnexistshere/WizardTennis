@@ -145,6 +145,14 @@ public class NetworkedBall : NetworkBehaviour
             SpawnBallServerRpc(ballSpawnPoint.position, ballSpawnPoint.rotation);
         }
 
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+
+            rb.linearVelocity = Vector3.zero;
+            rb.constraints = RigidbodyConstraints.FreezePosition | RigidbodyConstraints.FreezeRotation;
+        }
+
         // Serve ball with E when near it
         if (Input.GetKeyDown(KeyCode.E) && nearBall && localServing)
         {

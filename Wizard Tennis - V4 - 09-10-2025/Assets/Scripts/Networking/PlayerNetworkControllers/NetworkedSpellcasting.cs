@@ -151,7 +151,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         // --- UI References ---
         if (spellBookPanel == null)
         {
-            spellBookPanel = GameObject.Find("SpellBookPanel");
+            spellBookPanel = GameObject.Find("SpellBook");
             Debug.Log(spellBookPanel ? "[Spellcasting] Found SpellBookPanel." : "[Spellcasting] SpellBookPanel not found!");
         }
 
@@ -470,6 +470,10 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                     SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
                     newEntry.gameObject.tag = "SpellUI";
                     newEntry.SetText(item.Value, item.Key);
+                }
+                else
+                {
+                    Debug.LogWarning("[NetworkedSpellcasting] Missing UI references for SpellBook update.");
                 }
             }
         }
