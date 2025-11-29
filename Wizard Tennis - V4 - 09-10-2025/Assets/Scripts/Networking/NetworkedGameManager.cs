@@ -352,6 +352,7 @@ public class NetworkedGameManager : NetworkBehaviour
     private void SpawnPickupForPlayer(Transform spawnCenter, List<GameObject> activePickups, NetworkedSpellcasting spellcasting)
     {
         if (!IsServer) return;
+
         if (spawnCenter == null)
         {
             Debug.LogWarning("[NetworkedGameManager] spawnCenter not assigned.");
@@ -393,8 +394,22 @@ public class NetworkedGameManager : NetworkBehaviour
         GameObject prefab = GetWeightedPickup(spellcasting);
         if (prefab == null) return;
 
-        // Instantiate pickup on server
+        // Instantiate server-side
         GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
+
+        // MUST network spawn or clients won't see it
+        NetworkObject netObj = newPickup.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.Spawn();
+        }
+        else
+        {
+            Debug.LogError("[NetworkedGameManager] Pickup prefab has NO NetworkObject!");
+            Destroy(newPickup);
+            return;
+        }
+
         activePickups.Add(newPickup);
 
         Debug.Log($"[NetworkedGameManager] Spawned pickup at {spawnPos} for player {spellcasting.OwnerClientId}");
