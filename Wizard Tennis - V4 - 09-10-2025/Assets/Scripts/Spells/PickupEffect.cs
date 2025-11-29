@@ -200,6 +200,21 @@ public class PickupEffect : MonoBehaviour
         if (audioSource != null && pickupAudio != null)
             audioSource.PlayOneShot(pickupAudio);
 
-        Destroy(gameObject);
+        // NETCODE SAFE DESTROY
+        NetworkObject netObj = GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            {
+                // Server/host only
+                netObj.Despawn();
+            }
+            // Otherwise, client does nothing — despawn will propagate from server
+        }
+        else
+        {
+            // Singleplayer fallback
+            Destroy(gameObject);
+        }
     }
 }

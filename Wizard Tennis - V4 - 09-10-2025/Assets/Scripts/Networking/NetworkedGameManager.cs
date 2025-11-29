@@ -37,6 +37,10 @@ public class NetworkedGameManager : NetworkBehaviour
     public TextMeshProUGUI WinLoseText;
     public GameObject tutorialPanel;
 
+    private bool playersFound = false;
+    private float findPlayerTimeout = 10f; // safety
+    private float findPlayerTimer = 0f;
+
     private bool isPaused = false;
     public PlayerInput playerInput;
 
@@ -112,7 +116,7 @@ public class NetworkedGameManager : NetworkBehaviour
                 hostSpellcasting = spell;
                 hostPlayer = spell.gameObject;
             }
-            else if (spell.OwnerClientId == 1) // Client
+            else if (spell.OwnerClientId != 0) // Any non-host player
             {
                 clientSpellcasting = spell;
                 clientPlayer = spell.gameObject;
@@ -289,6 +293,11 @@ public class NetworkedGameManager : NetworkBehaviour
 
     private void Update()
     {
+        if (IsServer && !playersFound)
+        {
+            TryFindPlayers();
+        }
+
         // Only owner handles input
         if (!IsOwner) return;
 
@@ -321,6 +330,43 @@ public class NetworkedGameManager : NetworkBehaviour
         {
             SpawnPickupForPlayer(clientSpawnCenter, clientActivePickups, clientSpellcasting);
             clientSpawnTimer = spawnInterval;
+        }
+    }
+
+    private void TryFindPlayers()
+    {
+        findPlayerTimer += Time.deltaTime;
+
+        var allSpellcasting = FindObjectsOfType<NetworkedSpellcasting>();
+
+        foreach (var spell in allSpellcasting)
+        {
+            if (spell.OwnerClientId == 0 && hostSpellcasting == null)
+            {
+                hostSpellcasting = spell;
+                hostPlayer = spell.gameObject;
+                Debug.Log("[NetworkedGameManager] Host spellcasting found (Update).");
+            }
+            else if (spell.OwnerClientId != 0 && clientSpellcasting == null)
+            {
+                clientSpellcasting = spell;
+                clientPlayer = spell.gameObject;
+                Debug.Log("[NetworkedGameManager] Client spellcasting found (Update).");
+            }
+        }
+
+        // When both are found ? lock and stop running forever
+        if (hostSpellcasting != null && clientSpellcasting != null)
+        {
+            playersFound = true;
+            Debug.Log("[NetworkedGameManager] All player references locked.");
+        }
+
+        // Optional: failsafe (to avoid infinite loop in broken cases)
+        if (findPlayerTimer > findPlayerTimeout)
+        {
+            playersFound = true;
+            Debug.LogWarning("[NetworkedGameManager] Timeout while searching for players. Locking search.");
         }
     }
 
