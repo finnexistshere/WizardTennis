@@ -85,39 +85,93 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         // --- Racket Shader ---
         if (racketShader == null)
         {
-            Debug.LogWarning("[NetworkedSpellcasting] Racket shader missing!");
+            Debug.LogWarning("[Spellcasting] Racket shader missing! Attempting to find a Material named 'Racket'.");
+            var mats = Resources.FindObjectsOfTypeAll<Material>();
+            foreach (var mat in mats)
+            {
+                if (mat.name.Contains("Racket"))
+                {
+                    racketShader = mat;
+                    Debug.Log("[Spellcasting] Found and assigned racket shader: " + mat.name);
+                    break;
+                }
+            }
         }
 
         // --- Audio ---
         if (audioSource == null)
         {
-            var audioGO = GameObject.Find("audiosource");
-            if (audioGO != null)
-                audioSource = audioGO.GetComponent<AudioSource>();
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource != null)
+                Debug.Log("[Spellcasting] Found and linked AudioSource.");
+            else
+                Debug.LogWarning("[Spellcasting] AudioSource missing!");
         }
 
         // --- Spell Effects ---
         if (SpellEffects == null)
         {
             SpellEffects = FindObjectOfType<SpellEffects>();
+            if (SpellEffects != null)
+                Debug.Log("[Spellcasting] Linked SpellEffects.");
+            else
+                Debug.LogWarning("[Spellcasting] SpellEffects reference missing!");
         }
 
         // --- Spell Floor Image ---
         if (spellFloorImage == null)
         {
             spellFloorImage = FindObjectOfType<SpellFloorImage>();
+            if (spellFloorImage != null)
+                Debug.Log("[Spellcasting] Linked SpellFloorImage.");
+            else
+                Debug.LogWarning("[Spellcasting] SpellFloorImage reference missing!");
         }
 
         // --- Spell Particle Color ---
         if (spellParticleColor == null)
         {
             spellParticleColor = FindObjectOfType<SpellParticleColor>();
+            if (spellParticleColor != null)
+                Debug.Log("[Spellcasting] Linked SpellParticleColor.");
+            else
+                Debug.LogWarning("[Spellcasting] SpellParticleColor reference missing!");
         }
 
         // --- TennisAI ---
         if (TennisAi == null)
         {
             TennisAi = FindObjectOfType<TennisAI>();
+            if (TennisAi != null)
+                Debug.Log("[Spellcasting] Linked TennisAI.");
+            else
+                Debug.LogWarning("[Spellcasting] TennisAI reference missing!");
+        }
+
+        // --- UI References ---
+        if (spellBookPanel == null)
+        {
+            spellBookPanel = GameObject.Find("SpellBookPanel");
+            Debug.Log(spellBookPanel ? "[Spellcasting] Found SpellBookPanel." : "[Spellcasting] SpellBookPanel not found!");
+        }
+
+        if (spellAddressText == null)
+        {
+            spellAddressText = FindObjectOfType<TextMeshProUGUI>();
+            Debug.Log(spellAddressText ? "[Spellcasting] Found spellAddressText." : "[Spellcasting] No TextMeshProUGUI found!");
+        }
+
+        if (spellTextPrefab == null)
+        {
+            spellTextPrefab = Resources.Load<SpellTextEntry>("SpellTextEntry");
+            Debug.Log(spellTextPrefab ? "[Spellcasting] Loaded SpellTextEntry prefab." : "[Spellcasting] SpellTextEntry prefab missing!");
+        }
+
+        // --- Particle Systems ---
+        if (hitParticle == null)
+        {
+            hitParticle = FindObjectOfType<ParticleSystem>();
+            Debug.Log(hitParticle ? "[Spellcasting] Found hitParticle." : "[Spellcasting] No ParticleSystem found!");
         }
     }
 

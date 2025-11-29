@@ -79,7 +79,7 @@ GameObject:
   - component: {fileID: 2648397526836586462}
   - component: {fileID: 5254710448533051725}
   - component: {fileID: 4859587465706889866}
-  - component: {fileID: 8439326317665925018}
+  - component: {fileID: 6196798854856940667}
   - component: {fileID: -339827697620475669}
   - component: {fileID: 5782747520428295493}
   - component: {fileID: 818260011169314898}
@@ -312,7 +312,7 @@ MonoBehaviour:
   playerInputPrefab: {fileID: 0}
   playerCameraPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
   cameraSpawnTransform: {fileID: 5797967983157082458}
---- !u!114 &8439326317665925018
+--- !u!114 &6196798854856940667
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -321,9 +321,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7574428254200817810}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 899ff2024ed4c6a41987d549fd46cf51, type: 3}
+  m_Script: {fileID: 11500000, guid: 0bdd967aca4d6fd4b9a4a5be8112f019, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkedSpellcasting
+  ShowTopMostFoldoutHeaderGroup: 1
   racketShader: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
   spellBookPanel: {fileID: 0}
   spellAddressText: {fileID: 0}
@@ -331,8 +332,8 @@ MonoBehaviour:
   parentObject: {fileID: 0}
   baseEffectObject: {fileID: 0}
   spellDuration: 5
-  hitParticle: {fileID: 1497286266799946001, guid: 1004cd108f5409c4c88f475f2675bc79, type: 3}
-  spellParticleColor: {fileID: 6499075747684456719, guid: 1004cd108f5409c4c88f475f2675bc79, type: 3}
+  hitParticle: {fileID: 3801566474980163910}
+  spellParticleColor: {fileID: 8806744579849249112}
   inputTimeout: 2
   audioSource: {fileID: 0}
   SpellInputClick: {fileID: 8300000, guid: 24a27dd945e649c48b916c4c1dcd1f17, type: 3}
