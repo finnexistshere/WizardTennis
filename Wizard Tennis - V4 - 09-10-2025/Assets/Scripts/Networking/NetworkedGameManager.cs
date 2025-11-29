@@ -584,6 +584,9 @@ public class NetworkedGameManager : NetworkBehaviour
         // Hide UI on all clients
         HideGameOverUIClientRpc();
 
+        // Set hitting mode on all players back to serving
+        SetPlayersToServingState();
+
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
 
@@ -736,5 +739,21 @@ public class NetworkedGameManager : NetworkBehaviour
         Time.timeScale = 0f;
         if (gameOverUI != null) gameOverUI.SetActive(true);
         if (WinLoseText != null) WinLoseText.text = message;
+    }
+
+    private void SetPlayersToServingState()
+    {
+        if (!IsServer) return;
+
+        NetworkedBall[] allBalls = FindObjectsOfType<NetworkedBall>();
+        foreach (NetworkedBall ball in allBalls)
+        {
+            // Only call on balls owned by players
+            if (ball.IsOwner)
+            {
+                ball.SetToServingState();
+                Debug.Log($"[NetworkedGameManager] Set player {ball.OwnerClientId} ball to SERVING state.");
+            }
+        }
     }
 }

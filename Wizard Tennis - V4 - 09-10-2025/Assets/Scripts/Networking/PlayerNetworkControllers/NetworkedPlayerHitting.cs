@@ -51,6 +51,11 @@ public class NetworkedBall : NetworkBehaviour
     private static float lastGlobalServerHitTime = -999f; // Static for ALL players
     private static float serverHitDebounce = 0.2f;
 
+    // PAUSE BALL FUNCTIONS FOR TESTING PURPOSES
+    private static Vector3 savedVelocity;
+    private static RigidbodyConstraints savedConstraints;
+    private static bool ballPaused = false;
+
     private void Awake()
     {
         cam = Camera.main;
@@ -147,10 +152,10 @@ public class NetworkedBall : NetworkBehaviour
 
         if (Input.GetKeyDown(KeyCode.R))
         {
-            Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
-
-            rb.linearVelocity = Vector3.zero;
-            rb.constraints = RigidbodyConstraints.FreezePosition | RigidbodyConstraints.FreezeRotation;
+            if (!ballPaused)
+                PauseBallServerRpc();
+            else
+                ResumeBallServerRpc();
         }
 
         // Serve ball with E when near it
@@ -161,6 +166,57 @@ public class NetworkedBall : NetworkBehaviour
             lastServeTime = Time.time; // Record serve time
             if (servingBarriers != null) servingBarriers.SetActive(false);
         }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void PauseBallServerRpc()
+    {
+        if (currentBallInstance == null) return;
+
+        Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+        if (rb == null) return;
+
+        savedVelocity = rb.linearVelocity;
+        savedConstraints = rb.constraints;
+
+        rb.linearVelocity = Vector3.zero;
+        rb.useGravity = false;
+        rb.constraints = RigidbodyConstraints.FreezeAll;
+
+        ballPaused = true;
+
+        PauseBallClientRpc();
+    }
+
+    [ClientRpc]
+    private void PauseBallClientRpc()
+    {
+        ballPaused = true;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void ResumeBallServerRpc()
+    {
+        if (currentBallInstance == null) return;
+
+        Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+        if (rb == null) return;
+
+        rb.constraints = RigidbodyConstraints.None;
+        rb.useGravity = true;
+
+        rb.linearVelocity = savedVelocity;
+
+        ballPaused = false;
+
+        ResumeBallClientRpc(savedVelocity);
+    }
+
+    [ClientRpc]
+    private void ResumeBallClientRpc(Vector3 restoredVelocity)
+    {
+        savedVelocity = restoredVelocity;
+        ballPaused = false;
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -239,6 +295,7 @@ public class NetworkedBall : NetworkBehaviour
     private void NotifyServeCompleteClientRpc()
     {
         localServing = false;
+        hitting = true;
         lastServeTime = Time.time; // All clients record the serve time
         if (servingBarriers != null) servingBarriers.SetActive(false);
     }
