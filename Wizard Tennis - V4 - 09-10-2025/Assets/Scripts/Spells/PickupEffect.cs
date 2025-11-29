@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 
-public class PickupEffect : MonoBehaviour
+public class PickupEffect : NetworkBehaviour
 {
     public enum EffectType { Buff, Debuff }
 
@@ -36,6 +36,7 @@ public class PickupEffect : MonoBehaviour
     private List<Material> materials = new List<Material>();
     private List<ParticleSystem> particleSystems = new List<ParticleSystem>();
     private bool isFading = false;
+    private bool hasBeenPickedUp = false; // Prevent double-pickup
 
     public bool IsBuff => type == EffectType.Buff;
     public float Amount => value;
@@ -161,56 +162,110 @@ public class PickupEffect : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        // Prevent double-pickup
+        if (hasBeenPickedUp) return;
+
         if (!other.CompareTag("Player")) return;
 
-        if (!NetworkManager.Singleton || !NetworkManager.Singleton.IsListening)
+        // Check if we're in a networked game
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening)
         {
-            // Singleplayer
+            // Singleplayer mode
             HandlePickupSingleplayer(other);
             return;
         }
 
+        // Multiplayer mode - only process on the client that owns the player
         NetworkedSpellcasting netSpell = other.GetComponent<NetworkedSpellcasting>();
         if (netSpell != null && netSpell.IsOwner)
         {
-            RequestPickupServerRpc(other.GetComponent<NetworkObject>().NetworkObjectId);
+            hasBeenPickedUp = true; // Prevent multiple pickups on client
+
+            NetworkObject playerNetObj = other.GetComponent<NetworkObject>();
+            if (playerNetObj != null)
+            {
+                // Play audio locally for immediate feedback
+                PlayPickupAudioClientRpc();
+
+                // Request server to process pickup
+                RequestPickupServerRpc(playerNetObj.NetworkObjectId);
+            }
         }
     }
 
     [ServerRpc(RequireOwnership = false)]
     private void RequestPickupServerRpc(ulong playerNetworkId)
     {
+        // Prevent server-side double processing
+        if (hasBeenPickedUp) return;
+        hasBeenPickedUp = true;
+
         // Get the player object on the server
         if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(playerNetworkId, out NetworkObject playerObj))
+        {
+            Debug.LogWarning($"[PickupEffect] Could not find NetworkObject with ID {playerNetworkId}");
             return;
+        }
 
+        // Try NetworkedSpellcasting first, fallback to Spellcasting
         NetworkedSpellcasting netSpell = playerObj.GetComponent<NetworkedSpellcasting>();
         Spellcasting singleSpell = playerObj.GetComponent<Spellcasting>();
 
-        // Add spell on the server
         if (netSpell != null)
         {
-            netSpell.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
+            // Add spell via ClientRpc so all clients get the spell
+            AddSpellToPlayerClientRpc(playerNetworkId, spellAddress, spellName, value, onHitBool, Color1, Color2, duration);
         }
         else if (singleSpell != null)
         {
             singleSpell.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
         }
-
-        // Despawn pickup object on the server
-        NetworkObject netObj = GetComponent<NetworkObject>();
-        if (netObj != null)
-            netObj.Despawn();
         else
-            Destroy(gameObject); // fallback for non-networked/singleplayer
+        {
+            Debug.LogWarning($"[PickupEffect] Player {playerNetworkId} has no Spellcasting component!");
+        }
+
+        // Despawn pickup object (only server can do this)
+        NetworkObject netObj = GetComponent<NetworkObject>();
+        if (netObj != null && netObj.IsSpawned)
+        {
+            netObj.Despawn(true); // true = destroy after despawn
+        }
+    }
+
+    [ClientRpc]
+    private void AddSpellToPlayerClientRpc(ulong playerNetworkId, string address, string name, float val, bool hitBool, Color c1, Color c2, float dur)
+    {
+        // Find the player on each client
+        if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(playerNetworkId, out NetworkObject playerObj))
+            return;
+
+        NetworkedSpellcasting netSpell = playerObj.GetComponent<NetworkedSpellcasting>();
+        if (netSpell != null)
+        {
+            netSpell.AddSpell(address, name, val, spellVisualPrefab, hitBool, c1, c2, spellCastAudio, wizardSpellSound, dur);
+            Debug.Log($"[PickupEffect] Added spell '{name}' to player {playerNetworkId} on client {NetworkManager.Singleton.LocalClientId}");
+        }
+    }
+
+    [ClientRpc]
+    private void PlayPickupAudioClientRpc()
+    {
+        if (audioSource != null && pickupAudio != null)
+            audioSource.PlayOneShot(pickupAudio);
     }
 
     private void HandlePickupSingleplayer(Collider other)
     {
-        // Essentially same as before
+        if (hasBeenPickedUp) return;
+        hasBeenPickedUp = true;
+
         Spellcasting sc = other.GetComponent<Spellcasting>();
         if (sc != null)
+        {
             sc.AddSpell(spellAddress, spellName, value, spellVisualPrefab, onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
+            Debug.Log($"[PickupEffect] Added spell '{spellName}' in singleplayer mode");
+        }
 
         if (audioSource != null && pickupAudio != null)
             audioSource.PlayOneShot(pickupAudio);

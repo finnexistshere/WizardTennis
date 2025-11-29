@@ -203,10 +203,14 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
         audioSource?.PlayOneShot(spellRegisterSound);
 
+        // Get opponent NetworkObjectId for reliable network lookup
         GameObject opponent = FindOpponent();
+        ulong opponentNetId = opponent != null && opponent.TryGetComponent<NetworkObject>(out var netObj)
+            ? netObj.NetworkObjectId
+            : ulong.MaxValue;
 
-        // Network the spell casting to all clients
-        CastSpellNetworkedClientRpc(inputSpellAddress, spellName);
+        // Request server to cast spell
+        CastSpellServerRpc(inputSpellAddress, spellName, opponentNetId);
 
         float duration = spellDurations.ContainsKey(inputSpellAddress) ? spellDurations[inputSpellAddress] : spellDuration;
 
@@ -215,61 +219,101 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         UpdateSpellBook();
     }
 
+    [ServerRpc]
+    private void CastSpellServerRpc(string spellAddress, string spellName, ulong opponentNetId)
+    {
+        // Server validates and broadcasts to all clients
+        CastSpellNetworkedClientRpc(spellAddress, spellName, OwnerClientId, opponentNetId);
+    }
+
     [ClientRpc]
-    private void CastSpellNetworkedClientRpc(string spellAddress, string spellName)
+    private void CastSpellNetworkedClientRpc(string spellAddress, string spellName, ulong casterClientId, ulong opponentNetId)
     {
         if (!spellBook.ContainsKey(spellAddress)) return;
 
-        // Update UI
-        if (uiManager != null)
+        // Find the actual caster and opponent by NetworkObjectId
+        GameObject caster = null;
+        GameObject opponent = null;
+
+        foreach (var sc in FindObjectsOfType<NetworkedSpellcasting>())
         {
-            Color uiSpellColor = spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white;
-            uiManager.UpdateSpellStatus(spellName, uiSpellColor);
+            if (sc.OwnerClientId == casterClientId)
+                caster = sc.gameObject;
+            else if (sc.GetComponent<NetworkObject>().NetworkObjectId == opponentNetId)
+                opponent = sc.gameObject;
         }
 
-        // Swap visuals
-        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
+        if (caster == null)
+        {
+            Debug.LogError($"[NetworkedSpellcasting] Could not find caster with ClientId {casterClientId}");
+            return;
+        }
+
+        // Update UI (only for the caster)
+        if (IsOwner && casterClientId == OwnerClientId)
+        {
+            if (uiManager != null)
+            {
+                Color uiSpellColor = spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white;
+                uiManager.UpdateSpellStatus(spellName, uiSpellColor);
+            }
+        }
+
+        // Swap visuals (only on caster's instance)
+        if (casterClientId == OwnerClientId && spellVisuals.ContainsKey(spellAddress) && parentObject != null)
             SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
 
-        // Racket shader
-        if (racketShader != null && spellColors.ContainsKey(spellAddress) && spellColors2.ContainsKey(spellAddress))
+        // Racket shader (only for caster)
+        if (casterClientId == OwnerClientId && racketShader != null && spellColors.ContainsKey(spellAddress) && spellColors2.ContainsKey(spellAddress))
         {
             racketShader.SetColor("_Racket_Color_Top", spellColors[spellAddress]);
             racketShader.SetColor("_Racket_Color_Bottom", spellColors2[spellAddress]);
         }
 
-        // Floor image
+        // Floor image (visible to all)
         if (spellFloorImage != null)
         {
             try { spellFloorImage.ShowSpell(spellName, spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white); } catch { }
         }
 
-        // Particle system
+        // Particle system (visible to all)
         if (spellParticleColor != null)
         {
             try { spellParticleColor.SetSpellColor(spellColors.ContainsKey(spellAddress) ? spellColors[spellAddress] : Color.white); } catch { }
         }
 
-        // Play audio
-        if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizClip) && wizClip != null)
+        // Play audio (only on caster)
+        if (casterClientId == OwnerClientId)
         {
-            spellAudio.TryGetValue(spellAddress, out AudioClip spellClip);
-            StartCoroutine(PlaySpellSequence(wizClip, spellClip, 0.35f));
-        }
-        else if (spellAudio.TryGetValue(spellAddress, out AudioClip spellClipOnly) && spellClipOnly != null)
-        {
-            audioSource?.PlayOneShot(spellClipOnly);
+            if (wizardAudio.TryGetValue(spellAddress, out AudioClip wizClip) && wizClip != null)
+            {
+                spellAudio.TryGetValue(spellAddress, out AudioClip spellClip);
+                StartCoroutine(PlaySpellSequence(wizClip, spellClip, 0.35f));
+            }
+            else if (spellAudio.TryGetValue(spellAddress, out AudioClip spellClipOnly) && spellClipOnly != null)
+            {
+                audioSource?.PlayOneShot(spellClipOnly);
+            }
         }
 
-        // Spell Effects
+        // Spell Effects (ALL CLIENTS execute spell effects)
         if (SpellEffects != null)
         {
             SpellEffects.spellName = spellName;
             SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
+
             if (!SpellEffects.plrHitSpell)
             {
-                try { SpellEffects.SetContext(this.gameObject, FindOpponent(), TennisAi); } catch { }
-                try { SpellEffects.castSpell(); } catch { }
+                try
+                {
+                    // Set context for ALL clients so spell effects work
+                    SpellEffects.SetContext(caster, opponent, TennisAi);
+                    SpellEffects.castSpell();
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[NetworkedSpellcasting] Error casting spell: {e.Message}");
+                }
             }
         }
     }
@@ -409,8 +453,21 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         // Play register sound locally
         audioSource?.PlayOneShot(spellRegisterSound);
 
-        // Trigger the networked spell cast for all clients
-        CastSpellNetworkedClientRpc(spellAddress, spellName);
+        // Get opponent NetworkObjectId
+        GameObject opponent = FindOpponent();
+        ulong opponentNetId = opponent != null && opponent.TryGetComponent<NetworkObject>(out var netObj)
+            ? netObj.NetworkObjectId
+            : ulong.MaxValue;
+
+        // Trigger the networked spell cast for all clients via server
+        if (IsServer)
+        {
+            CastSpellNetworkedClientRpc(spellAddress, spellName, OwnerClientId, opponentNetId);
+        }
+        else
+        {
+            CastSpellServerRpc(spellAddress, spellName, opponentNetId);
+        }
 
         // Reset visuals after spell duration
         float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
