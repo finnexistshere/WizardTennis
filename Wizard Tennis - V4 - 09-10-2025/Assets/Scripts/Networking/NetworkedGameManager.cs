@@ -555,9 +555,6 @@ public class NetworkedGameManager : NetworkBehaviour
 
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("UI");
-
-        // Start next round after brief delay
-        StartCoroutine(StartNextRoundAfterDelay(2f));
     }
 
     private IEnumerator StartNextRoundAfterDelay(float delay)
@@ -577,14 +574,12 @@ public class NetworkedGameManager : NetworkBehaviour
         Time.timeScale = 1f;
         isPaused = false;
 
-        if (IsServer)
-        {
-            // Remove all balls from the scene
-            RemoveAllBalls();
+        // Remove all balls from the scene
+        RemoveAllBalls();
 
-            // Reset players after a brief moment
-            StartCoroutine(ResetPlayersAfterFrame());
-        }
+        // Reset players after delay
+        StartCoroutine(ResetPlayersAfterDelay(0.1f));
+       
 
         // Hide UI on all clients
         HideGameOverUIClientRpc();
@@ -716,9 +711,6 @@ public class NetworkedGameManager : NetworkBehaviour
         Time.timeScale = 0f;
         if (gameOverUI != null) gameOverUI.SetActive(true);
         if (WinLoseText != null) WinLoseText.text = message;
-
-        // Reset players after delay
-        StartCoroutine(ResetPlayersAfterDelay(2f));
     }
 
     private IEnumerator ResetPlayersAfterDelay(float delay)

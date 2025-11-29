@@ -23420,7 +23420,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1594825197}
         m_TargetAssemblyTypeName: NetworkedGameManager, Assembly-CSharp
-        m_MethodName: ResetRound
+        m_MethodName: StartNextRound
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -41964,6 +41964,8 @@ MonoBehaviour:
   maxActivePickupsPerPlayer: 4
   hostSpawnCenter: {fileID: 2036865726}
   clientSpawnCenter: {fileID: 319551048}
+  hostPlayerSpawn: {fileID: 1376262019}
+  clientPlayerSpawn: {fileID: 265336819}
   pauseMenuUI: {fileID: 265330815}
   gameOverUI: {fileID: 947538467}
   WinLoseText: {fileID: 168140767}
