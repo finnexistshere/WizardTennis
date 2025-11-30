@@ -42028,6 +42028,7 @@ MonoBehaviour:
   jollyPrefab: {fileID: 6974429216218887945, guid: 6931c73d6b9e40f449e0c1b8ce25993d, type: 3}
   BallPrefab: {fileID: 5499011774259568949, guid: 23daab679bb69d54c9d92efa7a6a88d0, type: 3}
   flamePrefab: {fileID: 8057782250999151861, guid: cc56ac6547b79a940b3636f73d6eb516, type: 3}
+  invisibleMaterial: {fileID: 2100000, guid: 67c1b31b8fad99349abd6994386c91a6, type: 2}
   spellHit: 0
 --- !u!114 &1594825196
 MonoBehaviour:

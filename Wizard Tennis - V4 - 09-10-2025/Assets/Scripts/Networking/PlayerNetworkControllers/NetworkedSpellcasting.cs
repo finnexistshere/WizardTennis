@@ -283,8 +283,8 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
         }
 
-        // Swap visuals (only on caster's instance)
-        if (casterClientId == OwnerClientId && spellVisuals.ContainsKey(spellAddress) && parentObject != null)
+        // Swap visuals (on ALL clients)
+        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
             SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
 
         // Racket shader (only for caster)
@@ -320,23 +320,25 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
         }
 
-        // Spell Effects (ALL CLIENTS execute spell effects)
-        if (SpellEffects != null)
+        // Spell Effects (ONLY caster executes spell logic)
+        if (casterClientId == OwnerClientId)
         {
-            SpellEffects.spellName = spellName;
-            SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
-
-            if (!SpellEffects.plrHitSpell)
+            if (SpellEffects != null)
             {
-                try
+                SpellEffects.spellName = spellName;
+                SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
+
+                if (!SpellEffects.plrHitSpell)
                 {
-                    // Set context for ALL clients so spell effects work
-                    SpellEffects.SetContext(caster, opponent, TennisAi);
-                    SpellEffects.castSpell();
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogError($"[NetworkedSpellcasting] Error casting spell: {e.Message}");
+                    try
+                    {
+                        SpellEffects.SetContext(caster, opponent, TennisAi);
+                        SpellEffects.castSpell();
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"[NetworkedSpellcasting] Error casting spell: {e.Message}");
+                    }
                 }
             }
         }

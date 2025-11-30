@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 
@@ -25,6 +26,9 @@ public class SpellFloorImage : MonoBehaviour
     private ulong assignedClientId = ulong.MaxValue; // Track which client this belongs to
     private bool isInitialized = false;
 
+    // Tracking for assigned spell images in the Networking Scene
+    private static readonly List<SpellFloorImage> allImages = new List<SpellFloorImage>();
+
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -41,43 +45,71 @@ public class SpellFloorImage : MonoBehaviour
 
     private IEnumerator AutoAssignToPlayer()
     {
-        // Wait a frame to ensure all NetworkObjects are spawned
-        yield return new WaitForEndOfFrame();
+        // Wait until the network is active
+        yield return new WaitUntil(() =>
+            NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsListening
+        );
 
-        // Check if we're in a networked game
-        bool isNetworked = NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening;
-
-        if (isNetworked)
+        // MULTIPLAYER --> wait for both players to exist
+        if (NetworkManager.Singleton.IsListening)
         {
-            // Multiplayer mode - find the local player
-            NetworkedSpellcasting[] allNetworkedPlayers = FindObjectsOfType<NetworkedSpellcasting>();
+            yield return StartCoroutine(WaitForBothNetworkedPlayers());
 
-            foreach (var netPlayer in allNetworkedPlayers)
-            {
-                if (netPlayer.IsOwner)
-                {
-                    AssignToNetworkedPlayer(netPlayer);
-                    Debug.Log($"[SpellFloorImage] Auto-assigned to networked player (ClientId: {netPlayer.OwnerClientId})");
-                    yield break;
-                }
-            }
-
-            Debug.LogWarning("[SpellFloorImage] Could not find local networked player to assign to!");
+            AssignOnceBothPlayersExist();
+            yield break;
         }
-        else
-        {
-            // Singleplayer mode - find any Spellcasting component
-            Spellcasting singlePlayer = FindObjectOfType<Spellcasting>();
 
-            if (singlePlayer != null)
+        // SINGLEPLAYER fallback
+        Spellcasting sp = FindObjectOfType<Spellcasting>();
+        if (sp != null)
+            AssignToSinglePlayer(sp);
+    }
+
+    private IEnumerator WaitForBothNetworkedPlayers()
+    {
+        while (true)
+        {
+            NetworkedSpellcasting[] players = FindObjectsOfType<NetworkedSpellcasting>();
+
+            if (players.Length >= 2)
+                break;
+
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
+
+    private void AssignOnceBothPlayersExist()
+    {
+        NetworkedSpellcasting[] players = FindObjectsOfType<NetworkedSpellcasting>();
+
+        // Identify the LOCAL player
+        NetworkedSpellcasting localPlayer = null;
+        foreach (var p in players)
+            if (p.IsOwner)
+                localPlayer = p;
+
+        if (localPlayer == null)
+        {
+            Debug.LogWarning("[SpellFloorImage] No local player found even though 2 players exist?");
+            return;
+        }
+
+        // Check if this client already has an assigned image
+        foreach (var img in allImages)
+        {
+            if (img.networkedSpellcasting == localPlayer)
             {
-                AssignToSinglePlayer(singlePlayer);
-                Debug.Log("[SpellFloorImage] Auto-assigned to singleplayer player");
+                // Already assigned
+                return;
             }
-            else
-            {
-                Debug.LogWarning("[SpellFloorImage] Could not find player to assign to!");
-            }
+        }
+
+        // Assign the first unassigned image to the local player
+        if (!IsAssigned())
+        {
+            AssignToNetworkedPlayer(localPlayer);
+            Debug.Log("[SpellFloorImage] Assigned AFTER both players existed.");
         }
     }
 

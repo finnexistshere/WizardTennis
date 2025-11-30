@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using Unity.Netcode;
 
 public class SpellEffects : MonoBehaviour
 {
@@ -60,6 +61,11 @@ public class SpellEffects : MonoBehaviour
     public GameObject flamePrefab;
     private GameObject activeFlame;
 
+    [Header("Shadow Spell Settings")]
+    public Material invisibleMaterial; // Assign a transparent material for invisibility
+    private Material originalOpponentMaterial;
+    private Renderer opponentRenderer;
+
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
     private float lastOriginalTimeScale = 1f;
@@ -68,6 +74,8 @@ public class SpellEffects : MonoBehaviour
     public static bool isSpellSlowdownActive = false;
 
     private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether" };
+
+    private bool isNetworked => NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening;
 
     private void Awake()
     {
@@ -163,25 +171,49 @@ public class SpellEffects : MonoBehaviour
             case "Ice":
                 if (opponent != null)
                 {
-                    var oppHit = opponent.GetComponent<OppHitting>();
-                    if (oppHit != null) oppHit.speed = 0f;
+                    if (isNetworked)
+                    {
+                        // Networked: Freeze opponent's MainCharacterMovement
+                        var oppMcm = opponent.GetComponent<MainCharacterMovement>();
+                        if (oppMcm != null)
+                        {
+                            oppMcm.speed = 0f;
+                            Debug.Log($"[SpellEffects] Ice: Froze opponent {opponent.name}, speed set to 0");
+                        }
+                    }
+                    else
+                    {
+                        // Singleplayer: Freeze AI
+                        var oppHit = opponent.GetComponent<OppHitting>();
+                        if (oppHit != null) oppHit.speed = 0f;
+                    }
 
-                    var ballComp = player.GetComponent<Ball>();
-                    if (ballComp != null) ballComp.xPos = 0f;
-
+                    // Spawn ice block on opponent
                     if (iceBlockPrefab != null)
                     {
                         activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
                         activeIceBlock.transform.SetParent(opponent.transform);
                         activeIceBlock.transform.localPosition = Vector3.zero;
+                        Debug.Log($"[SpellEffects] Ice block spawned on {opponent.name}");
                     }
                 }
-                Invoke(nameof(resetSpellEffect), 0.5f);
+                Invoke(nameof(resetSpellEffect), 5f);
                 break;
 
             case "Fireball":
-                if (ai != null)
+                if (isNetworked && opponent != null)
                 {
+                    // Networked: Apply knockback to opponent
+                    Vector3 knockbackDir = (opponent.transform.position - player.transform.position).normalized;
+                    knockbackDir.y = 0.5f; // Add upward component
+                    float knockbackForce = 8f;
+
+                    Debug.Log($"[SpellEffects] Fireball: Applying knockback to {opponent.name}");
+                    StartCoroutine(ApplyKnockback(opponent, knockbackDir * knockbackForce, 0.4f));
+                }
+                else if (ai != null)
+                {
+                    // Singleplayer: Apply AI debuff
                     ai.ApplyBuff(-0.2f, spellName);
                 }
                 resetOnOppHit = true;
@@ -195,17 +227,41 @@ public class SpellEffects : MonoBehaviour
                 }
                 else
                 {
-                    // Cast spell visually
-                    var spellcasting = player.GetComponent<Spellcasting>();
-                    var netSpellcasting = player.GetComponent<NetworkedSpellcasting>();
-
-                    if (spellcasting != null)
-                        spellcasting.CastSpellNormal(spellName);
-                    else if (netSpellcasting != null)
-                        netSpellcasting.CastSpellNormal(spellName);
-
-                    if (opponent != null)
+                    if (isNetworked && opponent != null)
                     {
+                        // Networked: Make CASTER (player) invisible on local client's screen only
+                        var netSpellcasting = player.GetComponent<NetworkedSpellcasting>();
+                        if (netSpellcasting != null && netSpellcasting.IsOwner)
+                        {
+                            // Make the PLAYER (caster) invisible, not the opponent
+                            opponentRenderer = player.GetComponentInChildren<SkinnedMeshRenderer>();
+                            if (opponentRenderer == null)
+                                opponentRenderer = player.GetComponentInChildren<MeshRenderer>();
+
+                            if (opponentRenderer != null)
+                            {
+                                originalOpponentMaterial = opponentRenderer.material;
+                                if (invisibleMaterial != null)
+                                {
+                                    opponentRenderer.material = invisibleMaterial;
+                                    Debug.Log("[SpellEffects] Shadow: Applied invisible material to caster");
+                                }
+                                else
+                                {
+                                    // Fallback: make transparent
+                                    Material tempMat = new Material(opponentRenderer.material);
+                                    Color c = tempMat.color;
+                                    c.a = 0.2f;
+                                    tempMat.color = c;
+                                    opponentRenderer.material = tempMat;
+                                    Debug.Log("[SpellEffects] Shadow: Made caster 20% transparent");
+                                }
+                            }
+                        }
+                    }
+                    else if (!isNetworked && opponent != null)
+                    {
+                        // Singleplayer: Teleport AI to player position
                         var opp = opponent.GetComponent<OppHitting>();
                         if (opp != null)
                         {
@@ -213,6 +269,16 @@ public class SpellEffects : MonoBehaviour
                             opp.zPos = player.transform.position.z;
                         }
                     }
+
+                    // Cast spell visually
+                    var spellcasting = player.GetComponent<Spellcasting>();
+                    var netSpellcastingComp = player.GetComponent<NetworkedSpellcasting>();
+
+                    if (spellcasting != null)
+                        spellcasting.CastSpellNormal(spellName);
+                    else if (netSpellcastingComp != null)
+                        netSpellcastingComp.CastSpellNormal(spellName);
+
                     resetOnOppHit = true;
                 }
                 break;
@@ -386,9 +452,18 @@ public class SpellEffects : MonoBehaviour
                     if (tether != null)
                         tether.Player = opponent.transform;
 
-                    var oppHit = opponent.GetComponent<OppHitting>();
-                    if (oppHit != null)
-                        oppHit.tether = activeTether;
+                    if (isNetworked)
+                    {
+                        // Networked: Restrict opponent's MainCharacterMovement
+                        StartCoroutine(ApplyTetherRestriction(opponent, tetherPos, 5f));
+                    }
+                    else
+                    {
+                        // Singleplayer: Use OppHitting tether
+                        var oppHit = opponent.GetComponent<OppHitting>();
+                        if (oppHit != null)
+                            oppHit.tether = activeTether;
+                    }
 
                     StartCoroutine(HandleStoneWall(activeTether, 5f));
                     Invoke(nameof(resetSpellEffect), 5f);
@@ -442,13 +517,28 @@ public class SpellEffects : MonoBehaviour
             case "Ice":
                 if (opponent != null)
                 {
-                    var oppHit = opponent.GetComponent<OppHitting>();
-                    if (oppHit != null) oppHit.speed = 5;
+                    if (isNetworked)
+                    {
+                        // Networked: Restore opponent's MainCharacterMovement speed
+                        var oppMcm = opponent.GetComponent<MainCharacterMovement>();
+                        if (oppMcm != null)
+                        {
+                            oppMcm.speed = 7;
+                            Debug.Log($"[SpellEffects] Ice Reset: Restored opponent {opponent.name} speed to 7");
+                        }
+                    }
+                    else
+                    {
+                        // Singleplayer: Restore AI speed
+                        var oppHit = opponent.GetComponent<OppHitting>();
+                        if (oppHit != null) oppHit.speed = 5;
+                    }
                 }
                 if (activeIceBlock != null)
                 {
                     Destroy(activeIceBlock);
                     activeIceBlock = null;
+                    Debug.Log("[SpellEffects] Ice block destroyed");
                 }
                 break;
 
@@ -464,6 +554,14 @@ public class SpellEffects : MonoBehaviour
 
             case "Shadow":
                 resetOnOppHit = false;
+
+                // Restore opponent's material
+                if (opponentRenderer != null && originalOpponentMaterial != null)
+                {
+                    opponentRenderer.material = originalOpponentMaterial;
+                    opponentRenderer = null;
+                    originalOpponentMaterial = null;
+                }
                 break;
 
             case "Chronos":
@@ -546,9 +644,14 @@ public class SpellEffects : MonoBehaviour
             case "Tether":
                 if (opponent != null)
                 {
-                    var oppHit = opponent.GetComponent<OppHitting>();
-                    if (oppHit != null)
-                        oppHit.tether = null;
+                    if (!isNetworked)
+                    {
+                        // Singleplayer: Clear AI tether
+                        var oppHit = opponent.GetComponent<OppHitting>();
+                        if (oppHit != null)
+                            oppHit.tether = null;
+                    }
+                    // Networked tether restriction is handled by coroutine ending
                 }
                 break;
 
@@ -564,6 +667,87 @@ public class SpellEffects : MonoBehaviour
         plrHitSpell = false;
         oppHitSpell = false;
         spellHit = false;
+    }
+
+    private IEnumerator ApplyKnockback(GameObject target, Vector3 knockbackForce, float duration)
+    {
+        var controller = target.GetComponent<CharacterController>();
+        var movement = target.GetComponent<MainCharacterMovement>();
+
+        if (controller == null)
+        {
+            Debug.LogWarning($"[SpellEffects] Knockback failed: No CharacterController on {target.name}");
+            yield break;
+        }
+
+        // Temporarily disable player movement control
+        bool wasMovementEnabled = true;
+        if (movement != null)
+        {
+            wasMovementEnabled = movement.enabled;
+            movement.enabled = false;
+        }
+
+        float elapsed = 0f;
+        Vector3 totalKnockback = Vector3.zero;
+
+        Debug.Log($"[SpellEffects] Starting knockback on {target.name}, force: {knockbackForce}, duration: {duration}");
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = 1f - (elapsed / duration); // Decay over time
+
+            Vector3 frameKnockback = knockbackForce * t * Time.deltaTime;
+            controller.Move(frameKnockback);
+            totalKnockback += frameKnockback;
+
+            yield return null;
+        }
+
+        Debug.Log($"[SpellEffects] Knockback complete on {target.name}, total distance: {totalKnockback.magnitude}");
+
+        // Re-enable player movement control
+        if (movement != null)
+            movement.enabled = wasMovementEnabled;
+    }
+
+    private IEnumerator ApplyTetherRestriction(GameObject target, Vector3 tetherPos, float duration)
+    {
+        var mcm = target.GetComponent<MainCharacterMovement>();
+        if (mcm == null) yield break;
+
+        float maxDistance = 3f; // Maximum distance from tether
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+
+            // Check distance from tether
+            Vector3 targetPos = target.transform.position;
+            targetPos.y = tetherPos.y; // Ignore Y axis
+            Vector3 tetherPosFlat = tetherPos;
+
+            float distance = Vector3.Distance(new Vector3(targetPos.x, 0, targetPos.z), new Vector3(tetherPosFlat.x, 0, tetherPosFlat.z));
+
+            if (distance > maxDistance)
+            {
+                // Pull target back towards tether
+                Vector3 direction = (new Vector3(tetherPosFlat.x, targetPos.y, tetherPosFlat.z) - targetPos).normalized;
+                Vector3 clampedPos = new Vector3(tetherPosFlat.x, targetPos.y, tetherPosFlat.z) + direction * -maxDistance;
+
+                var controller = target.GetComponent<CharacterController>();
+                if (controller != null)
+                {
+                    controller.enabled = false;
+                    target.transform.position = new Vector3(clampedPos.x, target.transform.position.y, clampedPos.z);
+                    controller.enabled = true;
+                }
+            }
+
+            yield return null;
+        }
     }
 
     private IEnumerator ApplyChronosAfterExplanation()
