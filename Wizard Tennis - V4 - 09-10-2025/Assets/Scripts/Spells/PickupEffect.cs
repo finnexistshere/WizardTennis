@@ -162,15 +162,13 @@ public class PickupEffect : NetworkBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        // Prevent double-pickup
-        if (hasBeenPickedUp) return;
-
         if (!other.CompareTag("Player")) return;
 
         // Check if we're in a networked game
         if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening)
         {
             // Singleplayer mode
+            if (hasBeenPickedUp) return;
             HandlePickupSingleplayer(other);
             return;
         }
@@ -179,15 +177,14 @@ public class PickupEffect : NetworkBehaviour
         NetworkedSpellcasting netSpell = other.GetComponent<NetworkedSpellcasting>();
         if (netSpell != null && netSpell.IsOwner)
         {
-            hasBeenPickedUp = true; // Prevent multiple pickups on client
-
             NetworkObject playerNetObj = other.GetComponent<NetworkObject>();
             if (playerNetObj != null)
             {
                 // Play audio locally for immediate feedback
-                PlayPickupAudioClientRpc();
+                if (audioSource != null && pickupAudio != null)
+                    audioSource.PlayOneShot(pickupAudio);
 
-                // Request server to process pickup
+                // Request server to process pickup (server will handle hasBeenPickedUp check)
                 RequestPickupServerRpc(playerNetObj.NetworkObjectId);
             }
         }
@@ -246,13 +243,6 @@ public class PickupEffect : NetworkBehaviour
             netSpell.AddSpell(address, name, val, spellVisualPrefab, hitBool, c1, c2, spellCastAudio, wizardSpellSound, dur);
             Debug.Log($"[PickupEffect] Added spell '{name}' to player {playerNetworkId} on client {NetworkManager.Singleton.LocalClientId}");
         }
-    }
-
-    [ClientRpc]
-    private void PlayPickupAudioClientRpc()
-    {
-        if (audioSource != null && pickupAudio != null)
-            audioSource.PlayOneShot(pickupAudio);
     }
 
     private void HandlePickupSingleplayer(Collider other)

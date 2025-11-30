@@ -98,11 +98,8 @@ public class SpellFloorImage : MonoBehaviour
         // Get the client ID
         assignedClientId = player.OwnerClientId;
 
-        // Set follow target to the player's ball or player object
-        if (player.parentObject != null)
-            follow = player.parentObject;
-        else
-            follow = player.gameObject;
+        // Set follow target to the player object (not the ball)
+        follow = player.gameObject;
 
         isInitialized = true;
 
@@ -124,11 +121,8 @@ public class SpellFloorImage : MonoBehaviour
         networkedSpellcasting = null; // Clear multiplayer reference
         assignedClientId = ulong.MaxValue; // Not networked
 
-        // Set follow target to the player's ball or player object
-        if (player.parentObject != null)
-            follow = player.parentObject;
-        else
-            follow = player.gameObject;
+        // Set follow target to the player object (not the ball)
+        follow = player.gameObject;
 
         isInitialized = true;
 
@@ -183,16 +177,17 @@ public class SpellFloorImage : MonoBehaviour
     /// </summary>
     private void UpdateFollowTarget()
     {
-        // Try to get the ball reference from the assigned spellcasting component
-        if (networkedSpellcasting != null && networkedSpellcasting.parentObject != null)
+        // The floor image should follow the player, not the ball
+        // This method is kept for backwards compatibility but doesn't need to do anything
+        // since we set follow = player.gameObject in the assignment methods
+
+        // If for some reason follow is null, try to reassign
+        if (follow == null)
         {
-            if (follow != networkedSpellcasting.parentObject)
-                follow = networkedSpellcasting.parentObject;
-        }
-        else if (spellcasting != null && spellcasting.parentObject != null)
-        {
-            if (follow != spellcasting.parentObject)
-                follow = spellcasting.parentObject;
+            if (networkedSpellcasting != null)
+                follow = networkedSpellcasting.gameObject;
+            else if (spellcasting != null)
+                follow = spellcasting.gameObject;
         }
     }
 
