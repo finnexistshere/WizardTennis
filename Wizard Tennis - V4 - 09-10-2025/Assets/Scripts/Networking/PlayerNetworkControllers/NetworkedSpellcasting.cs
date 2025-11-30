@@ -60,6 +60,9 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     [Header("Settings")]
     public bool leftHandedMode = false;
 
+    private float ballCheckInterval = 0.5f;
+    private float nextBallCheckTime = 0f;
+
     private NetworkedUIManager uiManager;
 
     private void Awake()
@@ -70,11 +73,32 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     public override void OnNetworkSpawn()
     {
-        if (!IsOwner) return;
+        // Only the owner needs to find the ball for visuals
+        if (IsOwner)
+        {
+            StartCoroutine(DelayedBallSearch());
 
-        uiManager = GetComponent<NetworkedUIManager>();
-        if (uiManager == null)
-            Debug.LogWarning($"[NetworkedSpellcasting] Player {OwnerClientId} missing NetworkedUIManager!");
+            uiManager = GetComponent<NetworkedUIManager>();
+            if (uiManager == null)
+                Debug.LogWarning($"[NetworkedSpellcasting] Player {OwnerClientId} missing NetworkedUIManager!");
+        }
+    }
+
+    private IEnumerator DelayedBallSearch()
+    {
+        // Wait a bit for all network objects to spawn
+        yield return new WaitForSeconds(0.5f);
+
+        // Force ball search
+        currentBall = null;
+        TryFindAndLinkBall();
+
+        // Try again if failed
+        if (currentBall == null)
+        {
+            yield return new WaitForSeconds(1f);
+            TryFindAndLinkBall();
+        }
     }
 
     private void AutoSetupReferences()
