@@ -155,10 +155,15 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private void Update()
     {
+        // Only owner needs ball for visuals and input
         if (!IsOwner) return;
 
-        if (Input.GetKeyDown(KeyCode.E))
+        // Periodic ball check for owner only
+        if (Time.time >= nextBallCheckTime)
+        {
+            nextBallCheckTime = Time.time + ballCheckInterval;
             TryFindAndLinkBall();
+        }
 
         if (isCasting) return;
 
@@ -179,18 +184,75 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private void TryFindAndLinkBall()
     {
+        // Only owner needs ball reference for visuals
+        if (!IsOwner) return;
+
+        // Check if current ball is still valid
         if (currentBall != null && currentBall.activeInHierarchy)
             return;
 
+        // Need to find a new ball
+        currentBall = null;
+
+        // Try multiple methods to find the ball
         GameObject ballObj = GameObject.FindWithTag("Ball");
-        if (ballObj == null) return;
+
+        // Fallback: try finding by name
+        if (ballObj == null)
+            ballObj = GameObject.Find("Ball");
+
+        // Fallback: search for Ball component
+        if (ballObj == null)
+        {
+            Ball ballComponent = FindObjectOfType<Ball>();
+            if (ballComponent != null)
+                ballObj = ballComponent.gameObject;
+        }
+
+        // Fallback: search for NetworkObject with ball-like name
+        if (ballObj == null)
+        {
+            foreach (var netObj in FindObjectsOfType<NetworkObject>())
+            {
+                if (netObj.gameObject.name.ToLower().Contains("ball"))
+                {
+                    ballObj = netObj.gameObject;
+                    break;
+                }
+            }
+        }
+
+        if (ballObj == null)
+        {
+            // Only log occasionally to avoid spam
+            if (Time.frameCount % 100 == 0)
+                Debug.LogWarning($"[NetworkedSpellcasting] Owner Client {OwnerClientId} cannot find Ball.");
+            return;
+        }
 
         currentBall = ballObj;
         parentObject = ballObj;
 
         Transform visualChild = ballObj.transform.Find("sm_Ball");
         if (visualChild != null)
+        {
             baseEffectObject = visualChild.gameObject;
+        }
+        else
+        {
+            // Try alternative child names
+            for (int i = 0; i < ballObj.transform.childCount; i++)
+            {
+                Transform child = ballObj.transform.GetChild(i);
+                if (child.name.ToLower().Contains("ball"))
+                {
+                    baseEffectObject = child.gameObject;
+                    break;
+                }
+            }
+        }
+
+        Debug.Log($"[NetworkedSpellcasting] Owner Client {OwnerClientId} connected to Ball: {ballObj.name}. BaseEffect: {(baseEffectObject != null ? baseEffectObject.name : "NULL")}");
     }
 
     private bool CheckSpellInput(out string direction)
@@ -283,8 +345,8 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
         }
 
-        // Swap visuals (on ALL clients)
-        if (spellVisuals.ContainsKey(spellAddress) && parentObject != null)
+        // Swap visuals (only on caster's instance)
+        if (casterClientId == OwnerClientId && spellVisuals.ContainsKey(spellAddress) && parentObject != null)
             SwapVisual(spellVisuals[spellAddress], parentObject.transform, baseEffectObject);
 
         // Racket shader (only for caster)
@@ -320,25 +382,23 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
         }
 
-        // Spell Effects (ONLY caster executes spell logic)
-        if (casterClientId == OwnerClientId)
+        // Spell Effects (ALL CLIENTS execute spell effects)
+        if (SpellEffects != null)
         {
-            if (SpellEffects != null)
-            {
-                SpellEffects.spellName = spellName;
-                SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
+            SpellEffects.spellName = spellName;
+            SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
 
-                if (!SpellEffects.plrHitSpell)
+            if (!SpellEffects.plrHitSpell)
+            {
+                try
                 {
-                    try
-                    {
-                        SpellEffects.SetContext(caster, opponent, TennisAi);
-                        SpellEffects.castSpell();
-                    }
-                    catch (System.Exception e)
-                    {
-                        Debug.LogError($"[NetworkedSpellcasting] Error casting spell: {e.Message}");
-                    }
+                    // Set context for ALL clients so spell effects work
+                    SpellEffects.SetContext(caster, opponent, TennisAi);
+                    SpellEffects.castSpell();
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[NetworkedSpellcasting] Error casting spell: {e.Message}");
                 }
             }
         }
@@ -374,10 +434,24 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
     {
-        if (newPrefab == null) return;
+        if (newPrefab == null)
+        {
+            Debug.LogWarning("[NetworkedSpellcasting] SwapVisual: newPrefab is null");
+            return;
+        }
+
+        if (parentTransform == null)
+        {
+            Debug.LogWarning("[NetworkedSpellcasting] SwapVisual: parentTransform is null");
+            return;
+        }
 
         if (currentVisualInstance != null)
+        {
+            Debug.Log($"[NetworkedSpellcasting] Destroying previous visual instance");
             Destroy(currentVisualInstance);
+            currentVisualInstance = null;
+        }
 
         baseEffect?.SetActive(false);
 
@@ -385,6 +459,8 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         currentVisualInstance.transform.localPosition = Vector3.zero;
         currentVisualInstance.transform.localRotation = Quaternion.identity;
         currentVisualInstance.transform.localScale = Vector3.one;
+
+        Debug.Log($"[NetworkedSpellcasting] Created new visual instance: {currentVisualInstance.name} as child of {parentTransform.name}");
     }
 
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound, float duration)
@@ -520,5 +596,20 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     public void ResetForNewRound()
     {
         // Called by Networked Game Manager
+        // Force ball refresh when a new round starts
+        if (IsOwner)
+        {
+            currentBall = null;
+            TryFindAndLinkBall();
+        }
+    }
+
+    /// <summary>
+    /// Force refresh ball reference - useful when ball respawns
+    /// </summary>
+    public void ForceRefreshBall()
+    {
+        currentBall = null;
+        TryFindAndLinkBall();
     }
 }

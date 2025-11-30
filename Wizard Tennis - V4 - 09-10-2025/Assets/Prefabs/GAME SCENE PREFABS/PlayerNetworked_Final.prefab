@@ -86,7 +86,7 @@ GameObject:
   - component: {fileID: -4604589612311379872}
   - component: {fileID: 85089387071535192}
   m_Layer: 0
-  m_Name: PlayerNetworked 1
+  m_Name: PlayerNetworked_Final
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -179,7 +179,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3411430673
+  GlobalObjectIdHash: 1020495472
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 7
@@ -331,7 +331,7 @@ MonoBehaviour:
   spellAddressText: {fileID: 0}
   spellTextPrefab: {fileID: 2101806974530891495, guid: 72a54dee25628d34cb2de5d70d97484d, type: 3}
   parentObject: {fileID: 0}
-  baseEffectObject: {fileID: 0}
+  baseEffectObject: {fileID: 4549237697235292045, guid: 56338ad9f85554244bad57da7f53f9cc, type: 3}
   spellDuration: 5
   hitParticle: {fileID: 3801566474980163910}
   spellParticleColor: {fileID: 8806744579849249112}
