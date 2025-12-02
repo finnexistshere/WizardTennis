@@ -101,7 +101,52 @@ public class SpellEffects : MonoBehaviour
         currentOpponent = opponent;
         currentAI = ai;
 
-        Debug.Log($"[SpellEffects] Context set - Player: {player?.name}, Opponent: {opponent?.name}, AI: {ai != null}");
+        Debug.Log($"[SpellEffects] Context set - Player: {player?.name} (Instance: {player?.GetInstanceID()}), Opponent: {opponent?.name} (Instance: {opponent?.GetInstanceID()}), AI: {ai != null}, IsNetworked: {isNetworked}");
+    }
+
+    /// <summary>
+    /// Auto-set context based on who owns the spell - useful for on-hit spells
+    /// </summary>
+    public void AutoSetContext(GameObject ballOwner)
+    {
+        if (ballOwner == null)
+        {
+            Debug.LogWarning("[SpellEffects] AutoSetContext called with null ballOwner");
+            return;
+        }
+
+        GameObject player = ballOwner;
+        GameObject opponent = null;
+        TennisAI ai = null;
+
+        if (isNetworked)
+        {
+            // Find opponent by looking for other NetworkedSpellcasting
+            foreach (var sc in FindObjectsOfType<NetworkedSpellcasting>())
+            {
+                if (sc.gameObject != ballOwner)
+                {
+                    opponent = sc.gameObject;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            // Singleplayer
+            if (ballOwner == Player)
+            {
+                opponent = Opponent;
+                ai = TennisAI;
+            }
+            else
+            {
+                opponent = Player;
+            }
+        }
+
+        SetContext(player, opponent, ai);
+        Debug.Log($"[SpellEffects] AutoSetContext completed for {ballOwner.name}");
     }
 
     /// <summary>
@@ -146,8 +191,42 @@ public class SpellEffects : MonoBehaviour
 
         if (player == null)
         {
-            Debug.LogError("[SpellEffects] No player context! Cannot cast spell.");
-            return;
+            // Try to auto-find players if context is missing
+            Debug.LogWarning("[SpellEffects] No player context! Attempting to auto-find players...");
+
+            if (isNetworked)
+            {
+                // Find both networked players
+                NetworkedSpellcasting[] allPlayers = FindObjectsOfType<NetworkedSpellcasting>();
+                if (allPlayers.Length >= 2)
+                {
+                    // Assume first is player, second is opponent
+                    player = allPlayers[0].gameObject;
+                    opponent = allPlayers[1].gameObject;
+                    Debug.Log($"[SpellEffects] Auto-found networked players: {player.name}, {opponent.name}");
+                }
+                else if (allPlayers.Length == 1)
+                {
+                    player = allPlayers[0].gameObject;
+                    Debug.Log($"[SpellEffects] Auto-found single networked player: {player.name}");
+                }
+            }
+            else
+            {
+                // Singleplayer fallback
+                if (Player != null) player = Player;
+                if (Opponent != null) opponent = Opponent;
+                if (TennisAI != null) ai = TennisAI;
+            }
+
+            if (player == null)
+            {
+                Debug.LogError("[SpellEffects] Cannot cast spell - no player found even after auto-search!");
+                return;
+            }
+
+            // Set the context so we don't have to search again
+            SetContext(player, opponent, ai);
         }
 
         if (OptionsManager.Instance != null)
@@ -191,9 +270,36 @@ public class SpellEffects : MonoBehaviour
                     // Spawn ice block on opponent
                     if (iceBlockPrefab != null)
                     {
-                        activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
-                        activeIceBlock.transform.SetParent(opponent.transform);
-                        activeIceBlock.transform.localPosition = Vector3.zero;
+                        if (isNetworked)
+                        {
+                            // Check if ice block has NetworkObject
+                            NetworkObject iceBlockNetObj = iceBlockPrefab.GetComponent<NetworkObject>();
+
+                            if (iceBlockNetObj != null)
+                            {
+                                // Spawn as NetworkObject - but only if we're the server/host
+                                // For client-side visual effects, just instantiate locally
+                                activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
+
+                                // Don't parent NetworkObjects - just follow manually
+                                StartCoroutine(FollowTransform(activeIceBlock, opponent.transform, 5f));
+                            }
+                            else
+                            {
+                                // No NetworkObject, safe to parent normally
+                                activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
+                                activeIceBlock.transform.SetParent(opponent.transform);
+                                activeIceBlock.transform.localPosition = Vector3.zero;
+                            }
+                        }
+                        else
+                        {
+                            // Singleplayer: Normal instantiation
+                            activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
+                            activeIceBlock.transform.SetParent(opponent.transform);
+                            activeIceBlock.transform.localPosition = Vector3.zero;
+                        }
+
                         Debug.Log($"[SpellEffects] Ice block spawned on {opponent.name}");
                     }
                 }
@@ -395,13 +501,26 @@ public class SpellEffects : MonoBehaviour
                 Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
                 Transform racketTransform = player.transform.GetChild(2)?.GetChild(1)?.GetChild(0)?.GetChild(0)?.GetChild(1)?.GetChild(0)?.GetChild(0);
 
-                if (racketTransform != null)
+                if (racketTransform != null && jollyPrefab != null)
                 {
                     activeJolly = Instantiate(jollyPrefab, racketTransform.position, Quaternion.identity);
-                    activeJolly.transform.SetParent(racketTransform);
-                    activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
-                    activeJolly.transform.localRotation = jollyRot;
-                    activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+
+                    // Check if it has NetworkObject
+                    if (activeJolly.GetComponent<NetworkObject>() == null)
+                    {
+                        // Safe to parent
+                        activeJolly.transform.SetParent(racketTransform);
+                        activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
+                        activeJolly.transform.localRotation = jollyRot;
+                        activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+                    }
+                    else
+                    {
+                        // Follow manually
+                        activeJolly.transform.localRotation = jollyRot;
+                        activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+                        StartCoroutine(FollowTransform(activeJolly, racketTransform, 5f));
+                    }
 
                     // Hide racket mesh
                     Transform racketMesh = player.transform.GetChild(2)?.GetChild(0)?.GetChild(4)?.GetChild(0)?.GetChild(0);
@@ -422,22 +541,36 @@ public class SpellEffects : MonoBehaviour
                 break;
 
             case "Pisces":
-                Quaternion orbitRot = player.transform.rotation;
-                activeOrbiter = Instantiate(orbiterPrefab, player.transform.position, orbitRot);
-                activeOrbiter.transform.SetParent(player.transform);
-                activeOrbiter.transform.localPosition = Vector3.zero;
-
-                SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
-                foreach (SimpleBallReturner child in children)
+                if (orbiterPrefab != null)
                 {
-                    var ballComp = player.GetComponent<Ball>();
-                    if (ballComp != null && ballComp.aimTarget != null)
-                        child.aimTarget = ballComp.aimTarget.transform;
-                    if (opponent != null)
-                        child.opponent = opponent.transform;
-                }
+                    Quaternion orbitRot = player.transform.rotation;
+                    activeOrbiter = Instantiate(orbiterPrefab, player.transform.position, orbitRot);
 
-                StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
+                    // Check if it has NetworkObject
+                    if (activeOrbiter.GetComponent<NetworkObject>() == null)
+                    {
+                        // Safe to parent
+                        activeOrbiter.transform.SetParent(player.transform);
+                        activeOrbiter.transform.localPosition = Vector3.zero;
+                    }
+                    else
+                    {
+                        // Follow manually
+                        StartCoroutine(FollowTransform(activeOrbiter, player.transform, 5f));
+                    }
+
+                    SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
+                    foreach (SimpleBallReturner child in children)
+                    {
+                        var ballComp = player.GetComponent<Ball>();
+                        if (ballComp != null && ballComp.aimTarget != null)
+                            child.aimTarget = ballComp.aimTarget.transform;
+                        if (opponent != null)
+                            child.opponent = opponent.transform;
+                    }
+
+                    StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
+                }
                 break;
 
             case "Tether":
@@ -849,6 +982,23 @@ public class SpellEffects : MonoBehaviour
 
         yield return new WaitForSeconds(duration - 1f);
         Destroy(orbiter);
+    }
+
+    /// <summary>
+    /// Makes an object follow a transform without parenting (useful for NetworkObjects)
+    /// </summary>
+    private IEnumerator FollowTransform(GameObject follower, Transform target, float duration)
+    {
+        if (follower == null || target == null) yield break;
+
+        float elapsed = 0f;
+        while (elapsed < duration && follower != null && target != null)
+        {
+            follower.transform.position = target.position;
+            follower.transform.rotation = target.rotation;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
     }
 
     public void OnPointWon()
