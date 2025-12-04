@@ -21,7 +21,7 @@ public class NetworkedSpellManager : NetworkBehaviour
     private float nextBallCheckTime = 0f;
 
     [Header("References")]
-    public SpellEffects spellEffects;
+    public NetworkedSpellEffects spellEffects;   // UPDATED
     public TennisAI tennisAI;
 
     private void Awake()
@@ -34,7 +34,7 @@ public class NetworkedSpellManager : NetworkBehaviour
         Instance = this;
 
         if (spellEffects == null)
-            spellEffects = FindObjectOfType<SpellEffects>();
+            spellEffects = FindObjectOfType<NetworkedSpellEffects>();   // UPDATED
 
         if (tennisAI == null)
             tennisAI = FindObjectOfType<TennisAI>();
@@ -174,7 +174,7 @@ public class NetworkedSpellManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Set context for SpellEffects based on caster client ID
+    /// Set context for NetworkedSpellEffects based on caster client ID
     /// </summary>
     public void SetSpellContext(ulong casterClientId)
     {

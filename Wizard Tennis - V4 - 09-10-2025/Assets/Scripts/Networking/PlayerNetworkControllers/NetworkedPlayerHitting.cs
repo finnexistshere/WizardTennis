@@ -8,7 +8,7 @@ public class NetworkedBall : NetworkBehaviour
     public Transform aimTarget;
     public GameObject opponent;
     public TwoHandIKController_Opponent OppIKRig;
-    public SpellEffects spellEffects;
+    public NetworkedSpellEffects spellEffects;
     public ScoreManager scoreManager;
     private NetworkedUIManager uiManager;
 

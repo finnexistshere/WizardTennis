@@ -2,20 +2,20 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-using Unity.Netcode;
+using UnityEngine.EventSystems;
+using System.ComponentModel;
 
 public class SpellEffects : MonoBehaviour
 {
-    // Legacy references for single-player (kept for backwards compatibility)
+    // These reference the Player and the Opponent so it can call their attached components (Aiming, Spells, etc)
+    // If this script is to account for two players, then it'll need to find the *casting* player and the *victim* player on a case-by-case basis
+
+    // This can be done by making NetworkedSpellcasting assign it's own Player Object in it's spell cast routine as the caster, and the other player in the scene as the victim
+    // It'll then pass these values to a network-specific version of THIS SCRIPT, which will use those values for the effects, after which it'll wipe the values ready to be used again in ResetSpellEffect()
     public GameObject Player;
     public GameObject Opponent;
-    public TennisAI TennisAI;
 
-    // Context references (used by networked mode)
-    [Header("Context References")]
-    private GameObject currentPlayer;
-    private GameObject currentOpponent;
-    private TennisAI currentAI;
+    public TennisAI TennisAI;
 
     public string spellName;
     public bool resetOnOppHit;
@@ -34,6 +34,7 @@ public class SpellEffects : MonoBehaviour
     public AudioClip pointlost;
     [Range(0f, 1f)] public float pointSFXVolume = 1f;
 
+    // In the network specific version we'll omit the slow down but keep the Explanation UI
     [Header("Spell Explanation UI")]
     public GameObject spellExplanationUI;
     public TMP_Text spellExplanationText;
@@ -42,309 +43,47 @@ public class SpellEffects : MonoBehaviour
 
     [Header("Spell Object Settings")]
     public GameObject iceBlockPrefab;
-    [HideInInspector] public GameObject activeIceBlock;
+    private GameObject activeIceBlock;
     public GameObject stoneWallPrefab;
-    [HideInInspector] public GameObject activeStoneWall;
+    private GameObject activeStoneWall;
     public GameObject geminiPrefab;
-    [HideInInspector] public GameObject activeGemini;
+    private GameObject activeGemini;
     public GameObject mudPrefab;
-    [HideInInspector] public GameObject activeMud;
+    private GameObject activeMud;
     public GameObject orbiterPrefab;
-    [HideInInspector] public GameObject activeOrbiter;
+    private GameObject activeOrbiter;
     public GameObject tetherPrefab;
-    [HideInInspector] public GameObject activeTether;
+    private GameObject activeTether;
     public GameObject jollyPrefab;
-    [HideInInspector] public GameObject activeJolly;
+    private GameObject activeJolly;
     private GameObject Gorbino;
     public GameObject BallPrefab;
-    [HideInInspector] public GameObject activeBall;
+    private GameObject activeBall;
     public GameObject flamePrefab;
-    [HideInInspector] public GameObject activeFlame;
-
-    [Header("Shadow Spell Settings")]
-    public Material invisibleMaterial; // Assign a transparent material for invisibility
-    private Material originalOpponentMaterial;
-    private Renderer opponentRenderer;
+    private GameObject activeFlame;
 
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
     private float lastOriginalTimeScale = 1f;
 
     public bool spellHit;
+
     public static bool isSpellSlowdownActive = false;
 
     private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether" };
 
-    private bool isNetworked => NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening;
-
-    // Prevent duplicate activation
-    private bool networkSpellActive = false;
-
     private void Awake()
     {
-        // Try to find default references (single-player)
-        if (Player == null)
-            Player = GameObject.Find("Player");
-        if (Opponent == null)
-            Opponent = GameObject.Find("Opponent");
-        if (TennisAI == null)
-        {
-            var gm = GameObject.Find("Game Manager");
-            if (gm != null)
-                TennisAI = gm.GetComponent<TennisAI>();
-        }
-    }
-
-    /// <summary>
-    /// Sets the context for spell effects - which player is casting, who the opponent is, and AI reference
-    /// </summary>
-    public void SetContext(GameObject player, GameObject opponent, TennisAI ai)
-    {
-        // Prefer explicit values passed in. If null, try to resolve via NetworkManager / NetworkedSpellcasting.
-        if (player == null || opponent == null)
-        {
-            var netPlayers = FindObjectsOfType<NetworkedSpellcasting>();
-            if (netPlayers.Length >= 2)
-            {
-                if (player == null)
-                    player = netPlayers[0].gameObject;
-                if (opponent == null)
-                    opponent = netPlayers.Length > 1 ? netPlayers[1].gameObject : null;
-
-                foreach (var sc in netPlayers)
-                {
-                    if (sc.IsOwner)
-                    {
-                        if (player == null) player = sc.gameObject;
-                    }
-                }
-            }
-        }
-
-        currentPlayer = player;
-        currentOpponent = opponent;
-        currentAI = ai;
-
-        Debug.Log($"[SpellEffects] Context set - Player: {player?.name} (Inst:{player?.GetInstanceID()}), Opponent: {opponent?.name} (Inst:{opponent?.GetInstanceID()}), AI: {ai != null}, IsNetworked: {isNetworked}");
-    }
-
-    /// <summary>
-    /// Auto-set context based on who owns the spell - useful for on-hit spells
-    /// </summary>
-    public void AutoSetContext(GameObject ballOwner)
-    {
-        if (ballOwner == null)
-        {
-            Debug.LogWarning("[SpellEffects] AutoSetContext called with null ballOwner");
-            return;
-        }
-
-        GameObject player = ballOwner;
-        GameObject opponent = null;
-        TennisAI ai = null;
-
-        if (isNetworked)
-        {
-            // Determine opponent deterministically by choosing the NetworkedSpellcasting 
-            // whose gameObject != ballOwner
-            var all = FindObjectsOfType<NetworkedSpellcasting>();
-            foreach (var sc in all)
-            {
-                if (sc.gameObject != ballOwner)
-                {
-                    opponent = sc.gameObject;
-                    break;
-                }
-            }
-
-            if (opponent == null && NetworkManager.Singleton != null)
-            {
-                foreach (var kv in NetworkManager.Singleton.SpawnManager.SpawnedObjects)
-                {
-                    var no = kv.Value;
-                    if (no != null && no.gameObject != ballOwner && no.GetComponent<NetworkedSpellcasting>() != null)
-                    {
-                        opponent = no.gameObject;
-                        break;
-                    }
-                }
-            }
-        }
-        else
-        {
-            // Singleplayer fallback
-            if (ballOwner == Player)
-            {
-                opponent = Opponent;
-                ai = TennisAI;
-            }
-            else
-            {
-                opponent = Player;
-            }
-        }
-
-        SetContext(player, opponent, ai);
-        Debug.Log($"[SpellEffects] AutoSetContext completed for {ballOwner.name} -> opponent: {opponent?.name}");
-    }
-
-    /// <summary>
-    /// Clears the stored context (call when resetting or ending spells)
-    /// </summary>
-    public void ClearContext()
-    {
-        currentPlayer = null;
-        currentOpponent = null;
-        currentAI = null;
-    }
-
-    /// <summary>
-    /// Gets the active player (context if set, otherwise default)
-    /// </summary>
-    private GameObject GetPlayer()
-    {
-        return currentPlayer != null ? currentPlayer : Player;
-    }
-
-    /// <summary>
-    /// Gets the active opponent (context if set, otherwise default)
-    /// </summary>
-    private GameObject GetOpponent()
-    {
-        return currentOpponent != null ? currentOpponent : Opponent;
-    }
-
-    /// <summary>
-    /// Gets the active AI (context if set, otherwise default)
-    /// </summary>
-    private TennisAI GetAI()
-    {
-        return currentAI != null ? currentAI : TennisAI;
-    }
-
-    /// <summary>
-    /// Register a server-spawned networked effect on the client so SpellEffects can reference it.
-    /// Called from NetworkedSpellcasting.ClientRpc after server spawns an effect.
-    /// </summary>
-    public void RegisterNetworkedEffect(string spell, ulong netId)
-    {
-        if (netId == 0) return;
-        if (NetworkManager.Singleton == null) return;
-
-        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(netId, out var netObj) && netObj != null)
-        {
-            var go = netObj.gameObject;
-
-            switch (spell)
-            {
-                case "Ice":
-                    activeIceBlock = go;
-                    if (GetOpponent() != null)
-                    {
-                        StartCoroutine(FollowTransform(activeIceBlock, GetOpponent().transform, 5f));
-                        // Start freeze coroutine
-                        StartCoroutine(FreezeOpponentMovement(GetOpponent(), 5f));
-                    }
-                    break;
-
-                case "Stone":
-                    activeStoneWall = go;
-                    StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
-                    break;
-
-                case "Gemini":
-                    activeGemini = go;
-                    Invoke(nameof(resetSpellEffect), 5f);
-                    break;
-
-                case "Pisces":
-                    activeOrbiter = go;
-                    StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
-                    break;
-
-                case "Tether":
-                    activeTether = go;
-                    var tetherComp = activeTether.GetComponent<Tether>();
-                    if (tetherComp != null && GetOpponent() != null)
-                        tetherComp.Player = GetOpponent().transform;
-                    StartCoroutine(HandleStoneWall(activeTether, 5f));
-                    Invoke(nameof(resetSpellEffect), 5f);
-                    break;
-
-                case "Gorbino":
-                    activeBall = go;
-                    Invoke(nameof(resetSpellEffect), 5f);
-                    break;
-
-                default:
-                    // Unknown effect — ignore for now
-                    break;
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"[SpellEffects] RegisterNetworkedEffect: netId {netId} not found in SpawnManager.");
-        }
+        Player = GameObject.Find("Player");
+        Opponent = GameObject.Find("Opponent");
+        TennisAI = GameObject.Find("Game Manager").GetComponent<TennisAI>();
     }
 
     public void castSpell()
     {
-        // Prevent duplicate activation from different clients triggering the same queued action
-        if (networkSpellActive)
-        {
-            Debug.Log($"[SpellEffects] castSpell ignored because another spell is active ({spellName})");
-            return;
-        }
-        networkSpellActive = true;
-
-        GameObject player = GetPlayer();
-        GameObject opponent = GetOpponent();
-        TennisAI ai = GetAI();
-
-        if (player == null)
-        {
-            // Try to auto-find players if context is missing
-            Debug.LogWarning("[SpellEffects] No player context! Attempting to auto-find players...");
-
-            if (isNetworked)
-            {
-                // Find both networked players
-                NetworkedSpellcasting[] allPlayers = FindObjectsOfType<NetworkedSpellcasting>();
-                if (allPlayers.Length >= 2)
-                {
-                    // Assume first is player, second is opponent
-                    player = allPlayers[0].gameObject;
-                    opponent = allPlayers[1].gameObject;
-                    Debug.Log($"[SpellEffects] Auto-found networked players: {player.name}, {opponent.name}");
-                }
-                else if (allPlayers.Length == 1)
-                {
-                    player = allPlayers[0].gameObject;
-                    Debug.Log($"[SpellEffects] Auto-found single networked player: {player.name}");
-                }
-            }
-            else
-            {
-                // Singleplayer fallback
-                if (Player != null) player = Player;
-                if (Opponent != null) opponent = Opponent;
-                if (TennisAI != null) ai = TennisAI;
-            }
-
-            if (player == null)
-            {
-                Debug.LogError("[SpellEffects] Cannot cast spell - no player found even after auto-search!");
-                networkSpellActive = false;
-                return;
-            }
-
-            // Set the context so we don't have to search again
-            SetContext(player, opponent, ai);
-        }
-
+        // Show explanation only once per round per spell
         if (OptionsManager.Instance != null)
         {
-            // Show explanation only once per round per spell
             if (!spellsUsedThisRound.Contains(spellName) && OptionsManager.Instance.spellTips)
             {
                 spellsUsedThisRound.Add(spellName);
@@ -355,60 +94,28 @@ public class SpellEffects : MonoBehaviour
         switch (spellName)
         {
             case "Lightning":
-                var mcm = player.GetComponent<MainCharacterMovement>();
-                if (mcm != null) mcm.speed = 17;
+                Player.GetComponent<MainCharacterMovement>().speed = 17;
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
 
             case "Ice":
-                if (opponent != null)
+                Opponent.GetComponent<OppHitting>().speed = 0f;
+                Player.GetComponent<Ball>().xPos = 0f;
+
+                if (iceBlockPrefab != null)
                 {
-                    // Freeze opponent movement for 5 seconds
-                    StartCoroutine(FreezeOpponentMovement(opponent, 5f));
-
-                    if (iceBlockPrefab != null)
-                    {
-                        if (isNetworked && NetworkManager.Singleton.IsServer)
-                        {
-                            // Server spawns networked ice block
-                            activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
-                            NetworkObject iceNetObj = activeIceBlock.GetComponent<NetworkObject>();
-                            if (iceNetObj != null)
-                            {
-                                iceNetObj.Spawn();
-                                Debug.Log("[SpellEffects] Server spawned networked ice block");
-                            }
-                        }
-                        else if (!isNetworked)
-                        {
-                            // Singleplayer - spawn local ice block
-                            activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
-                        }
-
-                        // Make ice block follow opponent
-                        if (activeIceBlock != null)
-                        {
-                            StartCoroutine(FollowTransform(activeIceBlock, opponent.transform, 5f));
-                        }
-                    }
+                    activeIceBlock = Instantiate(iceBlockPrefab, Opponent.transform.position, Opponent.transform.rotation);
+                    activeIceBlock.transform.SetParent(Opponent.transform);
+                    activeIceBlock.transform.localPosition = Vector3.zero;
                 }
-                Invoke(nameof(resetSpellEffect), 5f);
+
+                Invoke(nameof(resetSpellEffect), 0.5f);
                 break;
 
-
             case "Fireball":
-                if (isNetworked && opponent != null)
-                {
-                    // Networked: knockback happens on hit via ApplyFireballKnockback
-                    Debug.Log($"[SpellEffects] Fireball: Armed and ready. Opponent: {opponent.name}");
-                }
-                else if (ai != null)
-                {
-                    // Singleplayer: Apply AI debuff
-                    ai.ApplyBuff(-0.2f, spellName);
-                }
-
+                TennisAI.ApplyBuff(-0.2f, spellName);
                 resetOnOppHit = true;
+                StartCoroutine(FireballHitCheck());
                 break;
 
             case "Shadow":
@@ -418,140 +125,62 @@ public class SpellEffects : MonoBehaviour
                 }
                 else
                 {
-                    if (isNetworked && player != null)
-                    {
-                        // Networked: Make CASTER (player) invisible on **caster's client** only
-                        var netSpellcasting = player.GetComponent<NetworkedSpellcasting>();
-                        if (netSpellcasting != null && netSpellcasting.IsOwner)
-                        {
-                            opponentRenderer = player.GetComponentInChildren<SkinnedMeshRenderer>();
-                            if (opponentRenderer == null)
-                                opponentRenderer = player.GetComponentInChildren<MeshRenderer>();
-
-                            if (opponentRenderer != null)
-                            {
-                                originalOpponentMaterial = opponentRenderer.material;
-                                if (invisibleMaterial != null)
-                                {
-                                    opponentRenderer.material = invisibleMaterial;
-                                    Debug.Log("[SpellEffects] Shadow: Applied invisible material to caster");
-                                }
-                                else
-                                {
-                                    Material tempMat = new Material(opponentRenderer.material);
-                                    Color c = tempMat.color;
-                                    c.a = 0.2f;
-                                    tempMat.color = c;
-                                    opponentRenderer.material = tempMat;
-                                    Debug.Log("[SpellEffects] Shadow: Made caster 20% transparent");
-                                }
-                            }
-                        }
-                    }
-                    else if (!isNetworked && opponent != null)
-                    {
-                        // Singleplayer: Teleport AI to player position
-                        var opp = opponent.GetComponent<OppHitting>();
-                        if (opp != null)
-                        {
-                            opp.xPos = player.transform.position.x;
-                            opp.zPos = player.transform.position.z;
-                        }
-                    }
-
-                    // Cast spell visually
-                    var spellcasting = player.GetComponent<Spellcasting>();
-                    var netSpellcastingComp = player.GetComponent<NetworkedSpellcasting>();
-
-                    if (spellcasting != null)
-                        spellcasting.CastSpellNormal(spellName);
-                    else if (netSpellcastingComp != null)
-                        netSpellcastingComp.CastSpellNormal(spellName);
-
+                    Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
+                    OppHitting opp = Opponent.GetComponent<OppHitting>();
+                    opp.xPos = Player.transform.position.x;
+                    opp.zPos = Player.transform.position.z;
                     resetOnOppHit = true;
                 }
                 break;
 
             case "Green":
-                var greenBall = player.GetComponent<Ball>();
-                if (greenBall != null) greenBall.green = true;
+                Player.GetComponent<Ball>().green = true;
                 Invoke(nameof(resetSpellEffect), 1f);
                 break;
 
             case "Stone":
                 if (stoneWallPrefab != null)
                 {
-                    if (isNetworked)
-                    {
-                        // Server spawned and RegisterNetworkedEffect will handle the wall on clients (HandleStoneWall called in RegisterNetworkedEffect).
-                        if (activeStoneWall == null)
-                        {
-                            StartCoroutine(WaitForEffectAndHandleStoneWall("Stone", 0.05f));
-                        }
-                    }
-                    else
-                    {
-                        Vector3 spawnPos = player.transform.position + player.transform.forward * 2f;
-                        Quaternion spawnRot = Quaternion.identity;
+                    Vector3 spawnPos = Player.transform.position + Player.transform.forward * 2f;
+                    Quaternion spawnRot = Quaternion.identity;
 
-                        activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
-
-                        var returner = activeStoneWall.GetComponent<SimpleBallReturner>();
-                        if (returner != null)
-                        {
-                            var ballComp = player.GetComponent<Ball>();
-                            if (ballComp != null && ballComp.aimTarget != null)
-                                returner.aimTarget = ballComp.aimTarget.transform;
-                            if (opponent != null)
-                                returner.opponent = opponent.transform;
-                        }
-
-                        StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
-                        Invoke(nameof(resetSpellEffect), 5f);
-                    }
-                }
-                break;
-
-            case "Chronos":
-                StartCoroutine(ApplyChronosAfterExplanation());
-                break;
-
-            case "Gemini":
-                if (isNetworked)
-                {
-                    if (activeGemini == null)
-                        StartCoroutine(WaitForEffectAndHandle("Gemini", 0.05f));
+                    activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
+                    activeStoneWall.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                    activeStoneWall.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
+                    StartCoroutine(HandleStoneWall(activeStoneWall, 5f)); // 5 seconds duration
+                    Invoke(nameof(resetSpellEffect), 5f);
                 }
                 else
                 {
-                    Vector3 gemPos = player.transform.position;
-                    gemPos.x = -player.transform.position.x;
-                    Quaternion gemRot = player.transform.rotation;
-
-                    activeGemini = Instantiate(geminiPrefab, gemPos, gemRot);
-
-                    var gemReturner = activeGemini.GetComponent<SimpleBallReturner>();
-                    if (gemReturner != null)
-                    {
-                        var ballComp = player.GetComponent<Ball>();
-                        if (ballComp != null && ballComp.aimTarget != null)
-                            gemReturner.aimTarget = ballComp.aimTarget.transform;
-                        if (opponent != null)
-                            gemReturner.opponent = opponent.transform;
-                    }
-
-                    Invoke(nameof(resetSpellEffect), 5f);
+                    Debug.LogWarning("Stone Wall Prefab not assigned!");
                 }
                 break;
+            case "Chronos":
 
+                // Wait until explanation UI finishes before applying time slowdown
+                StartCoroutine(ApplyChronosAfterExplanation());
+                break;
+            case "Gemini":
+                Vector3 gemPos = Player.transform.position;
+                gemPos.x = -Player.transform.position.x;
+                Quaternion gemRot = Player.transform.rotation;
+
+                activeGemini = Instantiate(geminiPrefab, gemPos, gemRot);
+                activeGemini.GetComponent<SimpleBallReturner>().aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                activeGemini.GetComponent<SimpleBallReturner>().opponent = Opponent.transform;
+                Invoke(nameof(resetSpellEffect), 5f);
+                break;
             case "Blink":
+
                 Vector3 input = Vector3.zero;
 
+                // Default movement keys (WASD)
                 KeyCode forward = KeyCode.W;
                 KeyCode backward = KeyCode.S;
                 KeyCode left = KeyCode.A;
                 KeyCode right = KeyCode.D;
 
+                // If OptionsManager exists, swap keys for left-handed mode
                 if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
                 {
                     forward = KeyCode.UpArrow;
@@ -564,11 +193,12 @@ public class SpellEffects : MonoBehaviour
                 if (Input.GetKey(backward)) input.z -= 3;
                 if (Input.GetKey(right)) input.x += 3;
                 if (Input.GetKey(left)) input.x -= 3;
+                Vector3 moveDirection = Vector3.zero;
+                moveDirection = new Vector3(input.x, 0, input.z);
 
-                Vector3 moveDirection = new Vector3(input.x, 0, input.z);
-                Vector3 testPos = player.transform.position - moveDirection;
+                Vector3 testPos = Player.transform.position - moveDirection;
 
-                if (player.transform.position.z > 0)
+                if (Player.transform.position.z > 0)
                 {
                     if (testPos.z > 10.9) testPos.z = 10.9f;
                     if (testPos.z < 0.5) testPos.z = 0.5f;
@@ -582,263 +212,135 @@ public class SpellEffects : MonoBehaviour
                 if (testPos.x > 4.9) testPos.x = 4.9f;
                 if (testPos.x < -4.9) testPos.x = -4.9f;
 
-                var movement = player.GetComponent<MainCharacterMovement>();
-                var controller = player.GetComponent<CharacterController>();
+                //Player.GetComponent<MainCharacterMovement>().speed = 0;
+                Player.GetComponent<MainCharacterMovement>().enabled = false;
+                Player.GetComponent<CharacterController>().enabled = false;
+                Player.transform.position = testPos;
 
-                if (movement != null) movement.enabled = false;
-                if (controller != null) controller.enabled = false;
-
-                player.transform.position = testPos;
-
-                if (movement != null) movement.enabled = true;
-                if (controller != null) controller.enabled = true;
+                //Player.GetComponent<MainCharacterMovement>().speed = 7;
+                Player.GetComponent<MainCharacterMovement>().enabled = true;
+                Player.GetComponent<CharacterController>().enabled = true;
 
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
-
             case "Jolly":
-                var capsule = player.GetComponent<CapsuleCollider>();
-                if (capsule != null) capsule.radius = 2;
-
+                Player.GetComponent<CapsuleCollider>().radius = 2;
                 Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
-                Transform racketTransform = player.transform.GetChild(2)?.GetChild(1)?.GetChild(0)?.GetChild(0)?.GetChild(1)?.GetChild(0)?.GetChild(0);
 
-                if (racketTransform != null && jollyPrefab != null)
-                {
-                    activeJolly = Instantiate(jollyPrefab, racketTransform.position, Quaternion.identity);
+                activeJolly = Instantiate(jollyPrefab, Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform.position, Quaternion.identity);
+                activeJolly.transform.parent = Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform;
+                activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
+                activeJolly.transform.localRotation = jollyRot;
+                activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
 
-                    // Check if it has NetworkObject
-                    if (activeJolly.GetComponent<NetworkObject>() == null)
-                    {
-                        // Safe to parent
-                        activeJolly.transform.SetParent(racketTransform);
-                        activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
-                        activeJolly.transform.localRotation = jollyRot;
-                        activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-                    }
-                    else
-                    {
-                        // Follow manually
-                        activeJolly.transform.localRotation = jollyRot;
-                        activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-                        StartCoroutine(FollowTransform(activeJolly, racketTransform, 5f));
-                    }
-
-                    // Hide racket mesh
-                    Transform racketMesh = player.transform.GetChild(2)?.GetChild(0)?.GetChild(4)?.GetChild(0)?.GetChild(0);
-                    if (racketMesh != null)
-                        racketMesh.gameObject.SetActive(false);
-                }
+                Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(false);
 
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
-
             case "Mud":
                 resetOnOppHit = true;
                 resetOnBounce = true;
                 break;
-
             case "Warp":
                 Invoke(nameof(resetSpellEffect), 0.5f);
                 break;
-
             case "Pisces":
-                if (orbiterPrefab != null)
+                Quaternion orbitRot = Player.transform.rotation;
+
+                activeOrbiter = Instantiate(orbiterPrefab, Player.transform.position, orbitRot);
+                activeOrbiter.transform.parent = Player.transform;
+                activeOrbiter.transform.localPosition = Vector3.zero;
+                SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
+                foreach (SimpleBallReturner child in children)
                 {
-                    if (isNetworked)
-                    {
-                        if (activeOrbiter == null)
-                            StartCoroutine(WaitForEffectAndHandle("Pisces", 0.05f));
-                    }
-                    else
-                    {
-                        Quaternion orbitRot = player.transform.rotation;
-                        activeOrbiter = Instantiate(orbiterPrefab, player.transform.position, orbitRot);
-
-                        if (activeOrbiter.GetComponent<NetworkObject>() == null)
-                        {
-                            activeOrbiter.transform.SetParent(player.transform);
-                            activeOrbiter.transform.localPosition = Vector3.zero;
-                        }
-                        else
-                        {
-                            StartCoroutine(FollowTransform(activeOrbiter, player.transform, 5f));
-                        }
-
-                        SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
-                        foreach (SimpleBallReturner child in children)
-                        {
-                            var ballComp = player.GetComponent<Ball>();
-                            if (ballComp != null && ballComp.aimTarget != null)
-                                child.aimTarget = ballComp.aimTarget.transform;
-                            if (opponent != null)
-                                child.opponent = opponent.transform;
-                        }
-
-                        StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
-                    }
+                    child.aimTarget = Player.GetComponent<Ball>().aimTarget.transform;
+                    child.opponent = Opponent.transform;
                 }
-                break;
 
+                StartCoroutine(HandleOrbiter(activeOrbiter, 5f)); // 5 seconds duration
+                break;
             case "Tether":
-                if (tetherPrefab != null && opponent != null)
+                if (tetherPrefab != null)
                 {
-                    if (!isNetworked)
-                    {
-                        activeTether = Instantiate(tetherPrefab, opponent.transform.position, Quaternion.identity);
-                        var tether = activeTether.GetComponent<Tether>();
-                        if (tether != null)
-                            tether.Player = opponent.transform;
+                    Vector3 tetherPos = Opponent.transform.position;
+                    tetherPos.y = 1.45f;
+                    Quaternion tetherRot = Quaternion.identity;
 
-                        StartCoroutine(HandleStoneWall(activeTether, 5f));
-                        Invoke(nameof(resetSpellEffect), 5f);
-                    }
-                    else
-                    {
-                        if (activeTether == null)
-                            StartCoroutine(WaitForEffectAndHandle("Tether", 0.05f));
-                    }
-                }
-                break;
-
-            case "Gorbino":
-                if (!isNetworked)
-                {
-                    Gorbino = GameObject.Find("Gorbino");
-                    if (Gorbino != null)
-                    {
-                        activeBall = Instantiate(BallPrefab, Gorbino.transform.position, Quaternion.identity);
-                        Gorbino.SetActive(false);
-                        Invoke(nameof(resetSpellEffect), 5f);
-                    }
+                    activeTether = Instantiate(tetherPrefab, tetherPos, tetherRot);
+                    activeTether.GetComponent<Tether>().Player = Opponent.transform;
+                    Opponent.GetComponent<OppHitting>().tether = activeTether;
+                    StartCoroutine(HandleStoneWall(activeTether, 5f)); // 5 seconds duration
+                    Invoke(nameof(resetSpellEffect), 5f);
                 }
                 else
                 {
-                    if (activeBall == null)
-                        StartCoroutine(WaitForEffectAndHandle("Gorbino", 0.05f));
+                    Debug.LogWarning("Tether Prefab not assigned!");
                 }
                 break;
+            case "Gorbino":
+                Gorbino = GameObject.Find("Gorbino");
 
+                activeBall = Instantiate(BallPrefab, Gorbino.transform.position, Quaternion.identity);
+
+                Gorbino.SetActive(false);
+                Invoke(nameof(resetSpellEffect), 5f);
+                break;
             case "Gambit":
                 int spellInt = Random.Range(0, allSpells.Length);
                 spellName = allSpells[spellInt];
                 castSpell();
                 return;
         }
-
-        // Cast spell visually if not an on-hit spell
-        if (!oppHitSpell && !plrHitSpell)
-        {
-            var spellcasting = player.GetComponent<Spellcasting>();
-            var netSpellcasting = player.GetComponent<NetworkedSpellcasting>();
-
-            if (spellcasting != null)
-                spellcasting.CastSpellNormal(spellName);
-            else if (netSpellcasting != null)
-                netSpellcasting.CastSpellNormal(spellName);
-        }
-        else
-        {
-            Debug.Log($"[SpellEffects] Skipping visual cast for on-hit spell '{spellName}' (oppHitSpell: {oppHitSpell}, plrHitSpell: {plrHitSpell})");
-        }
+        if (!oppHitSpell)
+            Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
     }
 
     public void resetSpellEffect()
     {
-        GameObject player = GetPlayer();
-        GameObject opponent = GetOpponent();
-
-        if (player == null)
-        {
-            networkSpellActive = false;
-            return;
-        }
-
         switch (spellName)
         {
             case "Lightning":
-                var mcm = player.GetComponent<MainCharacterMovement>();
-                if (mcm != null) mcm.speed = 7;
+                Player.GetComponent<MainCharacterMovement>().speed = 7;
                 break;
 
             case "Ice":
-                if (opponent != null)
+                Opponent.GetComponent<OppHitting>().speed = 5;
+                if (activeIceBlock != null)
                 {
-                    // Movement is restored by FreezeOpponentMovement coroutine
-                    // But we ensure it's reset here as a safety measure
-                    if (isNetworked)
-                    {
-                        var oppMcm = opponent.GetComponent<MainCharacterMovement>();
-                        if (oppMcm != null && oppMcm.speed == 0f)
-                        {
-                            oppMcm.speed = 7;
-                            Debug.Log($"[SpellEffects] Ice Reset: Safety restore opponent {opponent.name} speed to 7");
-                        }
-                    }
-                    else
-                    {
-                        var oppHit = opponent.GetComponent<OppHitting>();
-                        if (oppHit != null && oppHit.speed == 0f)
-                            oppHit.speed = 5;
-                    }
+                    Destroy(activeIceBlock);
+                    activeIceBlock = null;
                 }
-
-                // Despawn ice block properly
-                DespawnIceBlock();
                 break;
 
             case "Fireball":
-                // Spawn flame effect on opponent
-                if (flamePrefab != null && opponent != null)
+                if (flamePrefab != null)
                 {
-                    activeFlame = Instantiate(flamePrefab, opponent.transform.position, Quaternion.identity);
-                    activeFlame.transform.SetParent(opponent.transform);
+                    activeFlame = Instantiate(flamePrefab, Opponent.transform.position, Quaternion.identity);
+                    activeFlame.transform.parent = Opponent.transform;
                     activeFlame.transform.localPosition = new Vector3(0, 1.65f, 0);
                     StartCoroutine(HandleMud(activeFlame, 3f));
                 }
-
-                resetOnOppHit = false;
+                else
+                {
+                    Debug.LogWarning("Flame Prefab not assigned!");
+                }
                 break;
-
             case "Shadow":
                 resetOnOppHit = false;
-
-                // Restore opponent's material
-                if (opponentRenderer != null && originalOpponentMaterial != null)
-                {
-                    opponentRenderer.material = originalOpponentMaterial;
-                    opponentRenderer = null;
-                    originalOpponentMaterial = null;
-                }
                 break;
-
             case "Chronos":
                 Time.timeScale = 1f;
-                var chronosMcm = player.GetComponent<MainCharacterMovement>();
-                if (chronosMcm != null)
-                {
-                    chronosMcm.speed = 7;
-                    chronosMcm.gravity = 25f;
-                }
+                Player.GetComponent<MainCharacterMovement>().speed = 7;
+                Player.GetComponent<MainCharacterMovement>().gravity = 25f;
                 break;
-
             case "Gemini":
-                if (activeGemini != null)
-                    Destroy(activeGemini);
+                Destroy(activeGemini);
                 break;
-
             case "Jolly":
-                var capsule = player.GetComponent<CapsuleCollider>();
-                if (capsule != null) capsule.radius = 1;
-
-                Transform racketMesh = player.transform.GetChild(2)?.GetChild(0)?.GetChild(4)?.GetChild(0)?.GetChild(0);
-                if (racketMesh != null)
-                    racketMesh.gameObject.SetActive(true);
-
-                if (activeJolly != null)
-                    Destroy(activeJolly);
+                Player.GetComponent<CapsuleCollider>().radius = 1;
+                Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(true);
+                Destroy(activeJolly);
                 break;
-
             case "Mud":
                 resetOnOppHit = false;
                 resetOnBounce = false;
@@ -846,23 +348,26 @@ public class SpellEffects : MonoBehaviour
                 if (mudPrefab != null)
                 {
                     GameObject Ball = GameObject.FindWithTag("Ball");
-                    if (Ball != null)
-                    {
-                        Vector3 spawnPos = Ball.transform.position;
-                        spawnPos.y = 0.94f;
-                        Quaternion spawnRot = Quaternion.identity;
 
-                        activeMud = Instantiate(mudPrefab, spawnPos, spawnRot);
-                        StartCoroutine(HandleMud(activeMud, 5f));
-                    }
+                    Vector3 spawnPos = Ball.transform.position;
+                    spawnPos.y = 0.94f;
+                    Quaternion spawnRot = Quaternion.identity;
+
+                    activeMud = Instantiate(mudPrefab, spawnPos, spawnRot);
+                    StartCoroutine(HandleMud(activeMud, 5f)); // 5 seconds duration
                 }
+                else
+                {
+                    Debug.LogWarning("Mud Prefab not assigned!");
+                }
+
                 break;
-
             case "Warp":
-                float min, max;
-                var ballComp = player.GetComponent<Ball>();
 
-                if (ballComp != null && ballComp.aimTarget != null && ballComp.aimTarget.position.x > 0)
+                float min;
+                float max;
+
+                if (Player.GetComponent<Ball>().aimTarget.position.x > 0)
                 {
                     min = -4.5f;
                     max = 0f;
@@ -874,80 +379,25 @@ public class SpellEffects : MonoBehaviour
                 }
 
                 float ballX = Random.Range(min, max);
+
                 GameObject Ball1 = GameObject.FindWithTag("Ball");
+                Vector3 ballPos = Ball1.transform.position;
+                ballPos.x = ballX;
 
-                if (Ball1 != null)
-                {
-                    Vector3 ballPos = Ball1.transform.position;
-                    ballPos.x = ballX;
-                    Ball1.transform.position = ballPos;
-                }
+                Ball1.transform.position = ballPos;
+
                 break;
-
             case "Pisces":
-                if (activeOrbiter != null)
-                    Destroy(activeOrbiter);
+                Destroy(activeOrbiter);
                 break;
-
             case "Tether":
-                if (activeTether != null)
-                {
-                    var net = activeTether.GetComponent<NetworkObject>();
-                    if (net != null)
-                    {
-                        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-                        {
-                            net.Despawn();
-                        }
-                        else
-                        {
-                            Destroy(activeTether);
-                        }
-                    }
-                    else
-                    {
-                        Destroy(activeTether);
-                    }
-                    activeTether = null;
-                }
-
-                if (opponent != null)
-                {
-                    if (!isNetworked)
-                    {
-                        var oppHit = opponent.GetComponent<OppHitting>();
-                        if (oppHit != null)
-                            oppHit.tether = null;
-                    }
-                }
+                Opponent.GetComponent<OppHitting>().tether = null;
                 break;
-
             case "Gorbino":
-                if (activeBall != null)
-                {
-                    var net = activeBall.GetComponent<NetworkObject>();
-                    if (net != null)
-                    {
-                        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-                        {
-                            net.Despawn();
-                        }
-                        else
-                        {
-                            Destroy(activeBall);
-                        }
-                    }
-                    else
-                        Destroy(activeBall);
-                    activeBall = null;
-                }
-                if (Gorbino != null)
-                    Gorbino.SetActive(true);
+                Destroy(activeBall);
+                Gorbino.SetActive(true);
                 break;
         }
-
-        // clear network guard and flags
-        networkSpellActive = false;
 
         spellName = null;
         plrHitSpell = false;
@@ -955,118 +405,36 @@ public class SpellEffects : MonoBehaviour
         spellHit = false;
     }
 
-    private IEnumerator ApplyKnockback(GameObject target, Vector3 knockbackForce, float duration)
-    {
-        var controller = target.GetComponent<CharacterController>();
-        var movement = target.GetComponent<MainCharacterMovement>();
-
-        if (controller == null)
-        {
-            Debug.LogWarning($"[SpellEffects] Knockback failed: No CharacterController on {target.name}");
-            yield break;
-        }
-
-        // Temporarily disable player movement control
-        bool wasMovementEnabled = true;
-        if (movement != null)
-        {
-            wasMovementEnabled = movement.enabled;
-            movement.enabled = false;
-        }
-
-        float elapsed = 0f;
-        Vector3 totalKnockback = Vector3.zero;
-
-        Debug.Log($"[SpellEffects] Starting knockback on {target.name}, force: {knockbackForce}, duration: {duration}");
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = 1f - (elapsed / duration); // Decay over time
-
-            Vector3 frameKnockback = knockbackForce * t * Time.deltaTime;
-            controller.Move(frameKnockback);
-            totalKnockback += frameKnockback;
-
-            yield return null;
-        }
-
-        Debug.Log($"[SpellEffects] Knockback complete on {target.name}, total distance: {totalKnockback.magnitude}");
-
-        // Re-enable player movement control
-        if (movement != null)
-            movement.enabled = wasMovementEnabled;
-    }
-
-    private IEnumerator ApplyTetherRestriction(GameObject target, Vector3 tetherPos, float duration)
-    {
-        var mcm = target.GetComponent<MainCharacterMovement>();
-        if (mcm == null) yield break;
-
-        float maxDistance = 3f; // Maximum distance from tether
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-
-            // Check distance from tether
-            Vector3 targetPos = target.transform.position;
-            targetPos.y = tetherPos.y; // Ignore Y axis
-            Vector3 tetherPosFlat = tetherPos;
-
-            float distance = Vector3.Distance(new Vector3(targetPos.x, 0, targetPos.z), new Vector3(tetherPosFlat.x, 0, tetherPosFlat.z));
-
-            if (distance > maxDistance)
-            {
-                // Pull target back towards tether
-                Vector3 direction = (new Vector3(tetherPosFlat.x, targetPos.y, tetherPosFlat.z) - targetPos).normalized;
-                Vector3 clampedPos = new Vector3(tetherPosFlat.x, targetPos.y, tetherPosFlat.z) + direction * -maxDistance;
-
-                var controller = target.GetComponent<CharacterController>();
-                if (controller != null)
-                {
-                    controller.enabled = false;
-                    target.transform.position = new Vector3(clampedPos.x, target.transform.position.y, clampedPos.z);
-                    controller.enabled = true;
-                }
-            }
-
-            yield return null;
-        }
-    }
-
+    // Coroutine
     private IEnumerator ApplyChronosAfterExplanation()
     {
-        GameObject player = GetPlayer();
-        if (player == null) yield break;
-
+        // Wait until the tutorial/explanation is done
         yield return new WaitUntil(() => !SpellEffects.isSpellSlowdownActive);
+
+        // Small extra buffer to ensure TimeScale resets first
         yield return new WaitForSecondsRealtime(0.05f);
 
+        // Apply Chronos time slowdown cleanly
         Time.timeScale = 0.1f;
 
-        var mcm = player.GetComponent<MainCharacterMovement>();
-        if (mcm != null)
-        {
-            mcm.speed = 70f;
-            mcm.gravity = 250f;
-        }
+        Player.GetComponent<MainCharacterMovement>().speed = 70f;
+        Player.GetComponent<MainCharacterMovement>().gravity = 250f;
 
+        // Keep it active for a few seconds in real time
         yield return new WaitForSecondsRealtime(2.0f);
 
+        // Restore normal time and player physics
         Time.timeScale = 1f;
-        if (mcm != null)
-        {
-            mcm.speed = 7f;
-            mcm.gravity = 25f;
-        }
+        Player.GetComponent<MainCharacterMovement>().speed = 7f;
+        Player.GetComponent<MainCharacterMovement>().gravity = 25f;
 
+        // Fully reset spell state
         resetSpellEffect();
     }
 
     private IEnumerator HandleStoneWall(GameObject wall, float duration)
     {
+        // Make it rise up from below ground
         Vector3 endPos = wall.transform.position;
         Vector3 startPos = endPos + Vector3.down * 2f;
         wall.transform.position = startPos;
@@ -1074,13 +442,15 @@ public class SpellEffects : MonoBehaviour
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.deltaTime * 2f;
+            t += Time.deltaTime * 2f; // speed of rising
             wall.transform.position = Vector3.Lerp(startPos, endPos, t);
             yield return null;
         }
 
+        // Wait for the wall's duration
         yield return new WaitForSeconds(duration - 1f);
 
+        // Fade out before destroy (if it has a renderer)
         Renderer rend = wall.GetComponent<Renderer>();
         if (rend != null && rend.material.HasProperty("_Color"))
         {
@@ -1110,12 +480,14 @@ public class SpellEffects : MonoBehaviour
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.deltaTime * 2f;
+            t += Time.deltaTime * 2f; // speed of rising
             mud.transform.localScale = Vector3.Lerp(startScale, endScale, t);
             yield return null;
         }
 
+        // Wait for the wall's duration
         yield return new WaitForSeconds(duration - 1f);
+
         Destroy(mud);
     }
 
@@ -1128,30 +500,15 @@ public class SpellEffects : MonoBehaviour
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.deltaTime * 2f;
+            t += Time.deltaTime * 2f; // speed of rising
             orbiter.transform.localScale = Vector3.Lerp(startScale, endScale, t);
             yield return null;
         }
 
+        // Wait for the wall's duration
         yield return new WaitForSeconds(duration - 1f);
+
         Destroy(orbiter);
-    }
-
-    /// <summary>
-    /// Makes an object follow a transform without parenting (useful for NetworkObjects)
-    /// </summary>
-    private IEnumerator FollowTransform(GameObject follower, Transform target, float duration)
-    {
-        if (follower == null || target == null) yield break;
-
-        float elapsed = 0f;
-        while (elapsed < duration && follower != null && target != null)
-        {
-            follower.transform.position = target.position;
-            follower.transform.rotation = target.rotation;
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
     }
 
     public void OnPointWon()
@@ -1184,10 +541,11 @@ public class SpellEffects : MonoBehaviour
     {
         if (spellExplanationUI == null) yield break;
 
+        // Prevent overlapping UI or multiple slowdowns
         if (explanationRoutine != null)
             ForceResetSpellExplanation();
 
-        isSpellSlowdownActive = true;
+        isSpellSlowdownActive = true; //  Mark slowdown active
 
         if (spellExplanationText != null)
             spellExplanationText.text = GetSpellDescription(spell);
@@ -1200,11 +558,14 @@ public class SpellEffects : MonoBehaviour
         yield return new WaitForSecondsRealtime(explanationDuration);
 
         ForceResetSpellExplanation();
-        isSpellSlowdownActive = false;
+
+        isSpellSlowdownActive = false; // Mark slowdown complete
     }
+
 
     public void ForceResetSpellExplanation()
     {
+        // Called by CollisionTrackerBall to restore the timescale before doing it's pause to give a point, otherwise things get a little messy. - Ed
         Time.timeScale = lastOriginalTimeScale;
         if (spellExplanationUI != null)
             spellExplanationUI.SetActive(false);
@@ -1243,192 +604,5 @@ public class SpellEffects : MonoBehaviour
     public static void ResetSpellsForNewRound()
     {
         spellsUsedThisRound.Clear();
-    }
-
-    // ---------------- Helpers used above: wait for a server-spawned effect then operate on it ----------------
-    private IEnumerator WaitForEffectAndFollow(string spell, float waitSeconds, Transform target)
-    {
-        float timer = 0f;
-        while (timer < 2.0f)
-        {
-            timer += waitSeconds;
-            if (spell == "Ice" && activeIceBlock != null)
-            {
-                StartCoroutine(FollowTransform(activeIceBlock, target, 5f));
-                yield break;
-            }
-            yield return new WaitForSeconds(waitSeconds);
-        }
-    }
-
-    private IEnumerator WaitForEffectAndHandleStoneWall(string spell, float waitSeconds)
-    {
-        float timer = 0f;
-        while (timer < 2.0f)
-        {
-            timer += waitSeconds;
-            if (activeStoneWall != null)
-            {
-                StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
-                Invoke(nameof(resetSpellEffect), 5f);
-                yield break;
-            }
-            yield return new WaitForSeconds(waitSeconds);
-        }
-    }
-
-    private IEnumerator WaitForEffectAndHandle(string spell, float waitSeconds)
-    {
-        float timer = 0f;
-        while (timer < 2.0f)
-        {
-            timer += waitSeconds;
-            switch (spell)
-            {
-                case "Gemini":
-                    if (activeGemini != null)
-                    {
-                        Invoke(nameof(resetSpellEffect), 5f);
-                        yield break;
-                    }
-                    break;
-
-                case "Pisces":
-                    if (activeOrbiter != null)
-                    {
-                        StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
-                        yield break;
-                    }
-                    break;
-
-                case "Tether":
-                    if (activeTether != null)
-                    {
-                        StartCoroutine(HandleStoneWall(activeTether, 5f));
-                        Invoke(nameof(resetSpellEffect), 5f);
-                        yield break;
-                    }
-                    break;
-
-                case "Gorbino":
-                    if (activeBall != null)
-                    {
-                        Invoke(nameof(resetSpellEffect), 5f);
-                        yield break;
-                    }
-                    break;
-            }
-
-            yield return new WaitForSeconds(waitSeconds);
-        }
-    }
-
-    // ====== Helper Methods for Networked Spells =======
-
-    /// <summary>
-    /// Freeze opponent movement for Ice spell
-    /// </summary>
-    private IEnumerator FreezeOpponentMovement(GameObject target, float duration)
-    {
-        if (target == null) yield break;
-
-        var mcm = target.GetComponent<MainCharacterMovement>();
-        var oppHit = target.GetComponent<OppHitting>();
-
-        float originalMcmSpeed = 7f;
-        float originalOppSpeed = 5f;
-
-        // Store original speeds
-        if (mcm != null)
-            originalMcmSpeed = mcm.speed;
-        if (oppHit != null)
-            originalOppSpeed = oppHit.speed;
-
-        // Freeze movement
-        if (mcm != null)
-        {
-            mcm.speed = 0f;
-            Debug.Log($"[SpellEffects] Froze {target.name} movement (MainCharacterMovement)");
-        }
-        if (oppHit != null)
-        {
-            oppHit.speed = 0f;
-            Debug.Log($"[SpellEffects] Froze {target.name} movement (OppHitting)");
-        }
-
-        // Wait for duration
-        yield return new WaitForSeconds(duration);
-
-        // Restore movement
-        if (mcm != null)
-        {
-            mcm.speed = originalMcmSpeed;
-            Debug.Log($"[SpellEffects] Restored {target.name} movement to {originalMcmSpeed}");
-        }
-        if (oppHit != null)
-        {
-            oppHit.speed = originalOppSpeed;
-            Debug.Log($"[SpellEffects] Restored {target.name} AI speed to {originalOppSpeed}");
-        }
-    }
-
-    /// <summary>
-    /// Apply knockback to opponent from Fireball
-    /// </summary>
-    public void ApplyFireballKnockback(GameObject target)
-    {
-        if (target == null)
-        {
-            Debug.LogWarning("[SpellEffects] ApplyFireballKnockback: target is null");
-            return;
-        }
-
-        // Determine knockback direction (away from caster)
-        GameObject caster = GetPlayer();
-        Vector3 knockbackDirection = Vector3.back; // default
-
-        if (caster != null && target != null)
-        {
-            Vector3 directionFromCaster = (target.transform.position - caster.transform.position).normalized;
-            knockbackDirection = new Vector3(directionFromCaster.x, 0, directionFromCaster.z).normalized;
-        }
-
-        // Apply knockback force
-        Vector3 knockbackForce = knockbackDirection * 8f; // Adjust force as needed
-        StartCoroutine(ApplyKnockback(target, knockbackForce, 0.3f));
-
-        Debug.Log($"[SpellEffects] Applied Fireball knockback to {target.name}");
-    }
-
-    /// <summary>
-    /// Despawn ice block properly (networked or local)
-    /// </summary>
-    private void DespawnIceBlock()
-    {
-        if (activeIceBlock == null) return;
-
-        var netObj = activeIceBlock.GetComponent<NetworkObject>();
-
-        if (netObj != null)
-        {
-            // Networked object - only server can despawn
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-            {
-                netObj.Despawn();
-                Debug.Log("[SpellEffects] Ice block despawned by server");
-            }
-            else
-            {
-                Debug.Log("[SpellEffects] Ice block will be despawned by server");
-            }
-        }
-        else
-        {
-            // Local object - destroy directly
-            Destroy(activeIceBlock);
-            Debug.Log("[SpellEffects] Local ice block destroyed");
-        }
-
-        activeIceBlock = null;
     }
 }

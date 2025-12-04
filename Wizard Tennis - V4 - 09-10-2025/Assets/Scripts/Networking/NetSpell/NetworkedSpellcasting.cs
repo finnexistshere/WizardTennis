@@ -49,7 +49,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     // --- Linked Components ---
     public TennisAI TennisAi;
     public SpellFloorImage spellFloorImage;
-    public SpellEffects SpellEffects;
+    public NetworkedSpellEffects SpellEffects;
 
     // --- Internal State ---
     private string inputSpellAddress = "";
@@ -121,7 +121,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             audioSource = GetComponent<AudioSource>();
 
         if (SpellEffects == null)
-            SpellEffects = FindObjectOfType<SpellEffects>();
+            SpellEffects = FindObjectOfType<NetworkedSpellEffects>();
 
         if (spellFloorImage == null)
             spellFloorImage = FindObjectOfType<SpellFloorImage>();

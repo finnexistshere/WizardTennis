@@ -14,7 +14,7 @@ public class NetworkedSpellcastingRelay : MonoBehaviour
     public SpellParticleColor spellParticleColor;
     public SpellFloorImage spellFloorImage;
     public TennisAI tennisAI;
-    public SpellEffects spellEffects;
+    public NetworkedSpellEffects spellEffects;
 
     private static NetworkedSpellcastingRelay instance;
     public static NetworkedSpellcastingRelay Instance => instance;

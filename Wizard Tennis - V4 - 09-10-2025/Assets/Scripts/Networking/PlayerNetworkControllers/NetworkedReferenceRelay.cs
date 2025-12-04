@@ -4,7 +4,7 @@ using Unity.Netcode;
 public class PlayerReferenceRelay : MonoBehaviour
 {
     [Header("Global Scene References")]
-    public SpellEffects spellEffects;
+    public NetworkedSpellEffects spellEffects;
     public ScoreManager scoreManager;
 
     [Header("Player-Specific References")]
