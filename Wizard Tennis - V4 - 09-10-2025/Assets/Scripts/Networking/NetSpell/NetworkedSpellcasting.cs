@@ -676,61 +676,20 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         if (currentVisualInstance != null)
         {
             if (currentVisualInstance.GetComponent<NetworkObject>() == null)
-            {
                 Destroy(currentVisualInstance);
-                currentVisualInstance = null;
-            }
-            else
-            {
-                // NetworkObject visuals: optional - you could despawn if needed
-                // currentVisualInstance.GetComponent<NetworkObject>().Despawn();
-            }
+            currentVisualInstance = null;
         }
 
-        // Deactivate the base visual effect (if any)
+        // Always disable the base effect (so new visual replaces it)
         baseEffect?.SetActive(false);
 
-        // Determine if prefab is a NetworkObject
-        NetworkObject netObj = newPrefab.GetComponent<NetworkObject>();
+        // Singleplayer-style instantiation for local visuals
+        currentVisualInstance = Instantiate(newPrefab, parentTransform);
+        currentVisualInstance.transform.localPosition = Vector3.zero;
+        currentVisualInstance.transform.localRotation = Quaternion.identity;
+        currentVisualInstance.transform.localScale = Vector3.one;
 
-        if (netObj == null)
-        {
-            // Local/client visual: instantiate as child of the parent
-            currentVisualInstance = Instantiate(newPrefab, parentTransform);
-            currentVisualInstance.transform.localPosition = Vector3.zero;
-            currentVisualInstance.transform.localRotation = Quaternion.identity;
-            currentVisualInstance.transform.localScale = Vector3.one;
-
-            Debug.Log($"[NetworkedSpellcasting] SwapVisual: spawned local visual '{currentVisualInstance.name}' as child of '{parentTransform.name}'");
-        }
-        else
-        {
-            // Networked prefab
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-            {
-                // Server spawns networked prefab
-                currentVisualInstance = Instantiate(newPrefab, parentTransform.position, parentTransform.rotation);
-                currentVisualInstance.transform.SetParent(parentTransform);
-                currentVisualInstance.transform.localPosition = Vector3.zero;
-                currentVisualInstance.transform.localRotation = Quaternion.identity;
-                currentVisualInstance.transform.localScale = Vector3.one;
-
-                netObj = currentVisualInstance.GetComponent<NetworkObject>();
-                if (netObj != null) netObj.Spawn();
-
-                Debug.Log($"[NetworkedSpellcasting] SwapVisual: server spawned networked visual '{currentVisualInstance.name}' as child of '{parentTransform.name}'");
-            }
-            else
-            {
-                // Clients instantiate a local copy just for visuals (non-authoritative)
-                currentVisualInstance = Instantiate(newPrefab, parentTransform);
-                currentVisualInstance.transform.localPosition = Vector3.zero;
-                currentVisualInstance.transform.localRotation = Quaternion.identity;
-                currentVisualInstance.transform.localScale = Vector3.one;
-
-                Debug.Log($"[NetworkedSpellcasting] SwapVisual: client-only visual '{currentVisualInstance.name}' created as child of '{parentTransform.name}'");
-            }
-        }
+        Debug.Log($"[NetworkedSpellcasting] SwapVisual: spawned visual '{currentVisualInstance.name}' on '{parentTransform.name}'");
     }
 
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound, float duration)
