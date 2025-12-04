@@ -394,7 +394,7 @@ public class NetworkedBall : NetworkBehaviour
 
         nearBall = true;
 
-        // Can't hit if hitting is disabled (but serving doesn't block hitting)
+        // Can't hit if hitting is disabled
         if (!hitting)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} can't hit - hitting is disabled");
@@ -448,7 +448,10 @@ public class NetworkedBall : NetworkBehaviour
         // Update rally count via server
         IncrementRallyCountServerRpc();
 
-        // Reset spell effects
+        // *** NEW: Check for Fireball knockback BEFORE resetting spell effects ***
+        CheckFireballHit();
+
+        // Reset spell effects (if not already reset by Fireball)
         if (spellEffects != null && spellEffects.resetOnPlrHit)
         {
             spellEffects.resetSpellEffect();
@@ -546,5 +549,47 @@ public class NetworkedBall : NetworkBehaviour
             servingBarriers.SetActive(true);
 
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} set to SERVING state.");
+    }
+
+    /// <summary>
+    /// Check if player is hitting a Fireball-enchanted ball and apply knockback
+    /// </summary>
+    private void CheckFireballHit()
+    {
+        if (spellEffects == null) return;
+
+        // Check if Fireball spell is active and should trigger on opponent hit
+        if (!spellEffects.resetOnOppHit || spellEffects.spellName != "Fireball")
+            return;
+
+        GameObject ballObj = GameObject.FindGameObjectWithTag("Ball");
+        if (ballObj == null) return;
+
+        CollisionTrackerBall tracker = ballObj.GetComponent<CollisionTrackerBall>();
+        if (tracker == null) return;
+
+        // Determine who cast the Fireball by checking who hit the ball last
+        // If opponent hit it last, then we're hitting their Fireball-enchanted ball
+        bool opponentCastFireball = (tracker.LastHitWizard != "Player");
+
+        if (opponentCastFireball && opponent != null)
+        {
+            Debug.Log($"[NetworkedBall] Player {OwnerClientId} hit opponent's Fireball ball - applying knockback!");
+
+            // Set spell context so SpellEffects knows opponent is caster, we are victim
+            spellEffects.AutoSetContext(opponent);
+
+            // Apply knockback to THIS player (the one hitting the Fireball ball)
+            spellEffects.ApplyFireballKnockback(gameObject);
+
+            // Reset the spell effect
+            spellEffects.resetSpellEffect();
+
+            Debug.Log($"[NetworkedBall] Fireball knockback applied and spell reset");
+        }
+        else
+        {
+            Debug.Log($"[NetworkedBall] Fireball active but no knockback - LastHitWizard: {tracker.LastHitWizard}");
+        }
     }
 }

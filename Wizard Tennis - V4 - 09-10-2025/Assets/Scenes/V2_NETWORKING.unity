@@ -41964,6 +41964,7 @@ GameObject:
   - component: {fileID: 1594825195}
   - component: {fileID: 1594825196}
   - component: {fileID: 1594825197}
+  - component: {fileID: 1594825198}
   m_Layer: 0
   m_Name: Game Manager
   m_TagString: Untagged
@@ -42020,14 +42021,23 @@ MonoBehaviour:
   slowTimeScale: 0.1
   explanationDuration: 3.5
   iceBlockPrefab: {fileID: 6739675707158918549, guid: 7fea345ac8ee7e64885f2f42c84f722c, type: 3}
+  activeIceBlock: {fileID: 0}
   stoneWallPrefab: {fileID: 6431261414360197309, guid: 0b4927277a528a04a88b24971fd682e3, type: 3}
+  activeStoneWall: {fileID: 0}
   geminiPrefab: {fileID: 488275310566214477, guid: af1c43e9465a392458a24c3f26cb7a22, type: 3}
+  activeGemini: {fileID: 0}
   mudPrefab: {fileID: 6622199852326541046, guid: 2e4ad7e8bdb68b248869e973c529e432, type: 3}
+  activeMud: {fileID: 0}
   orbiterPrefab: {fileID: 1664898280556804845, guid: 7e0753e70f131dd429aff91289e199c5, type: 3}
+  activeOrbiter: {fileID: 0}
   tetherPrefab: {fileID: 7245028594593329606, guid: 43847781cb6a7244f9c92d25630a510f, type: 3}
+  activeTether: {fileID: 0}
   jollyPrefab: {fileID: 6974429216218887945, guid: 6931c73d6b9e40f449e0c1b8ce25993d, type: 3}
+  activeJolly: {fileID: 0}
   BallPrefab: {fileID: 5499011774259568949, guid: 23daab679bb69d54c9d92efa7a6a88d0, type: 3}
+  activeBall: {fileID: 0}
   flamePrefab: {fileID: 8057782250999151861, guid: cc56ac6547b79a940b3636f73d6eb516, type: 3}
+  activeFlame: {fileID: 0}
   invisibleMaterial: {fileID: 2100000, guid: 67c1b31b8fad99349abd6994386c91a6, type: 2}
   spellHit: 0
 --- !u!114 &1594825196
@@ -42088,6 +42098,21 @@ MonoBehaviour:
   WinLoseText: {fileID: 168140767}
   tutorialPanel: {fileID: 579273216}
   playerInput: {fileID: 0}
+--- !u!114 &1594825198
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1594825190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58421952043af054baa50c7823572741, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkedSpellManager
+  ShowTopMostFoldoutHeaderGroup: 1
+  spellEffects: {fileID: 1594825195}
+  tennisAI: {fileID: 0}
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0

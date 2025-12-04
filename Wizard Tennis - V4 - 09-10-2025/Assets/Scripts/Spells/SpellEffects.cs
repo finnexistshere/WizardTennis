@@ -42,24 +42,24 @@ public class SpellEffects : MonoBehaviour
 
     [Header("Spell Object Settings")]
     public GameObject iceBlockPrefab;
-    private GameObject activeIceBlock;
+    [HideInInspector] public GameObject activeIceBlock;
     public GameObject stoneWallPrefab;
-    private GameObject activeStoneWall;
+    [HideInInspector] public GameObject activeStoneWall;
     public GameObject geminiPrefab;
-    private GameObject activeGemini;
+    [HideInInspector] public GameObject activeGemini;
     public GameObject mudPrefab;
-    private GameObject activeMud;
+    [HideInInspector] public GameObject activeMud;
     public GameObject orbiterPrefab;
-    private GameObject activeOrbiter;
+    [HideInInspector] public GameObject activeOrbiter;
     public GameObject tetherPrefab;
-    private GameObject activeTether;
+    [HideInInspector] public GameObject activeTether;
     public GameObject jollyPrefab;
-    private GameObject activeJolly;
+    [HideInInspector] public GameObject activeJolly;
     private GameObject Gorbino;
     public GameObject BallPrefab;
-    private GameObject activeBall;
+    [HideInInspector] public GameObject activeBall;
     public GameObject flamePrefab;
-    private GameObject activeFlame;
+    [HideInInspector] public GameObject activeFlame;
 
     [Header("Shadow Spell Settings")]
     public Material invisibleMaterial; // Assign a transparent material for invisibility
@@ -76,6 +76,9 @@ public class SpellEffects : MonoBehaviour
     private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether" };
 
     private bool isNetworked => NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening;
+
+    // Prevent duplicate activation
+    private bool networkSpellActive = false;
 
     private void Awake()
     {
@@ -97,11 +100,32 @@ public class SpellEffects : MonoBehaviour
     /// </summary>
     public void SetContext(GameObject player, GameObject opponent, TennisAI ai)
     {
+        // Prefer explicit values passed in. If null, try to resolve via NetworkManager / NetworkedSpellcasting.
+        if (player == null || opponent == null)
+        {
+            var netPlayers = FindObjectsOfType<NetworkedSpellcasting>();
+            if (netPlayers.Length >= 2)
+            {
+                if (player == null)
+                    player = netPlayers[0].gameObject;
+                if (opponent == null)
+                    opponent = netPlayers.Length > 1 ? netPlayers[1].gameObject : null;
+
+                foreach (var sc in netPlayers)
+                {
+                    if (sc.IsOwner)
+                    {
+                        if (player == null) player = sc.gameObject;
+                    }
+                }
+            }
+        }
+
         currentPlayer = player;
         currentOpponent = opponent;
         currentAI = ai;
 
-        Debug.Log($"[SpellEffects] Context set - Player: {player?.name} (Instance: {player?.GetInstanceID()}), Opponent: {opponent?.name} (Instance: {opponent?.GetInstanceID()}), AI: {ai != null}, IsNetworked: {isNetworked}");
+        Debug.Log($"[SpellEffects] Context set - Player: {player?.name} (Inst:{player?.GetInstanceID()}), Opponent: {opponent?.name} (Inst:{opponent?.GetInstanceID()}), AI: {ai != null}, IsNetworked: {isNetworked}");
     }
 
     /// <summary>
@@ -121,8 +145,10 @@ public class SpellEffects : MonoBehaviour
 
         if (isNetworked)
         {
-            // Find opponent by looking for other NetworkedSpellcasting
-            foreach (var sc in FindObjectsOfType<NetworkedSpellcasting>())
+            // Determine opponent deterministically by choosing the NetworkedSpellcasting 
+            // whose gameObject != ballOwner
+            var all = FindObjectsOfType<NetworkedSpellcasting>();
+            foreach (var sc in all)
             {
                 if (sc.gameObject != ballOwner)
                 {
@@ -130,10 +156,23 @@ public class SpellEffects : MonoBehaviour
                     break;
                 }
             }
+
+            if (opponent == null && NetworkManager.Singleton != null)
+            {
+                foreach (var kv in NetworkManager.Singleton.SpawnManager.SpawnedObjects)
+                {
+                    var no = kv.Value;
+                    if (no != null && no.gameObject != ballOwner && no.GetComponent<NetworkedSpellcasting>() != null)
+                    {
+                        opponent = no.gameObject;
+                        break;
+                    }
+                }
+            }
         }
         else
         {
-            // Singleplayer
+            // Singleplayer fallback
             if (ballOwner == Player)
             {
                 opponent = Opponent;
@@ -146,7 +185,7 @@ public class SpellEffects : MonoBehaviour
         }
 
         SetContext(player, opponent, ai);
-        Debug.Log($"[SpellEffects] AutoSetContext completed for {ballOwner.name}");
+        Debug.Log($"[SpellEffects] AutoSetContext completed for {ballOwner.name} -> opponent: {opponent?.name}");
     }
 
     /// <summary>
@@ -183,8 +222,81 @@ public class SpellEffects : MonoBehaviour
         return currentAI != null ? currentAI : TennisAI;
     }
 
+    /// <summary>
+    /// Register a server-spawned networked effect on the client so SpellEffects can reference it.
+    /// Called from NetworkedSpellcasting.ClientRpc after server spawns an effect.
+    /// </summary>
+    public void RegisterNetworkedEffect(string spell, ulong netId)
+    {
+        if (netId == 0) return;
+        if (NetworkManager.Singleton == null) return;
+
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(netId, out var netObj) && netObj != null)
+        {
+            var go = netObj.gameObject;
+
+            switch (spell)
+            {
+                case "Ice":
+                    activeIceBlock = go;
+                    if (GetOpponent() != null)
+                    {
+                        StartCoroutine(FollowTransform(activeIceBlock, GetOpponent().transform, 5f));
+                        // Start freeze coroutine
+                        StartCoroutine(FreezeOpponentMovement(GetOpponent(), 5f));
+                    }
+                    break;
+
+                case "Stone":
+                    activeStoneWall = go;
+                    StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
+                    break;
+
+                case "Gemini":
+                    activeGemini = go;
+                    Invoke(nameof(resetSpellEffect), 5f);
+                    break;
+
+                case "Pisces":
+                    activeOrbiter = go;
+                    StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
+                    break;
+
+                case "Tether":
+                    activeTether = go;
+                    var tetherComp = activeTether.GetComponent<Tether>();
+                    if (tetherComp != null && GetOpponent() != null)
+                        tetherComp.Player = GetOpponent().transform;
+                    StartCoroutine(HandleStoneWall(activeTether, 5f));
+                    Invoke(nameof(resetSpellEffect), 5f);
+                    break;
+
+                case "Gorbino":
+                    activeBall = go;
+                    Invoke(nameof(resetSpellEffect), 5f);
+                    break;
+
+                default:
+                    // Unknown effect — ignore for now
+                    break;
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[SpellEffects] RegisterNetworkedEffect: netId {netId} not found in SpawnManager.");
+        }
+    }
+
     public void castSpell()
     {
+        // Prevent duplicate activation from different clients triggering the same queued action
+        if (networkSpellActive)
+        {
+            Debug.Log($"[SpellEffects] castSpell ignored because another spell is active ({spellName})");
+            return;
+        }
+        networkSpellActive = true;
+
         GameObject player = GetPlayer();
         GameObject opponent = GetOpponent();
         TennisAI ai = GetAI();
@@ -222,6 +334,7 @@ public class SpellEffects : MonoBehaviour
             if (player == null)
             {
                 Debug.LogError("[SpellEffects] Cannot cast spell - no player found even after auto-search!");
+                networkSpellActive = false;
                 return;
             }
 
@@ -250,80 +363,52 @@ public class SpellEffects : MonoBehaviour
             case "Ice":
                 if (opponent != null)
                 {
-                    if (isNetworked)
-                    {
-                        // Networked: Freeze opponent's MainCharacterMovement
-                        var oppMcm = opponent.GetComponent<MainCharacterMovement>();
-                        if (oppMcm != null)
-                        {
-                            oppMcm.speed = 0f;
-                            Debug.Log($"[SpellEffects] Ice: Froze opponent {opponent.name}, speed set to 0");
-                        }
-                    }
-                    else
-                    {
-                        // Singleplayer: Freeze AI
-                        var oppHit = opponent.GetComponent<OppHitting>();
-                        if (oppHit != null) oppHit.speed = 0f;
-                    }
+                    // Freeze opponent movement for 5 seconds
+                    StartCoroutine(FreezeOpponentMovement(opponent, 5f));
 
-                    // Spawn ice block on opponent
                     if (iceBlockPrefab != null)
                     {
-                        if (isNetworked)
+                        if (isNetworked && NetworkManager.Singleton.IsServer)
                         {
-                            // Check if ice block has NetworkObject
-                            NetworkObject iceBlockNetObj = iceBlockPrefab.GetComponent<NetworkObject>();
-
-                            if (iceBlockNetObj != null)
-                            {
-                                // Spawn as NetworkObject - but only if we're the server/host
-                                // For client-side visual effects, just instantiate locally
-                                activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
-
-                                // Don't parent NetworkObjects - just follow manually
-                                StartCoroutine(FollowTransform(activeIceBlock, opponent.transform, 5f));
-                            }
-                            else
-                            {
-                                // No NetworkObject, safe to parent normally
-                                activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
-                                activeIceBlock.transform.SetParent(opponent.transform);
-                                activeIceBlock.transform.localPosition = Vector3.zero;
-                            }
-                        }
-                        else
-                        {
-                            // Singleplayer: Normal instantiation
+                            // Server spawns networked ice block
                             activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
-                            activeIceBlock.transform.SetParent(opponent.transform);
-                            activeIceBlock.transform.localPosition = Vector3.zero;
+                            NetworkObject iceNetObj = activeIceBlock.GetComponent<NetworkObject>();
+                            if (iceNetObj != null)
+                            {
+                                iceNetObj.Spawn();
+                                Debug.Log("[SpellEffects] Server spawned networked ice block");
+                            }
+                        }
+                        else if (!isNetworked)
+                        {
+                            // Singleplayer - spawn local ice block
+                            activeIceBlock = Instantiate(iceBlockPrefab, opponent.transform.position, opponent.transform.rotation);
                         }
 
-                        Debug.Log($"[SpellEffects] Ice block spawned on {opponent.name}");
+                        // Make ice block follow opponent
+                        if (activeIceBlock != null)
+                        {
+                            StartCoroutine(FollowTransform(activeIceBlock, opponent.transform, 5f));
+                        }
                     }
                 }
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
 
+
             case "Fireball":
                 if (isNetworked && opponent != null)
                 {
-                    // Networked: Apply knockback to opponent
-                    Vector3 knockbackDir = (opponent.transform.position - player.transform.position).normalized;
-                    knockbackDir.y = 0.5f; // Add upward component
-                    float knockbackForce = 8f;
-
-                    Debug.Log($"[SpellEffects] Fireball: Applying knockback to {opponent.name}");
-                    StartCoroutine(ApplyKnockback(opponent, knockbackDir * knockbackForce, 0.4f));
+                    // Networked: knockback happens on hit via ApplyFireballKnockback
+                    Debug.Log($"[SpellEffects] Fireball: Armed and ready. Opponent: {opponent.name}");
                 }
                 else if (ai != null)
                 {
                     // Singleplayer: Apply AI debuff
                     ai.ApplyBuff(-0.2f, spellName);
                 }
+
                 resetOnOppHit = true;
-                StartCoroutine(FireballHitCheck());
                 break;
 
             case "Shadow":
@@ -333,13 +418,12 @@ public class SpellEffects : MonoBehaviour
                 }
                 else
                 {
-                    if (isNetworked && opponent != null)
+                    if (isNetworked && player != null)
                     {
-                        // Networked: Make CASTER (player) invisible on local client's screen only
+                        // Networked: Make CASTER (player) invisible on **caster's client** only
                         var netSpellcasting = player.GetComponent<NetworkedSpellcasting>();
                         if (netSpellcasting != null && netSpellcasting.IsOwner)
                         {
-                            // Make the PLAYER (caster) invisible, not the opponent
                             opponentRenderer = player.GetComponentInChildren<SkinnedMeshRenderer>();
                             if (opponentRenderer == null)
                                 opponentRenderer = player.GetComponentInChildren<MeshRenderer>();
@@ -354,7 +438,6 @@ public class SpellEffects : MonoBehaviour
                                 }
                                 else
                                 {
-                                    // Fallback: make transparent
                                     Material tempMat = new Material(opponentRenderer.material);
                                     Color c = tempMat.color;
                                     c.a = 0.2f;
@@ -398,23 +481,34 @@ public class SpellEffects : MonoBehaviour
             case "Stone":
                 if (stoneWallPrefab != null)
                 {
-                    Vector3 spawnPos = player.transform.position + player.transform.forward * 2f;
-                    Quaternion spawnRot = Quaternion.identity;
-
-                    activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
-
-                    var returner = activeStoneWall.GetComponent<SimpleBallReturner>();
-                    if (returner != null)
+                    if (isNetworked)
                     {
-                        var ballComp = player.GetComponent<Ball>();
-                        if (ballComp != null && ballComp.aimTarget != null)
-                            returner.aimTarget = ballComp.aimTarget.transform;
-                        if (opponent != null)
-                            returner.opponent = opponent.transform;
+                        // Server spawned and RegisterNetworkedEffect will handle the wall on clients (HandleStoneWall called in RegisterNetworkedEffect).
+                        if (activeStoneWall == null)
+                        {
+                            StartCoroutine(WaitForEffectAndHandleStoneWall("Stone", 0.05f));
+                        }
                     }
+                    else
+                    {
+                        Vector3 spawnPos = player.transform.position + player.transform.forward * 2f;
+                        Quaternion spawnRot = Quaternion.identity;
 
-                    StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
-                    Invoke(nameof(resetSpellEffect), 5f);
+                        activeStoneWall = Instantiate(stoneWallPrefab, spawnPos, spawnRot);
+
+                        var returner = activeStoneWall.GetComponent<SimpleBallReturner>();
+                        if (returner != null)
+                        {
+                            var ballComp = player.GetComponent<Ball>();
+                            if (ballComp != null && ballComp.aimTarget != null)
+                                returner.aimTarget = ballComp.aimTarget.transform;
+                            if (opponent != null)
+                                returner.opponent = opponent.transform;
+                        }
+
+                        StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
+                        Invoke(nameof(resetSpellEffect), 5f);
+                    }
                 }
                 break;
 
@@ -423,23 +517,31 @@ public class SpellEffects : MonoBehaviour
                 break;
 
             case "Gemini":
-                Vector3 gemPos = player.transform.position;
-                gemPos.x = -player.transform.position.x;
-                Quaternion gemRot = player.transform.rotation;
-
-                activeGemini = Instantiate(geminiPrefab, gemPos, gemRot);
-
-                var gemReturner = activeGemini.GetComponent<SimpleBallReturner>();
-                if (gemReturner != null)
+                if (isNetworked)
                 {
-                    var ballComp = player.GetComponent<Ball>();
-                    if (ballComp != null && ballComp.aimTarget != null)
-                        gemReturner.aimTarget = ballComp.aimTarget.transform;
-                    if (opponent != null)
-                        gemReturner.opponent = opponent.transform;
+                    if (activeGemini == null)
+                        StartCoroutine(WaitForEffectAndHandle("Gemini", 0.05f));
                 }
+                else
+                {
+                    Vector3 gemPos = player.transform.position;
+                    gemPos.x = -player.transform.position.x;
+                    Quaternion gemRot = player.transform.rotation;
 
-                Invoke(nameof(resetSpellEffect), 5f);
+                    activeGemini = Instantiate(geminiPrefab, gemPos, gemRot);
+
+                    var gemReturner = activeGemini.GetComponent<SimpleBallReturner>();
+                    if (gemReturner != null)
+                    {
+                        var ballComp = player.GetComponent<Ball>();
+                        if (ballComp != null && ballComp.aimTarget != null)
+                            gemReturner.aimTarget = ballComp.aimTarget.transform;
+                        if (opponent != null)
+                            gemReturner.opponent = opponent.transform;
+                    }
+
+                    Invoke(nameof(resetSpellEffect), 5f);
+                }
                 break;
 
             case "Blink":
@@ -543,73 +645,77 @@ public class SpellEffects : MonoBehaviour
             case "Pisces":
                 if (orbiterPrefab != null)
                 {
-                    Quaternion orbitRot = player.transform.rotation;
-                    activeOrbiter = Instantiate(orbiterPrefab, player.transform.position, orbitRot);
-
-                    // Check if it has NetworkObject
-                    if (activeOrbiter.GetComponent<NetworkObject>() == null)
+                    if (isNetworked)
                     {
-                        // Safe to parent
-                        activeOrbiter.transform.SetParent(player.transform);
-                        activeOrbiter.transform.localPosition = Vector3.zero;
+                        if (activeOrbiter == null)
+                            StartCoroutine(WaitForEffectAndHandle("Pisces", 0.05f));
                     }
                     else
                     {
-                        // Follow manually
-                        StartCoroutine(FollowTransform(activeOrbiter, player.transform, 5f));
-                    }
+                        Quaternion orbitRot = player.transform.rotation;
+                        activeOrbiter = Instantiate(orbiterPrefab, player.transform.position, orbitRot);
 
-                    SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
-                    foreach (SimpleBallReturner child in children)
-                    {
-                        var ballComp = player.GetComponent<Ball>();
-                        if (ballComp != null && ballComp.aimTarget != null)
-                            child.aimTarget = ballComp.aimTarget.transform;
-                        if (opponent != null)
-                            child.opponent = opponent.transform;
-                    }
+                        if (activeOrbiter.GetComponent<NetworkObject>() == null)
+                        {
+                            activeOrbiter.transform.SetParent(player.transform);
+                            activeOrbiter.transform.localPosition = Vector3.zero;
+                        }
+                        else
+                        {
+                            StartCoroutine(FollowTransform(activeOrbiter, player.transform, 5f));
+                        }
 
-                    StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
+                        SimpleBallReturner[] children = activeOrbiter.GetComponentsInChildren<SimpleBallReturner>();
+                        foreach (SimpleBallReturner child in children)
+                        {
+                            var ballComp = player.GetComponent<Ball>();
+                            if (ballComp != null && ballComp.aimTarget != null)
+                                child.aimTarget = ballComp.aimTarget.transform;
+                            if (opponent != null)
+                                child.opponent = opponent.transform;
+                        }
+
+                        StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
+                    }
                 }
                 break;
 
             case "Tether":
                 if (tetherPrefab != null && opponent != null)
                 {
-                    Vector3 tetherPos = opponent.transform.position;
-                    tetherPos.y = 1.45f;
-                    Quaternion tetherRot = Quaternion.identity;
-
-                    activeTether = Instantiate(tetherPrefab, tetherPos, tetherRot);
-                    var tether = activeTether.GetComponent<Tether>();
-                    if (tether != null)
-                        tether.Player = opponent.transform;
-
-                    if (isNetworked)
+                    if (!isNetworked)
                     {
-                        // Networked: Restrict opponent's MainCharacterMovement
-                        StartCoroutine(ApplyTetherRestriction(opponent, tetherPos, 5f));
+                        activeTether = Instantiate(tetherPrefab, opponent.transform.position, Quaternion.identity);
+                        var tether = activeTether.GetComponent<Tether>();
+                        if (tether != null)
+                            tether.Player = opponent.transform;
+
+                        StartCoroutine(HandleStoneWall(activeTether, 5f));
+                        Invoke(nameof(resetSpellEffect), 5f);
                     }
                     else
                     {
-                        // Singleplayer: Use OppHitting tether
-                        var oppHit = opponent.GetComponent<OppHitting>();
-                        if (oppHit != null)
-                            oppHit.tether = activeTether;
+                        if (activeTether == null)
+                            StartCoroutine(WaitForEffectAndHandle("Tether", 0.05f));
                     }
-
-                    StartCoroutine(HandleStoneWall(activeTether, 5f));
-                    Invoke(nameof(resetSpellEffect), 5f);
                 }
                 break;
 
             case "Gorbino":
-                Gorbino = GameObject.Find("Gorbino");
-                if (Gorbino != null)
+                if (!isNetworked)
                 {
-                    activeBall = Instantiate(BallPrefab, Gorbino.transform.position, Quaternion.identity);
-                    Gorbino.SetActive(false);
-                    Invoke(nameof(resetSpellEffect), 5f);
+                    Gorbino = GameObject.Find("Gorbino");
+                    if (Gorbino != null)
+                    {
+                        activeBall = Instantiate(BallPrefab, Gorbino.transform.position, Quaternion.identity);
+                        Gorbino.SetActive(false);
+                        Invoke(nameof(resetSpellEffect), 5f);
+                    }
+                }
+                else
+                {
+                    if (activeBall == null)
+                        StartCoroutine(WaitForEffectAndHandle("Gorbino", 0.05f));
                 }
                 break;
 
@@ -621,7 +727,7 @@ public class SpellEffects : MonoBehaviour
         }
 
         // Cast spell visually if not an on-hit spell
-        if (!oppHitSpell)
+        if (!oppHitSpell && !plrHitSpell)
         {
             var spellcasting = player.GetComponent<Spellcasting>();
             var netSpellcasting = player.GetComponent<NetworkedSpellcasting>();
@@ -631,6 +737,10 @@ public class SpellEffects : MonoBehaviour
             else if (netSpellcasting != null)
                 netSpellcasting.CastSpellNormal(spellName);
         }
+        else
+        {
+            Debug.Log($"[SpellEffects] Skipping visual cast for on-hit spell '{spellName}' (oppHitSpell: {oppHitSpell}, plrHitSpell: {plrHitSpell})");
+        }
     }
 
     public void resetSpellEffect()
@@ -638,7 +748,11 @@ public class SpellEffects : MonoBehaviour
         GameObject player = GetPlayer();
         GameObject opponent = GetOpponent();
 
-        if (player == null) return;
+        if (player == null)
+        {
+            networkSpellActive = false;
+            return;
+        }
 
         switch (spellName)
         {
@@ -650,32 +764,31 @@ public class SpellEffects : MonoBehaviour
             case "Ice":
                 if (opponent != null)
                 {
+                    // Movement is restored by FreezeOpponentMovement coroutine
+                    // But we ensure it's reset here as a safety measure
                     if (isNetworked)
                     {
-                        // Networked: Restore opponent's MainCharacterMovement speed
                         var oppMcm = opponent.GetComponent<MainCharacterMovement>();
-                        if (oppMcm != null)
+                        if (oppMcm != null && oppMcm.speed == 0f)
                         {
                             oppMcm.speed = 7;
-                            Debug.Log($"[SpellEffects] Ice Reset: Restored opponent {opponent.name} speed to 7");
+                            Debug.Log($"[SpellEffects] Ice Reset: Safety restore opponent {opponent.name} speed to 7");
                         }
                     }
                     else
                     {
-                        // Singleplayer: Restore AI speed
                         var oppHit = opponent.GetComponent<OppHitting>();
-                        if (oppHit != null) oppHit.speed = 5;
+                        if (oppHit != null && oppHit.speed == 0f)
+                            oppHit.speed = 5;
                     }
                 }
-                if (activeIceBlock != null)
-                {
-                    Destroy(activeIceBlock);
-                    activeIceBlock = null;
-                    Debug.Log("[SpellEffects] Ice block destroyed");
-                }
+
+                // Despawn ice block properly
+                DespawnIceBlock();
                 break;
 
             case "Fireball":
+                // Spawn flame effect on opponent
                 if (flamePrefab != null && opponent != null)
                 {
                     activeFlame = Instantiate(flamePrefab, opponent.transform.position, Quaternion.identity);
@@ -683,6 +796,8 @@ public class SpellEffects : MonoBehaviour
                     activeFlame.transform.localPosition = new Vector3(0, 1.65f, 0);
                     StartCoroutine(HandleMud(activeFlame, 3f));
                 }
+
+                resetOnOppHit = false;
                 break;
 
             case "Shadow":
@@ -775,26 +890,64 @@ public class SpellEffects : MonoBehaviour
                 break;
 
             case "Tether":
+                if (activeTether != null)
+                {
+                    var net = activeTether.GetComponent<NetworkObject>();
+                    if (net != null)
+                    {
+                        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+                        {
+                            net.Despawn();
+                        }
+                        else
+                        {
+                            Destroy(activeTether);
+                        }
+                    }
+                    else
+                    {
+                        Destroy(activeTether);
+                    }
+                    activeTether = null;
+                }
+
                 if (opponent != null)
                 {
                     if (!isNetworked)
                     {
-                        // Singleplayer: Clear AI tether
                         var oppHit = opponent.GetComponent<OppHitting>();
                         if (oppHit != null)
                             oppHit.tether = null;
                     }
-                    // Networked tether restriction is handled by coroutine ending
                 }
                 break;
 
             case "Gorbino":
                 if (activeBall != null)
-                    Destroy(activeBall);
+                {
+                    var net = activeBall.GetComponent<NetworkObject>();
+                    if (net != null)
+                    {
+                        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+                        {
+                            net.Despawn();
+                        }
+                        else
+                        {
+                            Destroy(activeBall);
+                        }
+                    }
+                    else
+                        Destroy(activeBall);
+                    activeBall = null;
+                }
                 if (Gorbino != null)
                     Gorbino.SetActive(true);
                 break;
         }
+
+        // clear network guard and flags
+        networkSpellActive = false;
 
         spellName = null;
         plrHitSpell = false;
@@ -1090,5 +1243,192 @@ public class SpellEffects : MonoBehaviour
     public static void ResetSpellsForNewRound()
     {
         spellsUsedThisRound.Clear();
+    }
+
+    // ---------------- Helpers used above: wait for a server-spawned effect then operate on it ----------------
+    private IEnumerator WaitForEffectAndFollow(string spell, float waitSeconds, Transform target)
+    {
+        float timer = 0f;
+        while (timer < 2.0f)
+        {
+            timer += waitSeconds;
+            if (spell == "Ice" && activeIceBlock != null)
+            {
+                StartCoroutine(FollowTransform(activeIceBlock, target, 5f));
+                yield break;
+            }
+            yield return new WaitForSeconds(waitSeconds);
+        }
+    }
+
+    private IEnumerator WaitForEffectAndHandleStoneWall(string spell, float waitSeconds)
+    {
+        float timer = 0f;
+        while (timer < 2.0f)
+        {
+            timer += waitSeconds;
+            if (activeStoneWall != null)
+            {
+                StartCoroutine(HandleStoneWall(activeStoneWall, 5f));
+                Invoke(nameof(resetSpellEffect), 5f);
+                yield break;
+            }
+            yield return new WaitForSeconds(waitSeconds);
+        }
+    }
+
+    private IEnumerator WaitForEffectAndHandle(string spell, float waitSeconds)
+    {
+        float timer = 0f;
+        while (timer < 2.0f)
+        {
+            timer += waitSeconds;
+            switch (spell)
+            {
+                case "Gemini":
+                    if (activeGemini != null)
+                    {
+                        Invoke(nameof(resetSpellEffect), 5f);
+                        yield break;
+                    }
+                    break;
+
+                case "Pisces":
+                    if (activeOrbiter != null)
+                    {
+                        StartCoroutine(HandleOrbiter(activeOrbiter, 5f));
+                        yield break;
+                    }
+                    break;
+
+                case "Tether":
+                    if (activeTether != null)
+                    {
+                        StartCoroutine(HandleStoneWall(activeTether, 5f));
+                        Invoke(nameof(resetSpellEffect), 5f);
+                        yield break;
+                    }
+                    break;
+
+                case "Gorbino":
+                    if (activeBall != null)
+                    {
+                        Invoke(nameof(resetSpellEffect), 5f);
+                        yield break;
+                    }
+                    break;
+            }
+
+            yield return new WaitForSeconds(waitSeconds);
+        }
+    }
+
+    // ====== Helper Methods for Networked Spells =======
+
+    /// <summary>
+    /// Freeze opponent movement for Ice spell
+    /// </summary>
+    private IEnumerator FreezeOpponentMovement(GameObject target, float duration)
+    {
+        if (target == null) yield break;
+
+        var mcm = target.GetComponent<MainCharacterMovement>();
+        var oppHit = target.GetComponent<OppHitting>();
+
+        float originalMcmSpeed = 7f;
+        float originalOppSpeed = 5f;
+
+        // Store original speeds
+        if (mcm != null)
+            originalMcmSpeed = mcm.speed;
+        if (oppHit != null)
+            originalOppSpeed = oppHit.speed;
+
+        // Freeze movement
+        if (mcm != null)
+        {
+            mcm.speed = 0f;
+            Debug.Log($"[SpellEffects] Froze {target.name} movement (MainCharacterMovement)");
+        }
+        if (oppHit != null)
+        {
+            oppHit.speed = 0f;
+            Debug.Log($"[SpellEffects] Froze {target.name} movement (OppHitting)");
+        }
+
+        // Wait for duration
+        yield return new WaitForSeconds(duration);
+
+        // Restore movement
+        if (mcm != null)
+        {
+            mcm.speed = originalMcmSpeed;
+            Debug.Log($"[SpellEffects] Restored {target.name} movement to {originalMcmSpeed}");
+        }
+        if (oppHit != null)
+        {
+            oppHit.speed = originalOppSpeed;
+            Debug.Log($"[SpellEffects] Restored {target.name} AI speed to {originalOppSpeed}");
+        }
+    }
+
+    /// <summary>
+    /// Apply knockback to opponent from Fireball
+    /// </summary>
+    public void ApplyFireballKnockback(GameObject target)
+    {
+        if (target == null)
+        {
+            Debug.LogWarning("[SpellEffects] ApplyFireballKnockback: target is null");
+            return;
+        }
+
+        // Determine knockback direction (away from caster)
+        GameObject caster = GetPlayer();
+        Vector3 knockbackDirection = Vector3.back; // default
+
+        if (caster != null && target != null)
+        {
+            Vector3 directionFromCaster = (target.transform.position - caster.transform.position).normalized;
+            knockbackDirection = new Vector3(directionFromCaster.x, 0, directionFromCaster.z).normalized;
+        }
+
+        // Apply knockback force
+        Vector3 knockbackForce = knockbackDirection * 8f; // Adjust force as needed
+        StartCoroutine(ApplyKnockback(target, knockbackForce, 0.3f));
+
+        Debug.Log($"[SpellEffects] Applied Fireball knockback to {target.name}");
+    }
+
+    /// <summary>
+    /// Despawn ice block properly (networked or local)
+    /// </summary>
+    private void DespawnIceBlock()
+    {
+        if (activeIceBlock == null) return;
+
+        var netObj = activeIceBlock.GetComponent<NetworkObject>();
+
+        if (netObj != null)
+        {
+            // Networked object - only server can despawn
+            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            {
+                netObj.Despawn();
+                Debug.Log("[SpellEffects] Ice block despawned by server");
+            }
+            else
+            {
+                Debug.Log("[SpellEffects] Ice block will be despawned by server");
+            }
+        }
+        else
+        {
+            // Local object - destroy directly
+            Destroy(activeIceBlock);
+            Debug.Log("[SpellEffects] Local ice block destroyed");
+        }
+
+        activeIceBlock = null;
     }
 }
