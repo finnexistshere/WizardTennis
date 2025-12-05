@@ -626,22 +626,43 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         }
     }
 
+    // Replace your ResetVisualAfterDelay and SwapVisual methods with these:
+
     private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
     {
         yield return new WaitForSeconds(delay);
 
+        // Handle visual cleanup
         if (currentVisualInstance != null)
         {
-            // If the currentVisualInstance is a client-only object, destroy it.
-            if (currentVisualInstance.GetComponent<NetworkObject>() == null)
+            NetworkObject netObj = currentVisualInstance.GetComponent<NetworkObject>();
+
+            if (netObj == null)
             {
+                // Client-only object, safe to destroy directly
                 Destroy(currentVisualInstance);
+            }
+            else
+            {
+                // Has NetworkObject - only server can despawn, clients just null the reference
+                if (IsServer)
+                {
+                    if (netObj.IsSpawned)
+                    {
+                        netObj.Despawn(true);
+                    }
+                    else
+                    {
+                        Destroy(currentVisualInstance);
+                    }
+                }
+                // Clients: just clear the reference, server will handle despawn
+                // The object will be removed from client when server despawns it
             }
             currentVisualInstance = null;
         }
 
         baseEffect?.SetActive(true);
-
         spellParticleColor?.ResetColor();
 
         if (racketShader != null && racketShader.HasProperty("_Racket_Color_Top") && racketShader.HasProperty("_Racket_Color_Bottom"))
@@ -652,12 +673,11 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
         currentActiveSpell = "";
         isCasting = false;
-
         uiManager?.UpdateSpellStatus("None", Color.white);
-
         RemoveSpell(spellAddress);
     }
 
+    // SwapVisual is no longer used in your current implementation, but here's the fixed version:
     private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
     {
         if (newPrefab == null)
@@ -665,31 +685,107 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             Debug.LogWarning("[NetworkedSpellcasting] SwapVisual: newPrefab is null");
             return;
         }
-
         if (parentTransform == null)
         {
             Debug.LogWarning("[NetworkedSpellcasting] SwapVisual: parentTransform is null");
             return;
         }
 
-        // Destroy previous client-only visual
+        // Destroy previous visual instance
         if (currentVisualInstance != null)
         {
-            if (currentVisualInstance.GetComponent<NetworkObject>() == null)
+            NetworkObject netObj = currentVisualInstance.GetComponent<NetworkObject>();
+
+            if (netObj == null)
+            {
                 Destroy(currentVisualInstance);
+            }
+            else
+            {
+                // Only server can despawn networked objects
+                if (IsServer)
+                {
+                    if (netObj.IsSpawned)
+                    {
+                        netObj.Despawn(true);
+                    }
+                    else
+                    {
+                        Destroy(currentVisualInstance);
+                    }
+                }
+                // Clients just clear reference
+            }
             currentVisualInstance = null;
         }
 
-        // Always disable the base effect (so new visual replaces it)
+        // Disable the base effect
         baseEffect?.SetActive(false);
 
-        // Singleplayer-style instantiation for local visuals
+        // Instantiate as child of parentTransform
         currentVisualInstance = Instantiate(newPrefab, parentTransform);
+        currentVisualInstance.transform.SetParent(parentTransform, false);
         currentVisualInstance.transform.localPosition = Vector3.zero;
         currentVisualInstance.transform.localRotation = Quaternion.identity;
         currentVisualInstance.transform.localScale = Vector3.one;
 
         Debug.Log($"[NetworkedSpellcasting] SwapVisual: spawned visual '{currentVisualInstance.name}' on '{parentTransform.name}'");
+    }
+
+    // OPTIONAL BUT RECOMMENDED: Add a server RPC to handle visual cleanup across network
+    [ServerRpc(RequireOwnership = false)]
+    private void DespawnVisualServerRpc(ulong visualNetId)
+    {
+        if (!IsServer) return;
+
+        GameObject visualObj = GetSpawnedObjectByNetId(visualNetId);
+        if (visualObj != null)
+        {
+            NetworkObject netObj = visualObj.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned)
+            {
+                netObj.Despawn(true);
+            }
+        }
+    }
+
+    // Updated ResetVisualAfterDelay using ServerRpc (RECOMMENDED approach):
+    private IEnumerator ResetVisualAfterDelayWithRpc(float delay, GameObject baseEffect, string spellAddress)
+    {
+        yield return new WaitForSeconds(delay);
+
+        // Handle visual cleanup
+        if (currentVisualInstance != null)
+        {
+            NetworkObject netObj = currentVisualInstance.GetComponent<NetworkObject>();
+
+            if (netObj == null)
+            {
+                // Client-only object, safe to destroy directly
+                Destroy(currentVisualInstance);
+            }
+            else if (netObj.IsSpawned)
+            {
+                // Networked object - ask server to despawn it
+                DespawnVisualServerRpc(netObj.NetworkObjectId);
+            }
+
+            currentVisualInstance = null;
+        }
+
+        baseEffect?.SetActive(true);
+        spellParticleColor?.ResetColor();
+
+        if (racketShader != null && racketShader.HasProperty("_Racket_Color_Top") && racketShader.HasProperty("_Racket_Color_Bottom"))
+        {
+            racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
+            racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+        }
+
+        currentActiveSpell = "";
+        isCasting = false;
+        uiManager?.UpdateSpellStatus("None", Color.white);
+        RemoveSpell(spellAddress);
     }
 
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound, float duration)

@@ -24,7 +24,7 @@ public class LocalPlayerSetup : NetworkBehaviour
     {
         yield return new WaitUntil(() => IsSpawned && IsOwner);
 
-        SetupPlayerInput();
+        // SetupPlayerInput();
         SetupCamera();
 
         Debug.Log($"[{(IsHost ? "Host" : "Client")}] Player setup complete for client {OwnerClientId}");
