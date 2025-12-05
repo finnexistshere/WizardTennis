@@ -30166,7 +30166,7 @@ MonoBehaviour:
   verboseLogging: 1
   spawnPositionLockDuration: 1
   delayBeforeFiring: 2
-  fireCount: 3
+  fireCount: 0
   repeatDelay: 1
 --- !u!1 &1299915522
 GameObject:
