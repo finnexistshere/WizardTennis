@@ -56,6 +56,16 @@ public class SteamLobbyUI : MonoBehaviour
         inviteFriendsButton?.onClick.AddListener(OnInviteFriends);
         leaveLobbyButton?.onClick.AddListener(OnLeaveLobby);
 
+        // Add click-to-copy listener on lobby code
+        if (lobbyCodeText != null)
+        {
+            Button codeButton = lobbyCodeText.GetComponent<Button>();
+            if (codeButton != null)
+                codeButton.onClick.AddListener(CopyLobbyCode);
+            else
+                Debug.LogWarning("LobbyCodeText has no Button component for copying.");
+        }
+
         // Subscribe to events
         SteamLobbyManager.Instance.OnLobbyCodeGenerated += OnLobbyCreated;
         SteamLobbyManager.Instance.OnJoinedLobby += OnJoinedLobby;
@@ -229,5 +239,17 @@ public class SteamLobbyUI : MonoBehaviour
             SteamLobbyManager.Instance.OnPlayerListChanged -= OnPlayerListChanged;
             SteamLobbyManager.Instance.OnConnectionFailed -= OnConnectionFailed;
         }
+    }
+
+    private void CopyLobbyCode()
+    {
+        if (lobbyCodeText == null)
+            return;
+
+        string code = lobbyCodeText.text.Replace("Lobby ID: ", "").Trim();
+        GUIUtility.systemCopyBuffer = code;
+
+        SetStatus("Lobby code copied to clipboard!");
+        Debug.Log("[SteamLobbyUI] Copied lobby code: " + code);
     }
 }

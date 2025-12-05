@@ -388,6 +388,167 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     }
 
     /// <summary>
+    /// Force all spawned players back to their spawn positions
+    /// Useful for resetting after round or fixing position bugs
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    public void ForcePlayersToSpawnPositionsServerRpc()
+    {
+        if (!IsServer) return;
+
+        Debug.Log("[Spawner] ?? Forcing all players to spawn positions...");
+
+        foreach (var kvp in spawnedPlayers)
+        {
+            ulong clientId = kvp.Key;
+            GameObject player = kvp.Value;
+
+            if (player == null) continue;
+
+            if (PlayerSpawnPoints.TryGetValue(clientId, out Transform spawnPoint))
+            {
+                ForcePlayerToPosition(player, clientId, spawnPoint.position, spawnPoint.rotation);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Force a specific player to their spawn position (server only)
+    /// </summary>
+    public void ForcePlayerToSpawnPosition(ulong clientId)
+    {
+        if (!IsServer)
+        {
+            Debug.LogWarning("[Spawner] ForcePlayerToSpawnPosition can only be called on server!");
+            return;
+        }
+
+        if (!spawnedPlayers.TryGetValue(clientId, out GameObject player) || player == null)
+        {
+            Debug.LogWarning($"[Spawner] No player found for client {clientId}");
+            return;
+        }
+
+        if (!PlayerSpawnPoints.TryGetValue(clientId, out Transform spawnPoint))
+        {
+            Debug.LogWarning($"[Spawner] No spawn point found for client {clientId}");
+            return;
+        }
+
+        ForcePlayerToPosition(player, clientId, spawnPoint.position, spawnPoint.rotation);
+    }
+
+    /// <summary>
+    /// Internal method to force player position with CharacterController handling
+    /// </summary>
+    private void ForcePlayerToPosition(GameObject player, ulong clientId, Vector3 position, Quaternion rotation)
+    {
+        Debug.Log($"[Spawner] ?? Forcing client {clientId} to position {position}");
+
+        // Disable CharacterController if present (it can interfere with position setting)
+        CharacterController charController = player.GetComponent<CharacterController>();
+        bool hadCharController = charController != null && charController.enabled;
+
+        if (hadCharController)
+        {
+            charController.enabled = false;
+            Debug.Log($"[Spawner] ?? Disabled CharacterController for {player.name}");
+        }
+
+        // Disable NetworkTransform temporarily
+        var networkTransform = player.GetComponent<Unity.Netcode.Components.NetworkTransform>();
+        bool hadNetTransform = networkTransform != null && networkTransform.enabled;
+
+        if (hadNetTransform)
+        {
+            networkTransform.enabled = false;
+            Debug.Log($"[Spawner] ?? Disabled NetworkTransform for {player.name}");
+        }
+
+        // Set position
+        player.transform.position = position;
+        player.transform.rotation = rotation;
+
+        Debug.Log($"[Spawner] ?? Set {player.name} to {player.transform.position}");
+
+        // Re-enable components and sync to clients
+        if (hadCharController)
+        {
+            charController.enabled = true;
+            Debug.Log($"[Spawner] ?? Re-enabled CharacterController");
+        }
+
+        if (hadNetTransform)
+        {
+            networkTransform.enabled = true;
+            Debug.Log($"[Spawner] ?? Re-enabled NetworkTransform");
+        }
+
+        // Force sync to all clients
+        ForcePlayerPositionClientRpc(clientId, position, rotation);
+    }
+
+    /// <summary>
+    /// Force player position on all clients
+    /// </summary>
+    [ClientRpc]
+    private void ForcePlayerPositionClientRpc(ulong clientId, Vector3 position, Quaternion rotation)
+    {
+        // Find the player by clientId
+        GameObject player = null;
+
+        if (spawnedPlayers.TryGetValue(clientId, out player) && player != null)
+        {
+            // Found in local dictionary
+        }
+        else if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(clientId, out NetworkObject netObj))
+        {
+            player = netObj.gameObject;
+        }
+
+        if (player == null)
+        {
+            Debug.LogWarning($"[Spawner-Client] ?? Could not find player for client {clientId}");
+            return;
+        }
+
+        Debug.Log($"[Spawner-Client] ?? Forcing client {clientId} position to {position}");
+
+        // Disable CharacterController temporarily
+        CharacterController charController = player.GetComponent<CharacterController>();
+        if (charController != null && charController.enabled)
+        {
+            charController.enabled = false;
+            player.transform.position = position;
+            player.transform.rotation = rotation;
+            charController.enabled = true;
+        }
+        else
+        {
+            player.transform.position = position;
+            player.transform.rotation = rotation;
+        }
+
+        Debug.Log($"[Spawner-Client] ? Client {clientId} position set to {position}");
+    }
+
+    /// <summary>
+    /// Context menu helper to force all players to spawn (testing)
+    /// </summary>
+    [ContextMenu("Force All Players To Spawn Positions")]
+    private void ContextMenuForcePlayersToSpawn()
+    {
+        if (IsServer)
+        {
+            ForcePlayersToSpawnPositionsServerRpc();
+        }
+        else
+        {
+            Debug.LogWarning("[Spawner] Can only force positions from server!");
+        }
+    }
+
+    /// <summary>
     /// Debug: Print all spawn assignments
     /// </summary>
     [ContextMenu("Debug Print Spawn Assignments")]
