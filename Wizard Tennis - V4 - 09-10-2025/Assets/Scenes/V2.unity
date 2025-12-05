@@ -15999,7 +15999,7 @@ GameObject:
   - component: {fileID: 153926198}
   - component: {fileID: 153926203}
   m_Layer: 0
-  m_Name: Player
+  m_Name: Player_Singleplayer
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -16228,6 +16228,7 @@ Transform:
   - {fileID: 661363661}
   - {fileID: 1945201662}
   - {fileID: 802809286}
+  - {fileID: 963194228}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!114 &153926197
@@ -27776,12 +27777,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0.96288514, z: -0.26991147, w: 0}
-  m_LocalPosition: {x: 0, y: 7.6693, z: 16.13944}
+  m_LocalRotation: {x: 0.26991147, y: -0, z: -0, w: 0.96288514}
+  m_LocalPosition: {x: -0.3, y: 5.9493, z: -6.8794403}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 153926196}
   m_LocalEulerAnglesHint: {x: 31.318, y: 180, z: 0}
 --- !u!114 &963194229
 MonoBehaviour:
@@ -27842,8 +27843,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 153926196}
   spawnPoint: {fileID: 0}
-  followHeight: 5
-  followDistance: 10
   maxSway: 2
   swayStrength: 0.3
   smoothSpeed: 4
@@ -28472,6 +28471,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   follow: {fileID: 153926187}
   spellcasting: {fileID: 153926197}
+  networkedSpellcasting: {fileID: 0}
   baseHeight: 0.941
   appearDuration: 0.4
   visibleDuration: 1
@@ -55561,7 +55561,6 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1594825192}
-  - {fileID: 963194228}
   - {fileID: 705507995}
   - {fileID: 1352008047}
   - {fileID: 38735795}

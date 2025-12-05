@@ -488,6 +488,8 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     [ClientRpc]
     private void CastSpellNetworkedClientRpc(string spellAddress, string spellName, ulong casterClientId, ulong opponentNetId, ulong visualNetId, ulong effectNetId)
     {
+        Debug.Log($"[NetworkedSpellcasting] ClientRpc received: {spellName} for caster {casterClientId}");
+
         // Resolve caster/opponent locally (best-effort)
         GameObject caster = null;
         GameObject opponent = null;
@@ -519,48 +521,86 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
         }
 
-        // VISUAL: If server spawned a networked visual (visualNetId), link it; otherwise client instantiates a decorative visual
+        // === VISUAL HANDLING - WORKS ON ALL CLIENTS ===
+        // Find the ball on THIS client
         GameObject ballObj = GameObject.FindWithTag("Ball");
         if (ballObj == null)
-            ballObj = GetSpawnedObjectByNetId(opponentNetId) ?? GameObject.Find("Ball") ?? currentBall;
-
-        // If server spawned a networked visual, find it in SpawnedObjects
-        GameObject netVisual = null;
-        if (visualNetId != 0)
-            netVisual = GetSpawnedObjectByNetId(visualNetId);
-
-        // If there is an existing currentVisualInstance and it's a client-only object, destroy it;
-        // but DO NOT destroy networked objects.
-        if (currentVisualInstance != null)
+            ballObj = GameObject.Find("Ball");
+        if (ballObj == null)
         {
-            if (currentVisualInstance.GetComponent<NetworkObject>() == null)
+            Ball ballComponent = FindObjectOfType<Ball>();
+            if (ballComponent != null)
+                ballObj = ballComponent.gameObject;
+        }
+
+        if (ballObj == null)
+        {
+            Debug.LogWarning($"[NetworkedSpellcasting] Client couldn't find ball for visual!");
+            return;
+        }
+
+        // Find the base effect on THIS client's ball
+        GameObject localBaseEffect = null;
+        Transform visualChild = ballObj.transform.Find("sm_Ball");
+        if (visualChild != null)
+        {
+            localBaseEffect = visualChild.gameObject;
+        }
+        else
+        {
+            // Try alternative child names
+            for (int i = 0; i < ballObj.transform.childCount; i++)
             {
-                Destroy(currentVisualInstance);
-                currentVisualInstance = null;
+                Transform child = ballObj.transform.GetChild(i);
+                if (child.name.ToLower().Contains("ball"))
+                {
+                    localBaseEffect = child.gameObject;
+                    break;
+                }
             }
         }
 
-        if (netVisual != null)
+        // Clean up any existing visual on THIS client
+        if (currentVisualInstance != null)
         {
-            // Use spawned network object as current visual instance
-            currentVisualInstance = netVisual;
-            // Disable base effect so we don't double render
-            baseEffectObject?.SetActive(false);
+            NetworkObject netObj = currentVisualInstance.GetComponent<NetworkObject>();
+            if (netObj == null)
+            {
+                // Client-side only visual, destroy it
+                Destroy(currentVisualInstance);
+            }
+            // If it has NetworkObject, server will handle despawn
+            currentVisualInstance = null;
         }
-        else if (spellVisuals != null && spellVisuals.ContainsKey(spellAddress) && spellVisuals[spellAddress] != null && ballObj != null)
+
+        // Check if server spawned a networked visual
+        if (visualNetId != 0)
         {
-            // prefab is not networked — instantiate client-side decal/visual
+            // Wait a frame for network object to be available
+            StartCoroutine(WaitForNetworkedVisual(visualNetId, ballObj, localBaseEffect));
+        }
+        else if (spellVisuals != null && spellVisuals.ContainsKey(spellAddress) && spellVisuals[spellAddress] != null)
+        {
+            // No networked visual - spawn client-side visual
             var prefab = spellVisuals[spellAddress];
             try
             {
+                Debug.Log($"[NetworkedSpellcasting] Spawning client-side visual for {spellName}");
                 currentVisualInstance = Instantiate(prefab, ballObj.transform);
                 currentVisualInstance.transform.localPosition = Vector3.zero;
                 currentVisualInstance.transform.localRotation = Quaternion.identity;
                 currentVisualInstance.transform.localScale = Vector3.one;
+
+                // Disable base effect on THIS client
+                if (localBaseEffect != null)
+                {
+                    localBaseEffect.SetActive(false);
+                    Debug.Log($"[NetworkedSpellcasting] Disabled base effect on this client");
+                }
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[NetworkedSpellcasting] SwapVisual failed on client: {e.Message}");
+                Debug.LogWarning($"[NetworkedSpellcasting] Visual spawn failed: {e.Message}");
             }
         }
 
@@ -599,7 +639,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
         }
 
-        // Finally: register spawned effect on SpellEffects (so it can reference activeIceBlock, etc.)
+        // Register spawned effect on SpellEffects
         if (SpellEffects != null)
         {
             try
@@ -607,16 +647,12 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 TennisAI aiRef = TennisAi != null ? TennisAi : FindObjectOfType<TennisAI>();
                 SpellEffects.SetContext(caster, opponent, aiRef);
 
-                // If server spawned a gameplay effect (e.g. ice block), tell SpellEffects about it
                 if (effectNetId != 0)
                 {
                     SpellEffects.RegisterNetworkedEffect(spellName, effectNetId);
                 }
 
-                // Mark plrHitSpell according to boolBook (unchanged)
                 SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
-
-                // Now call castSpell so SpellEffects runs its logic (it will not instantiate networked prefabs locally)
                 SpellEffects.castSpell();
             }
             catch (System.Exception e)
@@ -624,13 +660,52 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 Debug.LogError($"[NetworkedSpellcasting] Error casting spell: {e.Message}");
             }
         }
+
+        // Start cleanup timer on ALL clients
+        float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
+        StartCoroutine(ResetVisualAfterDelayAllClients(duration, localBaseEffect, spellAddress));
     }
 
-    // Replace your ResetVisualAfterDelay and SwapVisual methods with these:
+    // Helper coroutine to wait for networked visual to be available
+    private IEnumerator WaitForNetworkedVisual(ulong visualNetId, GameObject ballObj, GameObject localBaseEffect)
+    {
+        int attempts = 0;
+        GameObject netVisual = null;
 
-    private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
+        while (attempts < 20 && netVisual == null) // Try for 1 second (20 * 0.05s)
+        {
+            netVisual = GetSpawnedObjectByNetId(visualNetId);
+            if (netVisual != null)
+                break;
+
+            yield return new WaitForSeconds(0.05f);
+            attempts++;
+        }
+
+        if (netVisual != null)
+        {
+            Debug.Log($"[NetworkedSpellcasting] Found networked visual after {attempts} attempts");
+            currentVisualInstance = netVisual;
+
+            // Disable base effect
+            if (localBaseEffect != null)
+            {
+                localBaseEffect.SetActive(false);
+                Debug.Log($"[NetworkedSpellcasting] Disabled base effect for networked visual");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[NetworkedSpellcasting] Failed to find networked visual with ID {visualNetId}");
+        }
+    }
+
+    // New method: Reset visual on ALL clients (not just caster)
+    private IEnumerator ResetVisualAfterDelayAllClients(float delay, GameObject localBaseEffect, string spellAddress)
     {
         yield return new WaitForSeconds(delay);
+
+        Debug.Log($"[NetworkedSpellcasting] Resetting visual after {delay}s on client");
 
         // Handle visual cleanup
         if (currentVisualInstance != null)
@@ -639,14 +714,16 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
             if (netObj == null)
             {
-                // Client-only object, safe to destroy directly
+                // Client-only object, safe to destroy
+                Debug.Log($"[NetworkedSpellcasting] Destroying client-side visual");
                 Destroy(currentVisualInstance);
             }
             else
             {
-                // Has NetworkObject - only server can despawn, clients just null the reference
+                // Has NetworkObject - only server can despawn
                 if (IsServer)
                 {
+                    Debug.Log($"[NetworkedSpellcasting] Server despawning networked visual");
                     if (netObj.IsSpawned)
                     {
                         netObj.Despawn(true);
@@ -656,28 +733,56 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                         Destroy(currentVisualInstance);
                     }
                 }
-                // Clients: just clear the reference, server will handle despawn
-                // The object will be removed from client when server despawns it
+                else
+                {
+                    Debug.Log($"[NetworkedSpellcasting] Client clearing networked visual reference (server will despawn)");
+                }
             }
             currentVisualInstance = null;
         }
 
-        baseEffect?.SetActive(true);
-        spellParticleColor?.ResetColor();
-
-        if (racketShader != null && racketShader.HasProperty("_Racket_Color_Top") && racketShader.HasProperty("_Racket_Color_Bottom"))
+        // Re-enable base effect on THIS client
+        if (localBaseEffect != null)
         {
-            racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
-            racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+            localBaseEffect.SetActive(true);
+            Debug.Log($"[NetworkedSpellcasting] Re-enabled base effect");
         }
 
-        currentActiveSpell = "";
-        isCasting = false;
-        uiManager?.UpdateSpellStatus("None", Color.white);
-        RemoveSpell(spellAddress);
+        // Only reset UI/shader on the caster's client
+        if (IsOwner)
+        {
+            spellParticleColor?.ResetColor();
+
+            if (racketShader != null && racketShader.HasProperty("_Racket_Color_Top") && racketShader.HasProperty("_Racket_Color_Bottom"))
+            {
+                racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
+                racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
+            }
+
+            currentActiveSpell = "";
+            isCasting = false;
+            uiManager?.UpdateSpellStatus("None", Color.white);
+            RemoveSpell(spellAddress);
+        }
     }
 
-    // SwapVisual is no longer used in your current implementation, but here's the fixed version:
+    // Keep your original ResetVisualAfterDelay for the caster's CheckSpell method
+    private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
+    {
+        yield return new WaitForSeconds(delay);
+
+        // This runs on the caster only - just handle the caster-specific cleanup
+        // The visual cleanup is handled by ResetVisualAfterDelayAllClients on all clients
+
+        if (IsOwner)
+        {
+            currentActiveSpell = "";
+            isCasting = false;
+            uiManager?.UpdateSpellStatus("None", Color.white);
+        }
+    }
+
+    // SwapVisual is no longer used but kept for compatibility
     private void SwapVisual(GameObject newPrefab, Transform parentTransform, GameObject baseEffect)
     {
         if (newPrefab == null)
@@ -714,7 +819,6 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                         Destroy(currentVisualInstance);
                     }
                 }
-                // Clients just clear reference
             }
             currentVisualInstance = null;
         }
@@ -732,7 +836,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         Debug.Log($"[NetworkedSpellcasting] SwapVisual: spawned visual '{currentVisualInstance.name}' on '{parentTransform.name}'");
     }
 
-    // OPTIONAL BUT RECOMMENDED: Add a server RPC to handle visual cleanup across network
+    // Server RPC to handle visual cleanup across network
     [ServerRpc(RequireOwnership = false)]
     private void DespawnVisualServerRpc(ulong visualNetId)
     {
@@ -747,45 +851,6 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 netObj.Despawn(true);
             }
         }
-    }
-
-    // Updated ResetVisualAfterDelay using ServerRpc (RECOMMENDED approach):
-    private IEnumerator ResetVisualAfterDelayWithRpc(float delay, GameObject baseEffect, string spellAddress)
-    {
-        yield return new WaitForSeconds(delay);
-
-        // Handle visual cleanup
-        if (currentVisualInstance != null)
-        {
-            NetworkObject netObj = currentVisualInstance.GetComponent<NetworkObject>();
-
-            if (netObj == null)
-            {
-                // Client-only object, safe to destroy directly
-                Destroy(currentVisualInstance);
-            }
-            else if (netObj.IsSpawned)
-            {
-                // Networked object - ask server to despawn it
-                DespawnVisualServerRpc(netObj.NetworkObjectId);
-            }
-
-            currentVisualInstance = null;
-        }
-
-        baseEffect?.SetActive(true);
-        spellParticleColor?.ResetColor();
-
-        if (racketShader != null && racketShader.HasProperty("_Racket_Color_Top") && racketShader.HasProperty("_Racket_Color_Bottom"))
-        {
-            racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
-            racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
-        }
-
-        currentActiveSpell = "";
-        isCasting = false;
-        uiManager?.UpdateSpellStatus("None", Color.white);
-        RemoveSpell(spellAddress);
     }
 
     public void AddSpell(string address, string name, float value, GameObject visualPrefab, bool onHitBool, Color SpellColor1, Color SpellColor2, AudioClip spellCastAudio, AudioClip wizardSpellSound, float duration)
@@ -887,15 +952,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             : ulong.MaxValue;
 
         // Trigger the networked spell cast for all clients via server
-        if (IsServer)
-        {
-            // If we are the server, call server handler directly
-            CastSpellServerRpc(spellAddress, spellName, opponentNetId);
-        }
-        else
-        {
-            CastSpellServerRpc(spellAddress, spellName, opponentNetId);
-        }
+        CastSpellServerRpc(spellAddress, spellName, opponentNetId);
 
         // Reset visuals after spell duration
         float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
