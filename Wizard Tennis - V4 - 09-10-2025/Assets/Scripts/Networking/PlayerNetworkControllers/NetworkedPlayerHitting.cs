@@ -158,12 +158,6 @@ public class NetworkedBall : NetworkBehaviour
                 ResumeBallServerRpc();
         }
 
-        // DEVTOOL - RESET PLAYER POSITIONS MANUALLY
-        if (Input.GetKeyDown(KeyCode.Q))
-        {
-            NetworkPlayerSpawner_Better.Instance.ForcePlayersToSpawnPositionsServerRpc();
-        }
-
         // Serve ball with E when near it
         if (Input.GetKeyDown(KeyCode.E) && nearBall && localServing)
         {

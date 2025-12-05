@@ -30163,6 +30163,11 @@ MonoBehaviour:
   player1Spawn: {fileID: 1376262019}
   player2Spawn: {fileID: 265336819}
   playerPrefab: {fileID: 7574428254200817810, guid: 6e9a03eac8df60841a94e2173463a58f, type: 3}
+  verboseLogging: 1
+  spawnPositionLockDuration: 1
+  delayBeforeFiring: 2
+  fireCount: 3
+  repeatDelay: 1
 --- !u!1 &1299915522
 GameObject:
   m_ObjectHideFlags: 0
