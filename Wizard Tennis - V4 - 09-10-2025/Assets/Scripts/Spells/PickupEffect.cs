@@ -21,6 +21,7 @@ public class PickupEffect : NetworkBehaviour
 
     [Header("Spawn Settings")]
     [Range(0f, 1f)] public float spawnWeight = 0.2f;
+    public float SpawnWeight => spawnWeight;
 
     [Header("Visual Prefab")]
     [SerializeField] private GameObject spellVisualPrefab;

@@ -16,6 +16,16 @@ public class NetworkedGameManager : NetworkBehaviour
     public float spawnInterval = 7f;
     public float spawnRadius = 25f;
     public int maxActivePickupsPerPlayer = 4;
+    [System.Serializable]
+    public struct WeightEntry
+    {
+        public GameObject prefab;
+        public int weight;
+    }
+    [Tooltip("List of pickup prefabs and their spawn weights.")]
+    public List<WeightEntry> pickupWeights = new List<WeightEntry>();
+
+    // --------------------------------------------------------------------
 
     [Header("Spawn Settings - Host Side")]
     public Transform hostSpawnCenter;
@@ -395,7 +405,12 @@ public class NetworkedGameManager : NetworkBehaviour
         }
     }
 
-    private void SpawnPickupForPlayer(Transform spawnCenter, List<GameObject> activePickups, NetworkedSpellcasting spellcasting)
+    private void SpawnPickupForPlayer
+    (
+        Transform spawnCenter,
+        List<GameObject> activePickups,
+        NetworkedSpellcasting spellcasting
+    )
     {
         if (!IsServer) return;
 
@@ -404,27 +419,33 @@ public class NetworkedGameManager : NetworkBehaviour
             Debug.LogWarning("[NetworkedGameManager] spawnCenter not assigned.");
             return;
         }
+
         if (spellcasting == null)
         {
             Debug.LogWarning("[NetworkedGameManager] Spellcasting reference is null.");
             return;
         }
 
+        // -------------------------------------------------------
+        // STEP 1 — Find valid spawn position
+        // -------------------------------------------------------
         Vector3 spawnPos = Vector3.zero;
-        bool validPositionFound = false;
+        bool validPos = false;
         int attempts = 0;
 
-        // Find valid spawn position
-        while (!validPositionFound && attempts < 20)
+        while (!validPos && attempts < 20)
         {
             attempts++;
+
             Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
-            spawnPos = spawnCenter.position + new Vector3(randomCircle.x, 0f, randomCircle.y);
+            spawnPos = spawnCenter.position +
+                       new Vector3(randomCircle.x, 0f, randomCircle.y);
 
             bool tooClose = false;
-            foreach (GameObject pickup in activePickups)
+
+            foreach (GameObject p in activePickups)
             {
-                if (pickup != null && Vector3.Distance(pickup.transform.position, spawnPos) < 1.5f)
+                if (p != null && Vector3.Distance(p.transform.position, spawnPos) < 1.5f)
                 {
                     tooClose = true;
                     break;
@@ -432,75 +453,139 @@ public class NetworkedGameManager : NetworkBehaviour
             }
 
             if (!tooClose)
-                validPositionFound = true;
+                validPos = true;
         }
 
-        if (!validPositionFound) return;
+        if (!validPos) return;
 
-        GameObject prefab = GetWeightedPickup(spellcasting);
-        if (prefab == null) return;
+        // -------------------------------------------------------
+        // STEP 2 — Choose a pickup *that is allowed*
+        // -------------------------------------------------------
+        GameObject prefab = GetWeightedPickupFiltered(spellcasting, activePickups);
+        if (prefab == null)
+        {
+            Debug.Log("[NetworkedGameManager] No valid pickup to spawn (all spells already known or active).");
+            return;
+        }
 
-        // Instantiate server-side
+        // -------------------------------------------------------
+        // STEP 3 — Instantiate & network spawn
+        // -------------------------------------------------------
         GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
 
-        // MUST network spawn or clients won't see it
-        NetworkObject netObj = newPickup.GetComponent<NetworkObject>();
-        if (netObj != null)
+        var netObj = newPickup.GetComponent<NetworkObject>();
+        if (netObj == null)
         {
-            netObj.Spawn();
-        }
-        else
-        {
-            Debug.LogError("[NetworkedGameManager] Pickup prefab has NO NetworkObject!");
+            Debug.LogError("[NetworkedGameManager] Pickup prefab missing NetworkObject!");
             Destroy(newPickup);
             return;
         }
 
+        netObj.Spawn();
         activePickups.Add(newPickup);
 
-        Debug.Log($"[NetworkedGameManager] Spawned pickup at {spawnPos} for player {spellcasting.OwnerClientId}");
+        Debug.Log($"[NetworkedGameManager] Spawned pickup '{prefab.name}' for player {spellcasting.OwnerClientId}");
     }
 
-    private GameObject GetWeightedPickup(NetworkedSpellcasting spellcasting)
+
+    private GameObject GetWeightedPickupFiltered(
+        NetworkedSpellcasting spellcasting,
+        List<GameObject> activePickups
+    )
     {
-        if (spellcasting == null) return null;
+        // Build a working weight list. If pickupWeights is empty, fall back to pickupPrefabs with weight from PickupEffect.SpawnWeight.
+        List<WeightEntry> workingWeights = new List<WeightEntry>();
 
-        // Build list of valid pickups (not already owned)
-        List<GameObject> validPickups = new List<GameObject>();
-        List<float> weights = new List<float>();
-
-        foreach (GameObject prefab in pickupPrefabs)
+        if (pickupWeights != null && pickupWeights.Count > 0)
         {
-            var effect = prefab.GetComponent<PickupEffect>();
-            if (effect == null) continue;
-
-            bool alreadyOwned = spellcasting.spellBook.ContainsKey(effect.SpellAddress);
-            if (!alreadyOwned)
+            // copy only entries that have a valid prefab and weight > 0
+            foreach (var e in pickupWeights)
             {
-                validPickups.Add(prefab);
-                weights.Add(Mathf.Max(0, effect.spawnWeight));
+                if (e.prefab != null && e.weight > 0)
+                    workingWeights.Add(e);
+            }
+        }
+        else if (pickupPrefabs != null && pickupPrefabs.Count > 0)
+        {
+            // fallback: use prefab's PickupEffect.SpawnWeight (converted to integer weight)
+            foreach (var prefab in pickupPrefabs)
+            {
+                if (prefab == null) continue;
+                var effect = prefab.GetComponent<PickupEffect>();
+                if (effect == null) continue;
+
+                // Attempts to read SpawnWeight property; requires PickupEffect to expose it as public float SpawnWeight.
+                float spawnW = 0.0f;
+                try
+                {
+                    spawnW = effect.SpawnWeight;
+                }
+                catch
+                {
+                    spawnW = 0.2f; // fallback default
+                }
+
+                int intWeight = Mathf.RoundToInt(Mathf.Clamp01(spawnW) * 10f); // scale 0..1 to 0..10
+                if (intWeight <= 0) intWeight = 1; // ensure minimum weight for fallback prefabs
+
+                WeightEntry we = new WeightEntry { prefab = prefab, weight = intWeight };
+                workingWeights.Add(we);
             }
         }
 
-        if (validPickups.Count == 0) return null;
-
-        // Weighted random selection
-        float totalWeight = 0f;
-        foreach (float w in weights)
-            totalWeight += w;
-
-        if (totalWeight <= 0f)
-            return validPickups[Random.Range(0, validPickups.Count)];
-
-        float randomPoint = Random.value * totalWeight;
-        for (int i = 0; i < validPickups.Count; i++)
+        if (workingWeights.Count == 0)
         {
-            if (randomPoint < weights[i])
-                return validPickups[i];
-            randomPoint -= weights[i];
+            Debug.LogWarning("[NetworkedGameManager] No pickup prefabs / weights available to choose from.");
+            return null;
         }
 
-        return validPickups[Random.Range(0, validPickups.Count)];
+        // Build weighted pool of prefabs that pass filters
+        List<GameObject> pool = new List<GameObject>();
+
+        foreach (var entry in workingWeights)
+        {
+            GameObject prefab = entry.prefab;
+            if (prefab == null) continue;
+
+            var effect = prefab.GetComponent<PickupEffect>();
+            if (effect == null) continue;
+
+            string spellAddress = effect.SpellAddress;
+            if (string.IsNullOrEmpty(spellAddress)) continue;
+
+            // Skip if player already owns this spell
+            if (spellcasting != null && spellcasting.spellBook != null && spellcasting.spellBook.ContainsKey(spellAddress))
+                continue;
+
+            // Skip if there's already an active pickup on this side with same spell
+            bool alreadyActive = false;
+            foreach (var p in activePickups)
+            {
+                if (p == null) continue;
+                var existing = p.GetComponent<PickupEffect>();
+                if (existing != null && existing.SpellAddress == spellAddress)
+                {
+                    alreadyActive = true;
+                    break;
+                }
+            }
+            if (alreadyActive) continue;
+
+            // Add to pool according to weight (treat <=0 as skipped)
+            int w = Mathf.Max(0, entry.weight);
+            for (int i = 0; i < w; i++)
+                pool.Add(prefab);
+        }
+
+        if (pool.Count == 0)
+        {
+            // Helpful log to show why pool is empty
+            Debug.Log("[NetworkedGameManager] No valid pickup prefabs after filtering (owned or already active).");
+            return null;
+        }
+
+        int idx = Random.Range(0, pool.Count);
+        return pool[idx];
     }
 
     // ----- Pause / Resume -----
@@ -579,7 +664,7 @@ public class NetworkedGameManager : NetworkBehaviour
 
         // Reset players after delay
         StartCoroutine(ResetPlayersAfterDelay(0.1f));
-       
+
 
         // Hide UI on all clients
         HideGameOverUIClientRpc();

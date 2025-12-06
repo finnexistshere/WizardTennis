@@ -182,6 +182,136 @@ public class NetworkedSpellEffects : NetworkBehaviour
         return currentAI;
     }
 
+    // ========== SHADOW SPELL NETWORK METHODS ==========
+
+    /// <summary>
+    /// Server applies Shadow invisibility effect
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    private void ApplyShadowInvisibilityServerRpc(ulong casterClientId, ulong opponentClientId)
+    {
+        if (!IsServer) return;
+
+        Debug.Log($"[SpellEffects-Server] Applying Shadow invisibility - caster: {casterClientId}, opponent: {opponentClientId}");
+
+        // Tell the OPPONENT client to make the caster invisible
+        ApplyShadowToOpponentClientRpc(casterClientId, opponentClientId);
+    }
+
+    /// <summary>
+    /// Client applies Shadow invisibility (only opponent sees it)
+    /// </summary>
+    [ClientRpc]
+    private void ApplyShadowToOpponentClientRpc(ulong casterClientId, ulong opponentClientId)
+    {
+        // Only the OPPONENT client should apply invisibility
+        // The caster should still see themselves normally
+        if (NetworkManager.Singleton.LocalClientId != opponentClientId)
+        {
+            Debug.Log($"[SpellEffects-Client] Not the opponent ({NetworkManager.Singleton.LocalClientId} != {opponentClientId}), ignoring Shadow");
+            return;
+        }
+
+        GameObject caster = GetPlayerByClientId(casterClientId);
+        if (caster == null)
+        {
+            Debug.LogWarning($"[SpellEffects-Client] Could not find caster with ID {casterClientId} for Shadow spell");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-Client] Applying Shadow invisibility to {caster.name} (opponent view)");
+
+        // Get all renderers in the caster (including children)
+        Renderer[] renderers = caster.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            // Skip certain objects (like racket effects, particles, etc.)
+            if (renderer.gameObject.name.Contains("Particle") ||
+                renderer.gameObject.name.Contains("Effect"))
+                continue;
+
+            // Store original material if not already stored
+            if (!shadowOriginalMaterials.ContainsKey(renderer))
+            {
+                shadowOriginalMaterials[renderer] = renderer.material;
+            }
+
+            // Apply invisible material
+            if (invisibleMaterial != null)
+            {
+                renderer.material = invisibleMaterial;
+                Debug.Log($"[SpellEffects-Client] Applied invisible material to {renderer.gameObject.name}");
+            }
+            else
+            {
+                // Fallback: make semi-transparent
+                Material tempMat = new Material(renderer.material);
+                Color c = tempMat.color;
+                c.a = 0.2f;
+                tempMat.color = c;
+                renderer.material = tempMat;
+                Debug.Log($"[SpellEffects-Client] Applied transparency to {renderer.gameObject.name}");
+            }
+        }
+
+        // Store who is currently shadow-invisible
+        currentShadowCasterId = casterClientId;
+    }
+
+    /// <summary>
+    /// Server removes Shadow invisibility effect
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    private void RemoveShadowInvisibilityServerRpc(ulong casterClientId, ulong opponentClientId)
+    {
+        if (!IsServer) return;
+
+        Debug.Log($"[SpellEffects-Server] Removing Shadow invisibility");
+
+        // Tell the OPPONENT client to restore visibility
+        RemoveShadowFromOpponentClientRpc(casterClientId, opponentClientId);
+    }
+
+    /// <summary>
+    /// Client removes Shadow invisibility
+    /// </summary>
+    [ClientRpc]
+    private void RemoveShadowFromOpponentClientRpc(ulong casterClientId, ulong opponentClientId)
+    {
+        // Only the OPPONENT client should remove invisibility
+        if (NetworkManager.Singleton.LocalClientId != opponentClientId)
+        {
+            return;
+        }
+
+        if (currentShadowCasterId != casterClientId)
+        {
+            Debug.LogWarning($"[SpellEffects-Client] Shadow caster mismatch: {currentShadowCasterId} != {casterClientId}");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-Client] Removing Shadow invisibility");
+
+        // Restore all original materials
+        foreach (var kvp in shadowOriginalMaterials)
+        {
+            if (kvp.Key != null)
+            {
+                kvp.Key.material = kvp.Value;
+            }
+        }
+
+        shadowOriginalMaterials.Clear();
+        currentShadowCasterId = ulong.MaxValue;
+
+        Debug.Log($"[SpellEffects-Client] Shadow removed - visibility restored");
+    }
+
+    // Track Shadow spell materials per renderer
+    private Dictionary<Renderer, Material> shadowOriginalMaterials = new Dictionary<Renderer, Material>();
+    private ulong currentShadowCasterId = ulong.MaxValue;
+
     // ========== NETWORK SPAWNING SYSTEM ==========
 
     /// <summary>
@@ -628,9 +758,23 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Fireball":
-                // Fireball knockback happens on hit
+                // Fireball: Mark the ball so when opponent hits it, they get knocked back
+                // The knockback is triggered in NetworkedBall.CheckFireballHit()
                 resetOnOppHit = true;
-                Debug.Log($"[SpellEffects] Fireball armed");
+
+                // Mark the ball with the caster's info so we know who cast Fireball
+                GameObject ballObj = GameObject.FindWithTag("Ball");
+                if (ballObj != null)
+                {
+                    CollisionTrackerBall tracker = ballObj.GetComponent<CollisionTrackerBall>();
+                    if (tracker != null)
+                    {
+                        // Mark that this is OUR fireball (not opponent's)
+                        tracker.LastHitWizard = "Player";
+                    }
+                }
+
+                Debug.Log($"[SpellEffects] Fireball armed - when opponent hits the ball, they'll be knocked back");
                 break;
 
             case "Shadow":
@@ -640,33 +784,13 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 }
                 else
                 {
-                    // Make caster invisible (client-side only on caster's machine)
-                    var netSpellcasting = player.GetComponent<NetworkedSpellcasting>();
-                    if (netSpellcasting != null && netSpellcasting.IsOwner)
+                    // Make caster invisible to OPPONENT only (not to self)
+                    // Request server to apply invisibility
+                    if (opponent != null)
                     {
-                        opponentRenderer = player.GetComponentInChildren<SkinnedMeshRenderer>();
-                        if (opponentRenderer == null)
-                            opponentRenderer = player.GetComponentInChildren<MeshRenderer>();
-
-                        if (opponentRenderer != null)
-                        {
-                            originalOpponentMaterial = opponentRenderer.material;
-                            if (invisibleMaterial != null)
-                            {
-                                opponentRenderer.material = invisibleMaterial;
-                            }
-                            else
-                            {
-                                Material tempMat = new Material(opponentRenderer.material);
-                                Color c = tempMat.color;
-                                c.a = 0.2f;
-                                tempMat.color = c;
-                                opponentRenderer.material = tempMat;
-                            }
-                        }
+                        ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
                     }
 
-                    // Visual casting handled by NetworkedSpellcasting
                     resetOnOppHit = true;
                 }
                 break;
@@ -868,13 +992,18 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Shadow":
                 resetOnOppHit = false;
 
-                // Restore opponent's material
-                if (opponentRenderer != null && originalOpponentMaterial != null)
+                // Remove Shadow invisibility via server
+                if (player != null && opponent != null)
                 {
-                    opponentRenderer.material = originalOpponentMaterial;
-                    opponentRenderer = null;
-                    originalOpponentMaterial = null;
+                    ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    ulong opponentClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+
+                    RemoveShadowInvisibilityServerRpc(casterClientId, opponentClientId);
                 }
+
+                // Clean up any local references
+                opponentRenderer = null;
+                originalOpponentMaterial = null;
                 break;
 
             case "Chronos":
@@ -1202,7 +1331,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             if (spellName == "Fireball")
             {
-                ApplyFireballKnockback(victim);
+                if (victim != null)
+                {
+                    Debug.Log("Applying Knockback");
+                    ApplyFireballKnockback(victim);
+                }
+                else
+                {
+                    Debug.Log("Cannot Apply Knockback! Victim is Null!");
+                }
             }
 
             resetSpellEffect();
