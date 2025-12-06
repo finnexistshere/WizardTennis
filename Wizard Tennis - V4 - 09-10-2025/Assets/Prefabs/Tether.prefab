@@ -226,7 +226,7 @@ GameObject:
   - component: {fileID: 3260580536093616916}
   - component: {fileID: 8155221285881591283}
   - component: {fileID: 8288139911767148329}
-  - component: {fileID: 4761105938645629043}
+  - component: {fileID: 2798129144877634680}
   m_Layer: 0
   m_Name: Tether
   m_TagString: Untagged
@@ -457,7 +457,7 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
---- !u!114 &4761105938645629043
+--- !u!114 &2798129144877634680
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 226252093462810464}
   - component: {fileID: 1023768622387236076}
   - component: {fileID: 5824052780469241168}
-  - component: {fileID: 4544217303353471149}
+  - component: {fileID: 7884575279718249380}
   m_Layer: 0
   m_Name: MudPuddlePlaceholder
   m_TagString: Mud
@@ -115,7 +115,7 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0.000000059604645, y: 0, z: -0.00000008940697}
---- !u!114 &4544217303353471149
+--- !u!114 &7884575279718249380
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

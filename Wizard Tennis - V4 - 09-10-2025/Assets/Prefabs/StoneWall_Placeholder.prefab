@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 3340806444392415659}
   - component: {fileID: 4609516757789148882}
   - component: {fileID: 2996259141856091633}
-  - component: {fileID: 591805111671883774}
+  - component: {fileID: 185059052296543702}
   m_Layer: 0
   m_Name: StoneWall_Placeholder
   m_TagString: Untagged
@@ -152,7 +152,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.5, y: 1.5, z: 1.5}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &591805111671883774
+--- !u!114 &185059052296543702
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 229536835848705745}
   - component: {fileID: 8915704733682681855}
-  - component: {fileID: 8925216281318538143}
+  - component: {fileID: 8024741770488787227}
   m_Layer: 0
   m_Name: Orbiter
   m_TagString: Untagged
@@ -48,7 +48,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 200
---- !u!114 &8925216281318538143
+--- !u!114 &8024741770488787227
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
