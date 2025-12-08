@@ -436,10 +436,44 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 break;
 
             case "Stone":
-                if (caster != null && SpellEffects != null && SpellEffects.stoneWallPrefab != null && SpellEffects.stoneWallPrefab.GetComponent<NetworkObject>() != null)
                 {
-                    Vector3 spawnPos = caster.transform.position + caster.transform.forward * 2f;
-                    effectNetId = SpawnPrefabOnServer(SpellEffects.stoneWallPrefab, spawnPos, Quaternion.identity);
+                    // Safety: verify prefab is valid
+                    if (SpellEffects == null ||
+                        SpellEffects.stoneWallPrefab == null ||
+                        SpellEffects.stoneWallPrefab.GetComponent<NetworkObject>() == null)
+                        break;
+
+                    // Resolve the REAL caster based on client ID
+                    GameObject trueCaster = GetRealCaster(casterClientId);
+
+                    if (trueCaster == null)
+                    {
+                        Debug.LogWarning("[NetSpellCasting] Stone: Could not find real caster!");
+                        break;
+                    }
+
+                    // Distance in front of the caster for the spawn
+                    float forwardDistance = 2.0f;
+
+                    // Clean forward (ignore vertical tilt)
+                    Vector3 forward = trueCaster.transform.forward;
+                    forward.y = 0f;
+                    forward.Normalize();
+
+                    // Compute spawn position
+                    Vector3 spawnPos = trueCaster.transform.position + forward * forwardDistance;
+
+                    // Compute rotation
+                    Quaternion spawnRot = Quaternion.LookRotation(forward, Vector3.up);
+
+                    Debug.Log($"[NetSpellCasting] Stone spawned at {spawnPos} for caster: {trueCaster.name}");
+
+                    // Server authoritative spawn
+                    effectNetId = SpawnPrefabOnServer(
+                        SpellEffects.stoneWallPrefab,
+                        spawnPos,
+                        spawnRot
+                    );
                 }
                 break;
 
@@ -482,6 +516,28 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
         // Broadcast to clients with the spawned network IDs (0 means "none")
         CastSpellNetworkedClientRpc(spellAddress, spellName, casterClientId, opponentNetId, visualNetId, effectNetId);
+    }
+
+    private GameObject GetRealCaster(ulong clientId)
+    {
+        if (NetworkManager.Singleton == null)
+            return null;
+
+        foreach (var obj in NetworkManager.Singleton.SpawnManager.SpawnedObjectsList)
+        {
+            if (obj.OwnerClientId != clientId)
+                continue;
+
+            GameObject go = obj.gameObject;
+
+            // Must be a player (have spellcasting OR movement)
+            if (go.GetComponent<NetworkedSpellcasting>() != null)
+            {
+                return go;
+            }
+        }
+
+        return null;
     }
 
     // ---------- Updated ClientRpc ----------

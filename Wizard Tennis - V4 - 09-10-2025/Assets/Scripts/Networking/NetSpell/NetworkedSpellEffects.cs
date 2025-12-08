@@ -163,8 +163,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
     /// </summary>
     private GameObject GetPlayer()
     {
-        return currentPlayer;
+        ulong localId = NetworkManager.Singleton.LocalClientId;
+        return GetPlayerByClientId(localId);
     }
+
 
     /// <summary>
     /// Gets the active opponent (context)
@@ -567,19 +569,32 @@ public class NetworkedSpellEffects : NetworkBehaviour
     /// </summary>
     private GameObject GetPlayerByClientId(ulong clientId)
     {
-        if (clientId == ulong.MaxValue) return null;
+        if (NetworkManager.Singleton == null)
+            return null;
 
-        if (NetworkManager.Singleton != null)
+        foreach (var kvp in NetworkManager.Singleton.SpawnManager.SpawnedObjects)
         {
-            foreach (var kvp in NetworkManager.Singleton.SpawnManager.SpawnedObjects)
+            NetworkObject netObj = kvp.Value;
+            if (netObj == null) continue;
+
+            if (netObj.OwnerClientId != clientId) continue;
+
+            GameObject go = netObj.gameObject;
+
+            // Must have REAL spellcasting component
+            var spellcasting = go.GetComponent<NetworkedSpellcasting>();
+            if (spellcasting == null) continue;
+
+            // Reject spawners / placeholders (no movement, no collider etc)
+            if (go.GetComponent<MainCharacterMovement>() == null &&
+                go.GetComponent<CharacterController>() == null &&
+                go.GetComponent<Rigidbody>() == null)
             {
-                if (kvp.Value.OwnerClientId == clientId)
-                {
-                    var spellcasting = kvp.Value.GetComponent<NetworkedSpellcasting>();
-                    if (spellcasting != null)
-                        return kvp.Value.gameObject;
-                }
+                // This is probably PlayerSpawner — skip
+                continue;
             }
+
+            return go;
         }
 
         return null;
