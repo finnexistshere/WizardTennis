@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using Unity.Netcode;
+using Unity.Netcode.Components;
 
 /// <summary>
 /// NetworkedSpellEffects - Complete spell system with server-authoritative spawning
@@ -327,40 +328,97 @@ public class NetworkedSpellEffects : NetworkBehaviour
             return;
         }
 
-        Debug.Log($"[SpellEffects-Server] Spawning effect '{spell}' at {position}");
+        Debug.Log($"[SpellEffects-Server] *** SPAWNING '{spell}' at position {position} ***");
 
         GameObject prefab = GetPrefabForSpell(spell);
         if (prefab == null)
         {
-            Debug.LogWarning($"[SpellEffects-Server] No prefab assigned for spell '{spell}'");
+            Debug.LogError($"[SpellEffects-Server] ? NO PREFAB ASSIGNED for spell '{spell}' - check inspector!");
             return;
         }
+
+        Debug.Log($"[SpellEffects-Server] Prefab found: {prefab.name}");
 
         // Check if it's a networked prefab
         if (prefab.GetComponent<NetworkObject>() == null)
         {
-            Debug.LogWarning($"[SpellEffects-Server] Prefab '{spell}' has no NetworkObject - use client-side spawning instead");
+            Debug.LogWarning($"[SpellEffects-Server] Prefab '{spell}' has no NetworkObject - spawning client-side");
             // Tell clients to spawn locally
             SpawnClientSideEffectClientRpc(spell, casterClientId, targetClientId, position, rotation);
             return;
         }
 
+        Debug.Log($"[SpellEffects-Server] Instantiating '{spell}' prefab at {position}...");
+
         // Instantiate on server
         GameObject instance = Instantiate(prefab, position, rotation);
+
+        if (instance == null)
+        {
+            Debug.LogError($"[SpellEffects-Server] ? INSTANTIATION FAILED for '{spell}'!");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-Server] Instance created: {instance.name} at {instance.transform.position}");
+
+        // CRITICAL: Set position BEFORE spawning on network
+        instance.transform.position = position;
+        instance.transform.rotation = rotation;
+
+        Debug.Log($"[SpellEffects-Server] Position explicitly set to: {instance.transform.position}");
+
         NetworkObject netObj = instance.GetComponent<NetworkObject>();
 
         if (netObj != null)
         {
+            Debug.Log($"[SpellEffects-Server] Spawning NetworkObject for '{spell}'...");
+
+            // Disable NetworkTransform temporarily to prevent override
+            var netTransform = instance.GetComponent<NetworkTransform>();
+            if (netTransform != null)
+            {
+                netTransform.enabled = false;
+            }
+
+            // Spawn on network
             netObj.Spawn();
             ulong netId = netObj.NetworkObjectId;
 
-            Debug.Log($"[SpellEffects-Server] Spawned networked '{spell}' with ID {netId}");
+            // FORCE position sync after network spawn
+            instance.transform.position = position;
+            instance.transform.rotation = rotation;
+
+            // Re-enable NetworkTransform after a frame
+            if (netTransform != null)
+            {
+                StartCoroutine(ReenableNetworkTransformAfterFrame(netTransform, position, rotation));
+            }
+
+            Debug.Log($"[SpellEffects-Server] ? SUCCESS! Spawned '{spell}' with NetworkObjectId: {netId} at final position: {instance.transform.position}");
 
             // Track for cleanup
             activeNetworkEffects[spell] = netId;
 
-            // Notify all clients
-            NotifyEffectSpawnedClientRpc(spell, netId, casterClientId, targetClientId);
+            // IMPORTANT: Notify all clients INCLUDING the host via ClientRpc
+            // This ensures the host's client-side code also runs
+            NotifyEffectSpawnedClientRpc(spell, netId, casterClientId, targetClientId, position, rotation);
+        }
+        else
+        {
+            Debug.LogError($"[SpellEffects-Server] ? NetworkObject component missing after instantiation!");
+        }
+    }
+
+    private IEnumerator ReenableNetworkTransformAfterFrame(NetworkTransform netTransform, Vector3 correctPos, Quaternion correctRot)
+    {
+        yield return new WaitForEndOfFrame();
+
+        if (netTransform != null)
+        {
+            netTransform.transform.position = correctPos;
+            netTransform.transform.rotation = correctRot;
+            netTransform.enabled = true;
+            Debug.Log($"[SpellEffects-Server] Re-enabled NetworkTransform at {correctPos}");
         }
     }
 
@@ -368,12 +426,12 @@ public class NetworkedSpellEffects : NetworkBehaviour
     /// Server notifies all clients that an effect was spawned
     /// </summary>
     [ClientRpc]
-    private void NotifyEffectSpawnedClientRpc(string spell, ulong effectNetId, ulong casterClientId, ulong targetClientId)
+    private void NotifyEffectSpawnedClientRpc(string spell, ulong effectNetId, ulong casterClientId, ulong targetClientId, Vector3 position, Quaternion rotation)
     {
-        Debug.Log($"[SpellEffects-Client] Notification: '{spell}' spawned with ID {effectNetId}");
+        Debug.Log($"[SpellEffects-Client] Notification: '{spell}' spawned with ID {effectNetId} at position {position}");
 
         // Wait for the object to appear in spawn manager, then apply behaviors
-        StartCoroutine(WaitForNetworkEffectAndApplyBehavior(spell, effectNetId, casterClientId, targetClientId));
+        StartCoroutine(WaitForNetworkEffectAndApplyBehavior(spell, effectNetId, casterClientId, targetClientId, position, rotation));
     }
 
     /// <summary>
@@ -398,7 +456,13 @@ public class NetworkedSpellEffects : NetworkBehaviour
     /// <summary>
     /// Wait for networked object to appear in spawn manager
     /// </summary>
-    private IEnumerator WaitForNetworkEffectAndApplyBehavior(string spell, ulong effectNetId, ulong casterClientId, ulong targetClientId)
+    private IEnumerator WaitForNetworkEffectAndApplyBehavior(
+        string spell,
+        ulong effectNetId,
+        ulong casterClientId,
+        ulong targetClientId,
+        Vector3 position,
+        Quaternion rotation)
     {
         int attempts = 0;
         GameObject effectObj = null;
@@ -420,10 +484,14 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         Debug.Log($"[SpellEffects-Client] Found effect '{spell}' after {attempts} attempts");
 
+        // Make sure effect is placed correctly (server already applied rotation/pos)
+        effectObj.transform.position = position;
+        effectObj.transform.rotation = rotation;
+
         // Store reference
         StoreEffectReference(spell, effectObj);
 
-        // Apply client-side behavior
+        // Apply behavior
         GameObject caster = GetPlayerByClientId(casterClientId);
         GameObject target = GetPlayerByClientId(targetClientId);
         ApplyEffectBehavior(spell, effectObj, caster, target);
@@ -470,6 +538,23 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
             case "Stone":
                 StartCoroutine(HandleStoneWall(effectObj, 5f));
+
+                // Setup SimpleBallReturner component if it exists
+                var ballReturner = effectObj.GetComponent<SimpleBallReturner>();
+                if (ballReturner != null && caster != null && target != null)
+                {
+                    // Get the caster's ball component aim target
+                    var casterBall = caster.GetComponent<NetworkedBall>();
+                    if (casterBall != null && casterBall.aimTarget != null)
+                    {
+                        ballReturner.aimTarget = casterBall.aimTarget;
+                    }
+
+                    // Set opponent transform
+                    ballReturner.opponent = target.transform;
+
+                    Debug.Log($"[SpellEffects] Stone wall SimpleBallReturner configured");
+                }
                 break;
 
             case "Gemini":
@@ -649,6 +734,38 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     // ========== OLD INTERFACE FOR BACKWARD COMPATIBILITY ==========
 
+    private IEnumerator WaitForNetworkEffectAndApplyBehavior(
+    string spell,
+    ulong effectNetId,
+    ulong casterClientId,
+    ulong targetClientId)
+    {
+        int attempts = 0;
+        GameObject effectObj = null;
+
+        while (attempts < 20 && effectObj == null)
+        {
+            effectObj = GetSpawnedObjectByNetId(effectNetId);
+            if (effectObj != null) break;
+
+            yield return new WaitForSeconds(0.05f);
+            attempts++;
+        }
+
+        if (effectObj == null)
+        {
+            Debug.LogWarning($"[SpellEffects-Client] Failed to find effect '{spell}' with ID {effectNetId}");
+            yield break;
+        }
+
+        Debug.Log($"[SpellEffects-Client] Found legacy effect '{spell}'");
+
+        // Behavior
+        GameObject caster = GetPlayerByClientId(casterClientId);
+        GameObject target = GetPlayerByClientId(targetClientId);
+        ApplyEffectBehavior(spell, effectObj, caster, target);
+    }
+
     /// <summary>
     /// Register a server-spawned networked effect (legacy interface)
     /// </summary>
@@ -802,11 +919,30 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Stone":
+                Debug.Log($"[SpellEffects] *** STONE SPELL CAST ***");
+                Debug.Log($"[SpellEffects] Player: {player?.name}, Prefab: {stoneWallPrefab?.name}");
+
                 if (player != null && stoneWallPrefab != null)
                 {
+                    // Match original: spawn in front of caster with identity rotation
                     Vector3 spawnPos = player.transform.position + player.transform.forward * 2f;
-                    SpawnEffectServerRpc("Stone", casterClientId, targetClientId, spawnPos, Quaternion.identity);
+                    Quaternion spawnRot = Quaternion.identity;
+
+                    Debug.Log($"[SpellEffects] Player position: {player.transform.position}");
+                    Debug.Log($"[SpellEffects] Player forward: {player.transform.forward}");
+                    Debug.Log($"[SpellEffects] Calculated spawn position: {spawnPos}");
+                    Debug.Log($"[SpellEffects] Calling SpawnEffectServerRpc for Stone...");
+
+                    SpawnEffectServerRpc("Stone", casterClientId, targetClientId, spawnPos, spawnRot);
+
+                    Debug.Log($"[SpellEffects] SpawnEffectServerRpc called, invoking reset in 5s");
                 }
+                else
+                {
+                    if (player == null) Debug.LogError("[SpellEffects] ? Player is NULL!");
+                    if (stoneWallPrefab == null) Debug.LogError("[SpellEffects] ? Stone Wall Prefab is NOT ASSIGNED in inspector!");
+                }
+                Invoke(nameof(resetSpellEffect), 5f);
                 break;
 
             case "Chronos":
@@ -1267,11 +1403,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
     {
         if (wall == null) yield break;
 
+        Debug.Log($"[SpellEffects] Stone wall starting animation");
+
         float t = 0f;
-        Vector3 startScale = wall.transform.localScale;
-        Vector3 targetScale = startScale;
+        Vector3 targetScale = wall.transform.localScale;
+
+        // Start from zero scale (underground)
         wall.transform.localScale = Vector3.zero;
 
+        // Grow animation (rise from ground)
         while (t < 0.25f)
         {
             t += Time.deltaTime;
@@ -1280,8 +1420,14 @@ public class NetworkedSpellEffects : NetworkBehaviour
             yield return null;
         }
 
+        Debug.Log($"[SpellEffects] Stone wall fully risen, waiting {duration}s");
+
+        // Stay at full size for duration
         yield return new WaitForSeconds(duration);
 
+        Debug.Log($"[SpellEffects] Stone wall shrinking");
+
+        // Shrink animation (sink into ground)
         float s = 0f;
         while (s < 0.25f)
         {
@@ -1291,7 +1437,38 @@ public class NetworkedSpellEffects : NetworkBehaviour
             yield return null;
         }
 
-        // Despawn is handled by DespawnEffectAfterDelay
+        Debug.Log($"[SpellEffects] Stone wall animation complete, despawning");
+
+        // After animation completes, despawn the wall
+        if (wall != null)
+        {
+            NetworkObject netObj = wall.GetComponent<NetworkObject>();
+            if (netObj != null)
+            {
+                if (IsServer)
+                {
+                    if (netObj.IsSpawned)
+                    {
+                        netObj.Despawn(true);
+                        Debug.Log($"[SpellEffects] Server despawned Stone wall");
+                    }
+                }
+                else
+                {
+                    // Client requests server to despawn
+                    DespawnEffectServerRpc("Stone", netObj.NetworkObjectId);
+                    Debug.Log($"[SpellEffects] Client requested Stone wall despawn");
+                }
+            }
+            else
+            {
+                // Local object - destroy directly
+                Destroy(wall);
+                Debug.Log($"[SpellEffects] Destroyed local Stone wall");
+            }
+
+            activeStoneWall = null;
+        }
     }
 
     private IEnumerator HandleOrbiter(GameObject orbiter, Transform center, float duration)
@@ -1331,15 +1508,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             if (spellName == "Fireball")
             {
-                if (victim != null)
-                {
-                    Debug.Log("Applying Knockback");
-                    ApplyFireballKnockback(victim);
-                }
-                else
-                {
-                    Debug.Log("Cannot Apply Knockback! Victim is Null!");
-                }
+                ApplyFireballKnockback(victim);
             }
 
             resetSpellEffect();
