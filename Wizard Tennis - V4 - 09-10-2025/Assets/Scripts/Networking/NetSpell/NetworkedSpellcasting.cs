@@ -350,54 +350,62 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     }
 
     // ---------- ServerRpc: validate and spawn networked effects (server authoritative) ----------
+    // ====================================================================
+    // FIX FOR NetworkedSpellcasting.cs - CastSpellServerRpc
+    // Replace the caster finding logic (around line 290-320)
+    // ====================================================================
+
     [ServerRpc(RequireOwnership = false)]
     private void CastSpellServerRpc(string spellAddress, string spellName, ulong opponentNetId, ServerRpcParams rpcParams = default)
     {
         // Who requested the cast?
         ulong casterClientId = rpcParams.Receive.SenderClientId;
 
+        Debug.Log($"[NSC-Server] CastSpellServerRpc called for spell '{spellName}' by client {casterClientId}");
+
         // Server resolves caster/opponent NetworkObjects
         GameObject caster = null;
         GameObject opponent = null;
 
-        // Try to find the caster by spawn manager ownership
-        foreach (var kv in NetworkManager.Singleton.SpawnManager.SpawnedObjects)
+        // CRITICAL FIX: Use the improved GetRealCaster method to find the actual player character
+        caster = GetRealCaster(casterClientId);
+
+        if (caster != null)
         {
-            if (kv.Value != null && kv.Value.OwnerClientId == casterClientId)
-            {
-                caster = kv.Value.gameObject;
-                break;
-            }
+            Debug.Log($"[NSC-Server] Found caster: {caster.name} at position {caster.transform.position}");
+        }
+        else
+        {
+            Debug.LogError($"[NSC-Server] Could not find caster for client {casterClientId}!");
         }
 
         // Resolve opponent by network id if present
         if (opponentNetId != ulong.MaxValue)
             opponent = GetSpawnedObjectByNetId(opponentNetId);
 
-        // As fallback, try finding another NetworkedSpellcasting object
-        if (caster == null)
-        {
-            var all = FindObjectsOfType<NetworkedSpellcasting>();
-            foreach (var sc in all)
-            {
-                if (sc.OwnerClientId == casterClientId)
-                {
-                    caster = sc.gameObject;
-                    break;
-                }
-            }
-        }
+        // Fallback for opponent: find another valid player
         if (opponent == null)
         {
-            // pick any other networked player object
+            Debug.Log($"[NSC-Server] Opponent not found by netId, searching...");
             var all = FindObjectsOfType<NetworkedSpellcasting>();
             foreach (var sc in all)
             {
-                if (sc.gameObject != caster)
+                if (sc.gameObject == caster) continue; // Skip the caster
+
+                GameObject go = sc.gameObject;
+
+                // Make sure it's a real player character, not a spawner
+                if (go.GetComponent<MainCharacterMovement>() == null &&
+                    go.GetComponent<CharacterController>() == null &&
+                    go.GetComponent<Rigidbody>() == null)
                 {
-                    opponent = sc.gameObject;
-                    break;
+                    Debug.Log($"[NSC-Server] Skipping {go.name} - no movement components");
+                    continue;
                 }
+
+                opponent = go;
+                Debug.Log($"[NSC-Server] Found opponent: {opponent.name}");
+                break;
             }
         }
 
@@ -409,10 +417,9 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         GameObject ballObj = GameObject.FindWithTag("Ball");
         if (ballObj == null)
         {
-            // fallback: try to find any object named Ball or use caster's child
             ballObj = GameObject.Find("Ball");
             if (ballObj == null && caster != null)
-                ballObj = caster.GetComponent<NetworkedSpellcasting>()?.parentObject; // may be null
+                ballObj = caster.GetComponent<NetworkedSpellcasting>()?.parentObject;
         }
 
         if (spellVisuals != null && spellVisuals.ContainsKey(spellAddress) && spellVisuals[spellAddress] != null && ballObj != null)
@@ -420,7 +427,6 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             GameObject visualPrefab = spellVisuals[spellAddress];
             if (visualPrefab.GetComponent<NetworkObject>() != null)
             {
-                // spawn server-side at ball position
                 visualNetId = SpawnPrefabOnServer(visualPrefab, ballObj.transform.position, ballObj.transform.rotation, casterClientId, giveOwnershipToSender: false);
             }
         }
@@ -437,36 +443,55 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
             case "Stone":
                 {
+                    Debug.Log($"[NSC-Server] === STONE CASE START ===");
+
                     // Safety: verify prefab is valid
-                    if (SpellEffects == null ||
-                        SpellEffects.stoneWallPrefab == null ||
-                        SpellEffects.stoneWallPrefab.GetComponent<NetworkObject>() == null)
-                        break;
-
-                    // Resolve the REAL caster based on client ID
-                    GameObject trueCaster = GetRealCaster(casterClientId);
-
-                    if (trueCaster == null)
+                    if (SpellEffects == null)
                     {
-                        Debug.LogWarning("[NetSpellCasting] Stone: Could not find real caster!");
+                        Debug.LogError("[NSC-Server] SpellEffects is null!");
                         break;
                     }
+                    if (SpellEffects.stoneWallPrefab == null)
+                    {
+                        Debug.LogError("[NSC-Server] stoneWallPrefab is null!");
+                        break;
+                    }
+                    if (SpellEffects.stoneWallPrefab.GetComponent<NetworkObject>() == null)
+                    {
+                        Debug.LogError("[NSC-Server] stoneWallPrefab has no NetworkObject!");
+                        break;
+                    }
+
+                    // Verify caster is valid
+                    if (caster == null)
+                    {
+                        Debug.LogError("[NSC-Server] Caster is null for Stone spell!");
+                        break;
+                    }
+
+                    Debug.Log($"[NSC-Server] Caster for Stone: {caster.name}");
+                    Debug.Log($"[NSC-Server] Caster position: {caster.transform.position}");
+                    Debug.Log($"[NSC-Server] Caster forward: {caster.transform.forward}");
 
                     // Distance in front of the caster for the spawn
                     float forwardDistance = 2.0f;
 
                     // Clean forward (ignore vertical tilt)
-                    Vector3 forward = trueCaster.transform.forward;
+                    Vector3 forward = caster.transform.forward;
                     forward.y = 0f;
                     forward.Normalize();
 
+                    Debug.Log($"[NSC-Server] Normalized forward: {forward}");
+
                     // Compute spawn position
-                    Vector3 spawnPos = trueCaster.transform.position + forward * forwardDistance;
+                    Vector3 spawnPos = caster.transform.position + forward * forwardDistance;
+
+                    Debug.Log($"[NSC-Server] Calculated Stone spawn position: {spawnPos}");
 
                     // Compute rotation
                     Quaternion spawnRot = Quaternion.LookRotation(forward, Vector3.up);
 
-                    Debug.Log($"[NetSpellCasting] Stone spawned at {spawnPos} for caster: {trueCaster.name}");
+                    Debug.Log($"[NSC-Server] Calling SpawnPrefabOnServer for Stone...");
 
                     // Server authoritative spawn
                     effectNetId = SpawnPrefabOnServer(
@@ -474,6 +499,9 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                         spawnPos,
                         spawnRot
                     );
+
+                    Debug.Log($"[NSC-Server] Stone spawned with effectNetId: {effectNetId}");
+                    Debug.Log($"[NSC-Server] === STONE CASE END ===");
                 }
                 break;
 
@@ -510,18 +538,20 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                     gorb.SetActive(false);
                 }
                 break;
-
-                // Add more server-spawn cases as needed
         }
 
         // Broadcast to clients with the spawned network IDs (0 means "none")
         CastSpellNetworkedClientRpc(spellAddress, spellName, casterClientId, opponentNetId, visualNetId, effectNetId);
     }
-
     private GameObject GetRealCaster(ulong clientId)
     {
         if (NetworkManager.Singleton == null)
+        {
+            Debug.LogWarning("[NSC-GetRealCaster] NetworkManager is null");
             return null;
+        }
+
+        Debug.Log($"[NSC-GetRealCaster] Searching for client {clientId}...");
 
         foreach (var obj in NetworkManager.Singleton.SpawnManager.SpawnedObjectsList)
         {
@@ -530,13 +560,41 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
             GameObject go = obj.gameObject;
 
-            // Must be a player (have spellcasting OR movement)
-            if (go.GetComponent<NetworkedSpellcasting>() != null)
+            Debug.Log($"[NSC-GetRealCaster] Found owned object: {go.name} at {go.transform.position}");
+
+            // Must have NetworkedSpellcasting component
+            var spellcasting = go.GetComponent<NetworkedSpellcasting>();
+            if (spellcasting == null)
             {
-                return go;
+                Debug.Log($"[NSC-GetRealCaster] {go.name} has no NetworkedSpellcasting - skipping");
+                continue;
             }
+
+            // CRITICAL: Reject spawners (they have no movement/physics components)
+            bool hasMovement = go.GetComponent<MainCharacterMovement>() != null;
+            bool hasController = go.GetComponent<CharacterController>() != null;
+            bool hasRigidbody = go.GetComponent<Rigidbody>() != null;
+
+            Debug.Log($"[NSC-GetRealCaster] {go.name} - Movement:{hasMovement}, Controller:{hasController}, Rigidbody:{hasRigidbody}");
+
+            if (!hasMovement && !hasController && !hasRigidbody)
+            {
+                Debug.Log($"[NSC-GetRealCaster] {go.name} is a spawner - skipping");
+                continue;
+            }
+
+            // CRITICAL: Reject objects positioned below the map (spawners are often at y < -10)
+            if (go.transform.position.y < -10f)
+            {
+                Debug.LogWarning($"[NSC-GetRealCaster] {go.name} is below map at {go.transform.position} - skipping");
+                continue;
+            }
+
+            Debug.Log($"[NSC-GetRealCaster] ? Valid player found: {go.name} at {go.transform.position}");
+            return go;
         }
 
+        Debug.LogError($"[NSC-GetRealCaster] No valid player found for client {clientId}");
         return null;
     }
 

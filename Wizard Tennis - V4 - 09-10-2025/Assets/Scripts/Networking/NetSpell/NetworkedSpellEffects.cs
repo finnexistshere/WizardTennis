@@ -160,13 +160,55 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     /// <summary>
     /// Gets the active player (context)
+    /// FIXED: Properly returns the local player's character, not spawner objects
     /// </summary>
     private GameObject GetPlayer()
     {
-        ulong localId = NetworkManager.Singleton.LocalClientId;
-        return GetPlayerByClientId(localId);
-    }
+        // First: Try to use the stored context player
+        if (currentPlayer != null)
+        {
+            Debug.Log($"[SpellEffects-GetPlayer] Using stored context player: {currentPlayer.name}");
+            return currentPlayer;
+        }
 
+        // Second: Try to find by LocalClientId (this is the player casting the spell)
+        ulong localId = NetworkManager.Singleton.LocalClientId;
+        GameObject player = GetPlayerByClientId(localId);
+
+        if (player != null)
+        {
+            Debug.Log($"[SpellEffects-GetPlayer] Found local player: {player.name} at position {player.transform.position}");
+            return player;
+        }
+
+        // Third: Fallback - find ANY NetworkedSpellcasting with valid components
+        Debug.LogWarning($"[SpellEffects-GetPlayer] Could not find player by LocalClientId {localId}, searching for valid player...");
+
+        foreach (var spellcasting in FindObjectsOfType<NetworkedSpellcasting>())
+        {
+            GameObject go = spellcasting.gameObject;
+
+            // Skip objects without player components (these are likely spawners)
+            if (go.GetComponent<MainCharacterMovement>() == null &&
+                go.GetComponent<CharacterController>() == null &&
+                go.GetComponent<Rigidbody>() == null)
+            {
+                Debug.Log($"[SpellEffects-GetPlayer] Skipping {go.name} - no movement components");
+                continue;
+            }
+
+            // Make sure it's owned by the local client
+            NetworkObject netObj = go.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.OwnerClientId == localId)
+            {
+                Debug.Log($"[SpellEffects-GetPlayer] Found valid player via fallback: {go.name} at {go.transform.position}");
+                return go;
+            }
+        }
+
+        Debug.LogError($"[SpellEffects-GetPlayer] Could not find player for LocalClientId {localId}!");
+        return null;
+    }
 
     /// <summary>
     /// Gets the active opponent (context)
