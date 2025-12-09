@@ -471,7 +471,39 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Stone":
-                StartCoroutine(HandleStoneWall(effectObj, 5f));
+                {
+                    if (effectObj == null)
+                    {
+                        Debug.LogWarning("[SpellEffects-Client] Stone effectObj is null!");
+                        return;
+                    }
+
+                    var returner = effectObj.GetComponent<SimpleBallReturner>();
+                    if (returner == null)
+                    {
+                        Debug.LogWarning("[SpellEffects-Client] Stone missing SimpleBallReturner!");
+                        return;
+                    }
+
+                    // Assign aim target + opponent exactly like non-networked version
+                    if (caster != null && caster.GetComponent<NetworkedBall>() != null)
+                    {
+                        returner.aimTarget = caster.GetComponent<NetworkedBall>().aimTarget.transform;
+                    }
+
+                    if (target != null)
+                    {
+                        returner.opponent = target.transform;
+                    }
+
+                    // Run the behaviour locally on each client
+                    StartCoroutine(HandleStoneWall(effectObj, 5f));
+
+                    // Trigger your reset logic
+                    Invoke(nameof(resetSpellEffect), 5f);
+
+                    Debug.Log("[SpellEffects-Client] Stone Wall Behavior Applied");
+                }
                 break;
 
             case "Gemini":
