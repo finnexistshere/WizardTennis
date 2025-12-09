@@ -16933,7 +16933,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b341cceda48ac4f46b9e2f8b2ec4f1db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spellEffects: {fileID: 0}
+  spellEffects: {fileID: 1594825199}
   scoreManager: {fileID: 0}
   hostAimTarget: {fileID: 319551048}
   clientAimTarget: {fileID: 2036865726}

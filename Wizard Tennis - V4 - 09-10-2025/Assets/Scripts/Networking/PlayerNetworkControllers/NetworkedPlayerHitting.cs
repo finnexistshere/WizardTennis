@@ -552,44 +552,81 @@ public class NetworkedBall : NetworkBehaviour
     }
 
     /// <summary>
-    /// Check if player is hitting a Fireball-enchanted ball and apply knockback
+    /// SIMPLER VERSION: Check using LastHitWizard tracker
+    /// Use this if the above context-based version doesn't work
     /// </summary>
     private void CheckFireballHit()
     {
-        if (spellEffects == null) return;
+        Debug.Log($"[NetworkedBall] CheckFireballHit_Simple called for Player {OwnerClientId}");
 
-        // Check if Fireball spell is active and should trigger on opponent hit
-        if (!spellEffects.resetOnOppHit || spellEffects.spellName != "Fireball")
+        if (spellEffects == null)
+        {
+            Debug.LogWarning($"[NetworkedBall] spellEffects is null!");
             return;
+        }
+
+        Debug.Log($"[NetworkedBall] spellName: '{spellEffects.spellName}', resetOnOppHit: {spellEffects.resetOnOppHit}");
+
+        // Check if Fireball spell is active
+        if (!spellEffects.resetOnOppHit || spellEffects.spellName != "Fireball")
+        {
+            Debug.Log($"[NetworkedBall] Not Fireball scenario");
+            return;
+        }
 
         GameObject ballObj = GameObject.FindGameObjectWithTag("Ball");
-        if (ballObj == null) return;
+        if (ballObj == null)
+        {
+            Debug.LogWarning($"[NetworkedBall] Cannot find ball!");
+            return;
+        }
 
         CollisionTrackerBall tracker = ballObj.GetComponent<CollisionTrackerBall>();
-        if (tracker == null) return;
-
-        // Determine who cast the Fireball by checking who hit the ball last
-        // If opponent hit it last, then we're hitting their Fireball-enchanted ball
-        bool opponentCastFireball = (tracker.LastHitWizard != "Player");
-
-        if (opponentCastFireball && opponent != null)
+        if (tracker == null)
         {
-            Debug.Log($"[NetworkedBall] Player {OwnerClientId} hit opponent's Fireball ball - applying knockback!");
-
-            // Set spell context so SpellEffects knows opponent is caster, we are victim
-            spellEffects.AutoSetContext(opponent);
-
-            // Apply knockback to THIS player (the one hitting the Fireball ball)
-            spellEffects.ApplyFireballKnockback(gameObject);
-
-            // Reset the spell effect
-            spellEffects.resetSpellEffect();
-
-            Debug.Log($"[NetworkedBall] Fireball knockback applied and spell reset");
+            Debug.LogWarning($"[NetworkedBall] No tracker on ball!");
+            return;
         }
-        else
+
+        Debug.Log($"[NetworkedBall] LastHitWizard: '{tracker.LastHitWizard}'");
+
+        // FIXED LOGIC:
+        // - When I hit the ball in OnTriggerEnter, tracker.LastHitWizard gets set to "Player"
+        // - But BEFORE that happens, CheckFireballHit() runs
+        // - So LastHitWizard still contains whoever hit it LAST (the opponent)
+        // - If opponent cast Fireball and hit the ball, LastHitWizard would NOT be "Player"
+        // - When I then hit that ball, I should get knocked back
+
+        // So the check is: Is the ball currently NOT marked as mine?
+        bool ballIsOpponents = (tracker.LastHitWizard != "Player");
+
+        Debug.Log($"[NetworkedBall] Ball belongs to opponent? {ballIsOpponents}");
+
+        if (!ballIsOpponents)
         {
-            Debug.Log($"[NetworkedBall] Fireball active but no knockback - LastHitWizard: {tracker.LastHitWizard}");
+            // Ball is mine, I cast Fireball on it, no knockback for me
+            Debug.Log($"[NetworkedBall] This is MY Fireball ball - no knockback");
+            return;
         }
+
+        // Ball is opponent's and has Fireball - I get knocked back!
+        Debug.Log($"[NetworkedBall] Hitting opponent's Fireball ball - applying knockback to ME!");
+
+        // Get my client ID
+        NetworkObject myNetObj = GetComponent<NetworkObject>();
+        ulong myClientId = myNetObj != null ? myNetObj.OwnerClientId : ulong.MaxValue;
+
+        if (myClientId == ulong.MaxValue)
+        {
+            Debug.LogError($"[NetworkedBall] Cannot get my ClientId!");
+            return;
+        }
+
+        Debug.Log($"[NetworkedBall] Calling ApplyFireballKnockbackServerRpc({myClientId})");
+
+        // Apply knockback to ME
+        spellEffects.ApplyFireballKnockbackServerRpc(myClientId);
+
+        Debug.Log($"[NetworkedBall] Fireball knockback applied!");
     }
 }

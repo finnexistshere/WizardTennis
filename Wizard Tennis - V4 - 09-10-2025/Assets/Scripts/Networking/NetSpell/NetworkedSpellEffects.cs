@@ -162,7 +162,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
     /// Gets the active player (context)
     /// FIXED: Properly returns the local player's character, not spawner objects
     /// </summary>
-    private GameObject GetPlayer()
+    public GameObject GetPlayer()
     {
         // First: Try to use the stored context player
         if (currentPlayer != null)
@@ -1220,6 +1220,73 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    public void ApplyFireballKnockbackServerRpc(ulong victimClientId, ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+
+        // Get the actual caster from context (who originally cast Fireball)
+        GameObject caster = currentPlayer; // This is set by SetContext when spell was cast
+
+        // Find the victim by their client ID
+        GameObject victim = GetPlayerByClientId(victimClientId);
+
+        if (victim == null)
+        {
+            Debug.LogWarning($"[SpellEffects-Server] Fireball knockback - victim not found for client {victimClientId}");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-Server] Applying Fireball knockback to {victim.name}");
+
+        // Calculate knockback direction
+        Vector3 knockbackDirection = Vector3.back; // Default fallback
+
+        if (caster != null)
+        {
+            Vector3 directionFromCaster = (victim.transform.position - caster.transform.position).normalized;
+
+            // Horizontal push away from caster
+            Vector3 horizontal = new Vector3(directionFromCaster.x, 0, directionFromCaster.z).normalized;
+
+            // Add upward lift
+            Vector3 upward = Vector3.up * 0.75f;
+
+            knockbackDirection = (horizontal + upward).normalized;
+        }
+
+        // Strong knockback force
+        float forceStrength = 20f;
+        Vector3 knockbackForce = knockbackDirection * forceStrength;
+
+        // Longer push duration
+        float duration = 0.45f;
+
+        // Apply knockback on server
+        StartCoroutine(ApplyKnockback(victim, knockbackForce, duration));
+
+        // Tell all clients to also apply knockback for smooth visuals
+        ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, forceStrength, duration);
+    }
+
+    /// <summary>
+    /// Client applies knockback for smooth local visuals
+    /// </summary>
+    [ClientRpc]
+    private void ApplyFireballKnockbackClientRpc(ulong victimClientId, Vector3 knockbackDirection, float forceStrength, float duration)
+    {
+        GameObject victim = GetPlayerByClientId(victimClientId);
+
+        if (victim == null) return;
+
+        Debug.Log($"[SpellEffects-Client] Applying Fireball knockback to {victim.name}");
+
+        Vector3 knockbackForce = knockbackDirection * forceStrength;
+        StartCoroutine(ApplyKnockback(victim, knockbackForce, duration));
+    }
+
+    // Keep the old method for backward compatibility but mark it as obsolete
+    [System.Obsolete("Use ApplyFireballKnockbackServerRpc instead")]
     public void ApplyFireballKnockback(GameObject target)
     {
         if (target == null)
@@ -1228,19 +1295,16 @@ public class NetworkedSpellEffects : NetworkBehaviour
             return;
         }
 
-        GameObject caster = GetPlayer();
-        Vector3 knockbackDirection = Vector3.back;
-
-        if (caster != null && target != null)
+        // If we're on the server, we can call it directly
+        if (IsServer)
         {
-            Vector3 directionFromCaster = (target.transform.position - caster.transform.position).normalized;
-            knockbackDirection = new Vector3(directionFromCaster.x, 0, directionFromCaster.z).normalized;
+            ulong victimClientId = target.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+            ApplyFireballKnockbackServerRpc(victimClientId);
         }
-
-        Vector3 knockbackForce = knockbackDirection * 8f;
-        StartCoroutine(ApplyKnockback(target, knockbackForce, 0.3f));
-
-        Debug.Log($"[SpellEffects] Applied Fireball knockback to {target.name}");
+        else
+        {
+            Debug.LogWarning("[SpellEffects] ApplyFireballKnockback called on client - use ApplyFireballKnockbackServerRpc instead");
+        }
     }
 
     private IEnumerator ApplyKnockback(GameObject target, Vector3 knockbackForce, float duration)
@@ -1422,12 +1486,23 @@ public class NetworkedSpellEffects : NetworkBehaviour
             {
                 if (victim != null)
                 {
-                    Debug.Log("Applying Knockback");
-                    ApplyFireballKnockback(victim);
+                    Debug.Log("[SpellEffects] Fireball hit - requesting knockback via ServerRpc");
+
+                    ulong victimClientId = victim.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+
+                    if (victimClientId != ulong.MaxValue)
+                    {
+                        // Request server to apply knockback
+                        ApplyFireballKnockbackServerRpc(victimClientId);
+                    }
+                    else
+                    {
+                        Debug.LogError("[SpellEffects] Cannot apply Fireball knockback - victim has no NetworkObject");
+                    }
                 }
                 else
                 {
-                    Debug.Log("Cannot Apply Knockback! Victim is Null!");
+                    Debug.LogError("[SpellEffects] Cannot Apply Knockback! Victim is Null!");
                 }
             }
 
