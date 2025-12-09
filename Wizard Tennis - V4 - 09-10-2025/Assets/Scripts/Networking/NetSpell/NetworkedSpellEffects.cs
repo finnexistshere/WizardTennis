@@ -930,6 +930,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     {
                         SpawnEffectServerRpc("Jolly", casterClientId, targetClientId, racketTransform.position, Quaternion.identity);
                     }
+                    else
+                    {
+                        Debug.Log("Racket Transform is Null!");
+                    }
                 }
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;

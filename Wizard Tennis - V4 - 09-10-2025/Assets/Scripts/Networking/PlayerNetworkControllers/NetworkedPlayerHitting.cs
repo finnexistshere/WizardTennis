@@ -9,7 +9,7 @@ public class NetworkedBall : NetworkBehaviour
     public GameObject opponent;
     public TwoHandIKController_Opponent OppIKRig;
     public NetworkedSpellEffects spellEffects;
-    public ScoreManager scoreManager;
+    public NetworkedScoreManager scoreManager;
     private NetworkedUIManager uiManager;
 
     [Header("Rally Tracking")]

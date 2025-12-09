@@ -32,17 +32,20 @@ public class NetworkedUIManager : NetworkBehaviour
 
     private void TryFindUIElements()
     {
+        // Searches ALL objects, even disabled, across entire scene
+        TextMeshProUGUI[] allTexts = Resources.FindObjectsOfTypeAll<TextMeshProUGUI>();
+
         if (spellStatusText == null)
-            spellStatusText = GameObject.Find(spellStatusName)?.GetComponent<TextMeshProUGUI>();
+            spellStatusText = FindUIByName(allTexts, spellStatusName);
 
         if (rallyCountText == null)
-            rallyCountText = GameObject.Find(rallyCountName)?.GetComponent<TextMeshProUGUI>();
+            rallyCountText = FindUIByName(allTexts, rallyCountName);
 
         if (greenPointsText == null)
-            greenPointsText = GameObject.Find(greenPointsNumbersName)?.GetComponent<TextMeshProUGUI>();
+            greenPointsText = FindUIByName(allTexts, greenPointsNumbersName);
 
         if (greenPointsParent == null)
-            greenPointsParent = GameObject.Find(greenPointsParentName)?.GetComponent<TextMeshProUGUI>();
+            greenPointsParent = FindUIByName(allTexts, greenPointsParentName);
 
         Debug.Log($"[NetworkedUIManager] Player {OwnerClientId} UI elements assigned:" +
                   $"\n - Spell Status: {(spellStatusText ? spellStatusText.name : "Not Found")}" +
@@ -50,6 +53,18 @@ public class NetworkedUIManager : NetworkBehaviour
                   $"\n - Green Points: {(greenPointsText ? greenPointsText.name : "Not Found")}" +
                   $"\n - Green Points Parent: {(greenPointsParent ? greenPointsParent.name : "Not Found")}");
     }
+
+    // Helper method
+    private TextMeshProUGUI FindUIByName(TextMeshProUGUI[] list, string targetName)
+    {
+        foreach (var t in list)
+        {
+            if (t != null && t.name == targetName)
+                return t;
+        }
+        return null;
+    }
+
 
     public void UpdateSpellStatus(string spellName, Color? spellColor = null)
     {

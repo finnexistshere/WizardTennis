@@ -5,7 +5,7 @@ public class PlayerReferenceRelay : MonoBehaviour
 {
     [Header("Global Scene References")]
     public NetworkedSpellEffects spellEffects;
-    public ScoreManager scoreManager;
+    public NetworkedScoreManager scoreManager;
 
     [Header("Player-Specific References")]
     public Transform hostAimTarget;

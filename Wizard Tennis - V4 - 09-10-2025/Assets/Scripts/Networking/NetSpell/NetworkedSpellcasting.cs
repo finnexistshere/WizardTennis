@@ -515,9 +515,31 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 break;
 
             case "Pisces":
-                if (caster != null && SpellEffects != null && SpellEffects.orbiterPrefab != null && SpellEffects.orbiterPrefab.GetComponent<NetworkObject>() != null)
                 {
-                    effectNetId = SpawnPrefabOnServer(SpellEffects.orbiterPrefab, caster.transform.position, caster.transform.rotation);
+                    if (caster != null &&
+                        SpellEffects != null &&
+                        SpellEffects.orbiterPrefab != null &&
+                        SpellEffects.orbiterPrefab.GetComponent<NetworkObject>() != null)
+                    {
+                        // Spawn
+                        ulong orbNetId = SpawnPrefabOnServer(
+                            SpellEffects.orbiterPrefab,
+                            caster.transform.position,
+                            caster.transform.rotation
+                        );
+
+                        // Try to fetch the actual spawned instance
+                        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(orbNetId, out NetworkObject orbNetObj))
+                        {
+                            Orbiter orb = orbNetObj.GetComponent<Orbiter>();
+                            if (orb != null)
+                            {
+                                orb.speed = 180f;   // <<< SET YOUR SPEED HERE
+                            }
+                        }
+
+                        effectNetId = orbNetId;
+                    }
                 }
                 break;
 

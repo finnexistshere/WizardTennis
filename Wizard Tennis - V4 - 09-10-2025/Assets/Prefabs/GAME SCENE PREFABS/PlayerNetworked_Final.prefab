@@ -430,7 +430,7 @@ MonoBehaviour:
   greenPointsParent: {fileID: 0}
   spellStatusName: SpellStatusText
   rallyCountName: RallyCountText
-  greenPointsNumbersName: GreenPointsNumbers
+  greenPointsNumbersName: GreenNumbers
   greenPointsParentName: GreenPointsText
 --- !u!114 &-4604589612311379872
 MonoBehaviour:

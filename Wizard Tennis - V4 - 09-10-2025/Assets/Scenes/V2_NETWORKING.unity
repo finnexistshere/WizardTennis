@@ -16934,7 +16934,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spellEffects: {fileID: 1594825199}
-  scoreManager: {fileID: 0}
+  scoreManager: {fileID: 1578197342}
   hostAimTarget: {fileID: 319551048}
   clientAimTarget: {fileID: 2036865726}
   hostIKRig: {fileID: 0}
@@ -35571,7 +35571,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -47929,7 +47929,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
