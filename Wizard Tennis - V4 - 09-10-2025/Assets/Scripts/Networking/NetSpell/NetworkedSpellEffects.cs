@@ -549,8 +549,24 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Gemini":
+                if (caster != null)
+                {
+                    var casterMCM = caster.GetComponent<MainCharacterMovement>();
+                    if (casterMCM != null)
+                    {
+                        // Start mimicking behavior
+                        StartCoroutine(MirrorMovement(effectObj, casterMCM, 5f));
+                        Debug.Log($"[SpellEffects] Gemini now mirrors {caster.name}'s movement");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[SpellEffects] Gemini: caster has no MainCharacterMovement!");
+                    }
+                }
+
                 StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
                 break;
+
 
             case "Pisces":
                 if (caster != null)
@@ -561,7 +577,14 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Tether":
                 var tetherComp = effectObj.GetComponent<Tether>();
                 if (tetherComp != null && target != null)
+                {
                     tetherComp.Player = target.transform;
+                    Debug.Log($"[SpellEffects] Tether assigned to {target.name}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[SpellEffects] Tether setup failed - comp: {tetherComp != null}, target: {target != null}");
+                }
                 StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
                 break;
 
@@ -847,47 +870,56 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Fireball":
-                // Fireball: Mark the ball so when opponent hits it, they get knocked back
-                // The knockback is triggered in NetworkedBall.CheckFireballHit()
-                resetOnOppHit = true;
+                resetOnOppHit = true;  // This tells the system to reset when opponent hits
+                resetOnPlrHit = false; // Don't reset when player hits
 
-                // Mark the ball with the caster's info so we know who cast Fireball
-                GameObject ballObj = GameObject.FindWithTag("Ball");
-                if (ballObj != null)
+                // Mark the ball with Fireball status
+                GameObject fireballBallObj = GameObject.FindWithTag("Ball");
+                if (fireballBallObj != null)
                 {
-                    CollisionTrackerBall tracker = ballObj.GetComponent<CollisionTrackerBall>();
+                    CollisionTrackerBall tracker = fireballBallObj.GetComponent<CollisionTrackerBall>();
                     if (tracker != null)
                     {
-                        // Mark that this is OUR fireball (not opponent's)
-                        tracker.LastHitWizard = "Player";
+                        tracker.LastHitWizard = "Player"; // Mark as our ball
                     }
                 }
 
-                Debug.Log($"[SpellEffects] Fireball armed - when opponent hits the ball, they'll be knocked back");
+                Debug.Log("[SpellEffects] Fireball armed - opponent will be knocked back on hit");
                 break;
 
             case "Shadow":
-                if (!oppHitSpell)
+                if (opponent != null)
                 {
-                    oppHitSpell = true;
+                    Debug.Log($"[SpellEffects] Casting Shadow - making {player.name} invisible to {opponent.name}");
+                    ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
+                    resetOnOppHit = true;
                 }
                 else
                 {
-                    // Make caster invisible to OPPONENT only (not to self)
-                    // Request server to apply invisibility
-                    if (opponent != null)
-                    {
-                        ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
-                    }
-
-                    resetOnOppHit = true;
+                    Debug.LogWarning("[SpellEffects] Shadow cast failed - no opponent found");
                 }
                 break;
 
             case "Green":
                 var greenBall = player.GetComponent<NetworkedBall>();
-                if (greenBall != null) greenBall.green = true;
-                Invoke(nameof(resetSpellEffect), 1f);
+                if (greenBall != null)
+                {
+                    greenBall.green = true;
+
+                    // Update UI on caster's client
+                    if (IsOwner)
+                    {
+                        var uiManager = player.GetComponent<NetworkedUIManager>();
+                        if (uiManager != null)
+                        {
+                            uiManager.UpdateSpellStatus("Green Active", Color.green);
+                        }
+                    }
+
+                    Debug.Log("[SpellEffects] Green spell activated");
+                }
+
+                // Green lasts indefinitely until resetF
                 break;
 
             case "Stone":
@@ -921,26 +953,64 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Jolly":
                 if (player != null && jollyPrefab != null)
                 {
-                    // Expand collider
+                    // Expand player collider
                     var capsule = player.GetComponent<CapsuleCollider>();
-                    if (capsule != null) capsule.radius = 2;
+                    if (capsule != null)
+                    {
+                        capsule.radius = 2;
+                        Debug.Log("[SpellEffects] Jolly - expanded collider");
+                    }
 
-                    Transform racketTransform = player.transform.GetChild(2)?.GetChild(1)?.GetChild(0)?.GetChild(0)?.GetChild(1)?.GetChild(0)?.GetChild(0);
+                    // Find racket transform - use more reliable path
+                    Transform racketTransform = null;
+
+                    // Try to find by name (more reliable)
+                    Transform[] allChildren = player.GetComponentsInChildren<Transform>();
+                    foreach (Transform child in allChildren)
+                    {
+                        if (child.name.Contains("Racket") || child.name.Contains("racket"))
+                        {
+                            racketTransform = child;
+                            Debug.Log($"[SpellEffects] Found racket: {child.name}");
+                            break;
+                        }
+                    }
+
+                    // Fallback to hierarchy path if name search fails
+                    if (racketTransform == null)
+                    {
+                        Transform body = player.transform.Find("Body");
+                        if (body != null)
+                        {
+                            // Navigate down to racket
+                            racketTransform = body.Find("Armature")?.Find("Hips")?.Find("Spine")?.Find("Spine.001")
+                                ?.Find("Shoulder.R")?.Find("Upper_Arm.R")?.Find("Forearm.R")?.Find("Hand.R");
+
+                            if (racketTransform != null)
+                                Debug.Log($"[SpellEffects] Found racket via hierarchy at {racketTransform.position}");
+                        }
+                    }
+
                     if (racketTransform != null)
                     {
+                        // Spawn at racket position
                         SpawnEffectServerRpc("Jolly", casterClientId, targetClientId, racketTransform.position, Quaternion.identity);
+                        Debug.Log($"[SpellEffects] Jolly spawn requested at {racketTransform.position}");
                     }
                     else
                     {
-                        Debug.Log("Racket Transform is Null!");
+                        Debug.LogWarning("[SpellEffects] Jolly - could not find racket transform!");
+                        // Fallback: spawn at player position
+                        SpawnEffectServerRpc("Jolly", casterClientId, targetClientId, player.transform.position, Quaternion.identity);
                     }
                 }
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
 
             case "Mud":
-                resetOnOppHit = true;
-                resetOnBounce = true;
+                resetOnOppHit = true;  // Will spawn mud when opponent hits
+                resetOnBounce = true;  // Will spawn mud when ball bounces
+                Debug.Log("[SpellEffects] Mud spell armed");
                 break;
 
             case "Warp":
@@ -959,7 +1029,14 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 {
                     Vector3 tetherPos = opponent.transform.position;
                     tetherPos.y = 1.45f;
+
+                    Debug.Log($"[SpellEffects] Spawning Tether at {tetherPos} for opponent {opponent.name}");
+
                     SpawnEffectServerRpc("Tether", casterClientId, targetClientId, tetherPos, Quaternion.identity);
+                }
+                else
+                {
+                    Debug.LogWarning($"[SpellEffects] Tether spawn failed - opponent: {opponent != null}, prefab: {tetherPrefab != null}");
                 }
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
@@ -988,6 +1065,12 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     private void PerformBlink(GameObject player)
     {
+        if (player == null)
+        {
+            Debug.LogWarning("[SpellEffects] Blink failed - no player");
+            return;
+        }
+
         Vector3 input = Vector3.zero;
 
         KeyCode forward = KeyCode.W;
@@ -1003,38 +1086,56 @@ public class NetworkedSpellEffects : NetworkBehaviour
             right = KeyCode.RightArrow;
         }
 
+        // Build movement direction (multiply by 3 for distance)
         if (Input.GetKey(forward)) input.z += 3;
         if (Input.GetKey(backward)) input.z -= 3;
         if (Input.GetKey(right)) input.x += 3;
         if (Input.GetKey(left)) input.x -= 3;
 
-        Vector3 moveDirection = new Vector3(input.x, 0, input.z);
-        Vector3 testPos = player.transform.position - moveDirection;
+        // If no input, blink forward by default
+        if (input.magnitude < 0.1f)
+        {
+            input = player.transform.forward * 3f;
+            input.y = 0;
+        }
 
+        // Calculate new position
+        Vector3 newPos = player.transform.position + input;
+
+        // Clamp to court boundaries
         if (player.transform.position.z > 0)
         {
-            if (testPos.z > 10.9) testPos.z = 10.9f;
-            if (testPos.z < 0.5) testPos.z = 0.5f;
+            newPos.z = Mathf.Clamp(newPos.z, 0.5f, 10.9f);
         }
         else
         {
-            if (testPos.z > -1) testPos.z = -1;
-            if (testPos.z < -11.5) testPos.z = -11.5f;
+            newPos.z = Mathf.Clamp(newPos.z, -11.5f, -1f);
         }
 
-        if (testPos.x > 4.9) testPos.x = 4.9f;
-        if (testPos.x < -4.9) testPos.x = -4.9f;
+        newPos.x = Mathf.Clamp(newPos.x, -4.9f, 4.9f);
+        newPos.y = player.transform.position.y; // Keep same height
 
+        Debug.Log($"[SpellEffects] Blink: {player.transform.position} -> {newPos}");
+
+        // Disable components temporarily
         var movement = player.GetComponent<MainCharacterMovement>();
         var controller = player.GetComponent<CharacterController>();
 
         if (movement != null) movement.enabled = false;
         if (controller != null) controller.enabled = false;
 
-        player.transform.position = testPos;
+        // Teleport
+        player.transform.position = newPos;
 
-        if (movement != null) movement.enabled = true;
+        // Re-enable components
         if (controller != null) controller.enabled = true;
+        if (movement != null)
+        {
+            movement.enabled = true;
+            movement.ForceMovementRefresh(); // Reset velocity/grounding
+        }
+
+        Debug.Log($"[SpellEffects] Blink completed to {player.transform.position}");
     }
 
     public void resetSpellEffect()
@@ -1160,13 +1261,37 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 }
 
                 float ballX = Random.Range(min, max);
-                GameObject Ball1 = GameObject.FindWithTag("Ball");
+                GameObject warpBall = GameObject.FindWithTag("Ball");
 
-                if (Ball1 != null)
+                if (warpBall != null)
                 {
-                    Vector3 ballPos = Ball1.transform.position;
+                    // Disable physics temporarily
+                    Rigidbody ballRb = warpBall.GetComponent<Rigidbody>();
+                    bool hadGravity = true;
+
+                    if (ballRb != null)
+                    {
+                        hadGravity = ballRb.useGravity;
+                        ballRb.useGravity = false;
+                        ballRb.linearVelocity = Vector3.zero;
+                    }
+
+                    // Warp position
+                    Vector3 ballPos = warpBall.transform.position;
                     ballPos.x = ballX;
-                    Ball1.transform.position = ballPos;
+                    warpBall.transform.position = ballPos;
+
+                    Debug.Log($"[SpellEffects] Warped ball to x={ballX}");
+
+                    // Re-enable physics
+                    if (ballRb != null)
+                    {
+                        ballRb.useGravity = hadGravity;
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[SpellEffects] Warp failed - ball not found");
                 }
                 break;
 
@@ -1349,22 +1474,32 @@ public class NetworkedSpellEffects : NetworkBehaviour
     private IEnumerator ApplyChronosAfterExplanation()
     {
         GameObject player = GetPlayer();
-        if (player == null) yield break;
+        if (player == null)
+        {
+            Debug.LogError("[SpellEffects] Chronos failed - no player found");
+            yield break;
+        }
 
+        // Wait for any existing slowdown to finish
         yield return new WaitUntil(() => !SpellEffects.isSpellSlowdownActive);
         yield return new WaitForSecondsRealtime(0.05f);
 
         lastOriginalTimeScale = Time.timeScale;
         isSpellSlowdownActive = true;
+
+        // Apply time scale
         Time.timeScale = 0.1f;
+        Debug.Log($"[SpellEffects] Chronos applied - timeScale: {Time.timeScale}");
 
         var mcm = player.GetComponent<MainCharacterMovement>();
         if (mcm != null)
         {
             mcm.speed = 4f;
             mcm.gravity = 5f;
+            Debug.Log($"[SpellEffects] Chronos movement adjusted - speed: {mcm.speed}, gravity: {mcm.gravity}");
         }
 
+        // Show explanation if enabled
         if (OptionsManager.Instance != null && OptionsManager.Instance.spellTips && !string.IsNullOrEmpty(spellName))
         {
             if (explanationRoutine != null) StopCoroutine(explanationRoutine);
@@ -1376,9 +1511,12 @@ public class NetworkedSpellEffects : NetworkBehaviour
             yield return new WaitForSecondsRealtime(2.5f);
         }
 
+        // Restore time scale
         Time.timeScale = lastOriginalTimeScale;
         isSpellSlowdownActive = false;
+        Debug.Log($"[SpellEffects] Chronos ended - timeScale restored: {Time.timeScale}");
 
+        // Reset movement
         if (mcm != null)
         {
             mcm.speed = 7f;
@@ -1453,18 +1591,32 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     private IEnumerator HandleOrbiter(GameObject orbiter, Transform center, float duration)
     {
-        if (orbiter == null || center == null) yield break;
+        if (orbiter == null || center == null)
+        {
+            Debug.LogWarning("[SpellEffects] Orbiter setup failed - null reference");
+            yield break;
+        }
+
+        Debug.Log($"[SpellEffects] Orbiter following {center.name} for {duration}s");
 
         float elapsed = 0f;
+        float spinSpeed = -360f; // degrees per second
+
         while (elapsed < duration)
         {
             if (orbiter == null || center == null) yield break;
-            orbiter.transform.RotateAround(center.position, Vector3.up, 180f * Time.deltaTime);
+
+            // Follow caster
+            orbiter.transform.position = center.position;
+
+            // Spin on its own local Y axis
+            orbiter.transform.Rotate(0f, spinSpeed * Time.deltaTime, 0f, Space.Self);
+
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        // Despawn is handled by DespawnEffectAfterDelay
+        Debug.Log("[SpellEffects] Orbiter duration complete");
     }
 
     public void DeleteIceBlock()
@@ -1524,6 +1676,33 @@ public class NetworkedSpellEffects : NetworkBehaviour
             }
 
             resetSpellEffect();
+        }
+    }
+
+    private IEnumerator MirrorMovement(GameObject gemini, MainCharacterMovement casterMCM, float duration)
+    {
+        float elapsed = 0f;
+
+        // Cache transform for speed
+        Transform geminiT = gemini.transform;
+        Transform casterT = casterMCM.transform;
+
+        while (elapsed < duration && gemini != null && casterMCM != null)
+        {
+            elapsed += Time.deltaTime;
+
+            // --- COPY MOVEMENT INPUT ---
+            Vector3 casterVelocity = casterMCM.controller.velocity;
+
+            // --- MIRROR POSITION (optional, matches your singleplayer logic) ---
+            Vector3 mirroredPos = casterT.position;
+            mirroredPos.x = -mirroredPos.x;
+            geminiT.position = mirroredPos;
+
+            // --- MATCH ROTATION ---
+            geminiT.rotation = casterT.rotation;
+
+            yield return null;
         }
     }
 }

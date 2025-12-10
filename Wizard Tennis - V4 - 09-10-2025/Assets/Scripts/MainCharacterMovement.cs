@@ -14,7 +14,7 @@ public class MainCharacterMovement : MonoBehaviour
     public float bounceFrequency = 8.0f;  // How fast it bounces
 
     private Vector3 moveDirection = Vector3.zero;
-    private CharacterController controller;
+    public CharacterController controller;
     public Rigidbody rb;
     private float bounceTimer = 0f;
     private Vector3 meshOriginalLocalPos;
