@@ -595,13 +595,20 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Jolly":
                 if (caster != null)
                 {
-                    Transform racketTransform = caster.transform.GetChild(2)?.GetChild(1)?.GetChild(0)?.GetChild(0)?.GetChild(1)?.GetChild(0)?.GetChild(0);
+                    Transform racketTransform = caster.transform.GetChild(2)?.GetChild(1)?.GetChild(0)
+                        ?.GetChild(0)?.GetChild(1)?.GetChild(0)?.GetChild(0);
+
                     if (racketTransform != null)
                     {
-                        Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
-                        effectObj.transform.localRotation = jollyRot;
+                        // DO NOT parent (otherwise rotation is inherited)
+                        // effectObj.transform.SetParent(racketTransform, false); // REMOVE THIS
+
+                        // Keep Jolly's rotation and scale
+                        effectObj.transform.rotation = Quaternion.Euler(0, 90, 0);
                         effectObj.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-                        StartCoroutine(FollowTransform(effectObj, racketTransform, 5f));
+
+                        // Follow POSITION ONLY
+                        StartCoroutine(FollowPositionOnly(effectObj.transform, racketTransform));
 
                         // Hide racket mesh
                         Transform racketMesh = caster.transform.GetChild(2)?.GetChild(0)?.GetChild(4)?.GetChild(0)?.GetChild(0);
@@ -609,8 +616,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
                             racketMesh.gameObject.SetActive(false);
                     }
                 }
+
                 StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
                 break;
+
 
             case "Mud":
                 StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
@@ -1390,6 +1399,17 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             mcm.speed = originalMcmSpeed;
             Debug.Log($"[SpellEffects] Restored {target.name} movement to {originalMcmSpeed}");
+        }
+    }
+
+    // Helper function for Jolly
+    private IEnumerator FollowPositionOnly(Transform obj, Transform target)
+    {
+        while (obj != null && target != null)
+        {
+            obj.position = target.position;  // follow position
+                                             // ignore target.rotation completely
+            yield return null;
         }
     }
 
