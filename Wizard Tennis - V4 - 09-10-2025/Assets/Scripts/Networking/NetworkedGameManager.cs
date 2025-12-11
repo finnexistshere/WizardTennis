@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using System.Collections;
 using Unity.Netcode;
+using Unity.Netcode.Components;
 
 public class NetworkedGameManager : NetworkBehaviour
 {
@@ -145,64 +146,42 @@ public class NetworkedGameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Resets both players to their spawn positions
+    /// Resets both players to their spawn positions (server only)
     /// </summary>
     public void ResetPlayersToSpawn()
     {
         if (!IsServer)
         {
-            Debug.LogWarning("[NetworkedGameManager] ResetPlayersToSpawn called on client - should only be called on server!");
+            Debug.LogWarning("[NetworkedGameManager] ResetPlayersToSpawn called on client - only server can reset.");
             return;
         }
 
         Debug.Log("[NetworkedGameManager] Starting player reset...");
 
-        // Reset both players on server
         if (hostPlayer != null && hostPlayerSpawn != null)
         {
-            Debug.Log($"[NetworkedGameManager] Resetting host from {hostPlayer.transform.position} to {hostPlayerSpawn.position}");
-            ResetPlayerPosition(hostPlayer, hostPlayerSpawn);
-        }
-        else
-        {
-            Debug.LogWarning($"[NetworkedGameManager] Cannot reset host: hostPlayer={hostPlayer != null}, hostPlayerSpawn={hostPlayerSpawn != null}");
+            TeleportHostClientRpc(hostPlayerSpawn.position, hostPlayerSpawn.rotation);
         }
 
         if (clientPlayer != null && clientPlayerSpawn != null)
         {
-            Debug.Log($"[NetworkedGameManager] Resetting client from {clientPlayer.transform.position} to {clientPlayerSpawn.position}");
-            ResetPlayerPosition(clientPlayer, clientPlayerSpawn);
+            TeleportClientClientRpc(clientPlayerSpawn.position, clientPlayerSpawn.rotation);
         }
-        else
-        {
-            Debug.LogWarning($"[NetworkedGameManager] Cannot reset client: clientPlayer={clientPlayer != null}, clientPlayerSpawn={clientPlayerSpawn != null}");
-        }
-
-        Debug.Log("[NetworkedGameManager] Players reset to spawn positions.");
     }
 
-    /// <summary>
-    /// Resets a player's position and velocity (server-side only)
-    /// </summary>
-    private void ResetPlayerPosition(GameObject player, Transform spawnPoint)
+    [ClientRpc]
+    private void TeleportHostClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams rpcParams = default)
     {
-        if (!IsServer || player == null || spawnPoint == null) return;
+        if (!IsHost) return; // only execute on host
 
-        // Get NetworkObject to ensure proper network synchronization
-        NetworkObject netObj = player.GetComponent<NetworkObject>();
+        GameObject player = NetworkManager.Singleton.LocalClient.PlayerObject.gameObject;
 
-        // Disable CharacterController temporarily if present
         CharacterController cc = player.GetComponent<CharacterController>();
-        if (cc != null)
-        {
-            cc.enabled = false;
-        }
+        if (cc != null) cc.enabled = false;
 
-        // Reset position and rotation
-        player.transform.position = spawnPoint.position;
-        player.transform.rotation = spawnPoint.rotation;
+        player.transform.position = position;
+        player.transform.rotation = rotation;
 
-        // Reset velocity if using Rigidbody
         Rigidbody rb = player.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -210,61 +189,46 @@ public class NetworkedGameManager : NetworkBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
-        // Re-enable CharacterController
-        if (cc != null)
-        {
-            cc.enabled = true;
-        }
-
-        // Force network transform update
-        if (netObj != null)
-        {
-            // Trigger a ClientRpc to ensure all clients see the teleport
-            TeleportPlayerClientRpc(netObj.NetworkObjectId, spawnPoint.position, spawnPoint.rotation);
-        }
-
-        Debug.Log($"[NetworkedGameManager] Reset player {netObj?.OwnerClientId} to spawn at {spawnPoint.position}");
+        if (cc != null) cc.enabled = true;
     }
 
-    /// <summary>
-    /// ClientRpc to ensure position is updated on all clients
-    /// </summary>
     [ClientRpc]
-    private void TeleportPlayerClientRpc(ulong networkObjectId, Vector3 position, Quaternion rotation)
+    private void TeleportClientClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams rpcParams = default)
     {
-        // Find the network object
-        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(networkObjectId, out NetworkObject netObj))
+        if (IsHost) return; // only execute on non-host clients
+
+        GameObject player = NetworkManager.Singleton.LocalClient.PlayerObject.gameObject;
+
+        CharacterController cc = player.GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+
+        player.transform.position = position;
+        player.transform.rotation = rotation;
+
+        Rigidbody rb = player.GetComponent<Rigidbody>();
+        if (rb != null)
         {
-            GameObject player = netObj.gameObject;
-
-            // Disable CharacterController temporarily if present
-            CharacterController cc = player.GetComponent<CharacterController>();
-            if (cc != null)
-            {
-                cc.enabled = false;
-            }
-
-            // Set position and rotation
-            player.transform.position = position;
-            player.transform.rotation = rotation;
-
-            // Reset velocities
-            Rigidbody rb = player.GetComponent<Rigidbody>();
-            if (rb != null)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
-
-            // Re-enable CharacterController
-            if (cc != null)
-            {
-                cc.enabled = true;
-            }
-
-            Debug.Log($"[NetworkedGameManager] Client received teleport for player {netObj.OwnerClientId} to {position}");
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
+
+        if (cc != null) cc.enabled = true;
     }
+
+    private IEnumerator ResetPlayersAfterDelay(float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+
+        if (IsServer)
+        {
+            ResetPlayersToSpawn();
+        }
+
+        // Hide UI for all clients
+        HideGameOverUIClientRpc();
+    }
+
+
 
     /// <summary>
     /// Locks all pickup spawning (used by default at game start).
@@ -427,7 +391,7 @@ public class NetworkedGameManager : NetworkBehaviour
         }
 
         // -------------------------------------------------------
-        // STEP 1 — Find valid spawn position
+        // STEP 1 ï¿½ Find valid spawn position
         // -------------------------------------------------------
         Vector3 spawnPos = Vector3.zero;
         bool validPos = false;
@@ -459,7 +423,7 @@ public class NetworkedGameManager : NetworkBehaviour
         if (!validPos) return;
 
         // -------------------------------------------------------
-        // STEP 2 — Choose a pickup *that is allowed*
+        // STEP 2 ï¿½ Choose a pickup *that is allowed*
         // -------------------------------------------------------
         GameObject prefab = GetWeightedPickupFiltered(spellcasting, activePickups);
         if (prefab == null)
@@ -469,7 +433,7 @@ public class NetworkedGameManager : NetworkBehaviour
         }
 
         // -------------------------------------------------------
-        // STEP 3 — Instantiate & network spawn
+        // STEP 3 ï¿½ Instantiate & network spawn
         // -------------------------------------------------------
         GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
 
@@ -648,43 +612,32 @@ public class NetworkedGameManager : NetworkBehaviour
         StartNextRound();
     }
 
-    /// <summary>
-    /// Starts the next round: removes balls, resets players, resumes game
-    /// </summary>
     public void StartNextRound()
     {
         Debug.Log("[NetworkedGameManager] StartNextRound called");
 
-        // Resume time FIRST so physics can update
+        // Resume time
         Time.timeScale = 1f;
         isPaused = false;
 
-        // Remove all balls from the scene
+        // Remove all balls (server only)
         RemoveAllBalls();
 
-        // Reset players after delay
+        // Reset players after short delay
         StartCoroutine(ResetPlayersAfterDelay(0.1f));
 
-
-        // Hide UI on all clients
+        // Hide UI
         HideGameOverUIClientRpc();
 
-        // Set hitting mode on all players back to serving
-        SetPlayersToServingState();
+        // Set all players' balls back to serving
+        if (IsServer)
+            SetPlayersToServingState();
 
+        // Ensure local input is active
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
 
         Debug.Log("[NetworkedGameManager] Next round started.");
-    }
-
-    private IEnumerator ResetPlayersAfterFrame()
-    {
-        // Wait a frame for time scale to take effect
-        yield return null;
-
-        Debug.Log("[NetworkedGameManager] Executing player reset after frame delay");
-        ResetPlayersToSpawn();
     }
 
     /// <summary>
@@ -799,24 +752,6 @@ public class NetworkedGameManager : NetworkBehaviour
         Time.timeScale = 0f;
         if (gameOverUI != null) gameOverUI.SetActive(true);
         if (WinLoseText != null) WinLoseText.text = message;
-    }
-
-    private IEnumerator ResetPlayersAfterDelay(float delay)
-    {
-        yield return new WaitForSecondsRealtime(delay);
-
-        // Resume time first
-        Time.timeScale = 1f;
-        yield return null; // Wait one frame
-
-        // Then reset players
-        if (IsServer)
-        {
-            ResetPlayersToSpawn();
-        }
-
-        if (gameOverUI != null)
-            gameOverUI.SetActive(false);
     }
 
     public void GameOverFinal(string message)

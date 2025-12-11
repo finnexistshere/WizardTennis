@@ -42062,7 +42062,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkedSpellManager
   ShowTopMostFoldoutHeaderGroup: 1
-  spellEffects: {fileID: 0}
+  spellEffects: {fileID: 1594825199}
   tennisAI: {fileID: 0}
 --- !u!114 &1594825199
 MonoBehaviour:

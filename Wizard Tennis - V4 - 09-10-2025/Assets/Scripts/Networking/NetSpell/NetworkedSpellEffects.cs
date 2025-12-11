@@ -1284,16 +1284,25 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 resetOnOppHit = false;
                 resetOnBounce = false;
 
-                if (mudPrefab != null)
+                if (mudPrefab != null && opponent != null)
                 {
-                    GameObject Ball = GameObject.FindWithTag("Ball");
-                    if (Ball != null)
+                    // Raycast downward from the opponent’s position
+                    Vector3 rayOrigin = opponent.transform.position + Vector3.up * 1f;
+
+                    if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 5f))
                     {
-                        Vector3 spawnPos = Ball.transform.position;
-                        spawnPos.y = 0.94f;
+                        Vector3 spawnPos = hit.point;
 
                         ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                        SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
+
+                        if (IsServer)
+                            SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
+                        else
+                            SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("Mud cast failed: Could not find ground under opponent.");
                     }
                 }
                 break;
