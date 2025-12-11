@@ -158,30 +158,63 @@ public class NetworkedGameManager : NetworkBehaviour
 
         Debug.Log("[NetworkedGameManager] Starting player reset...");
 
+        // Try to find players if references are null
+        if (hostPlayer == null || clientPlayer == null)
+        {
+            Debug.Log("[NetworkedGameManager] Player references null, attempting to find...");
+            TryFindPlayers();
+        }
+
         if (hostPlayer != null && hostPlayerSpawn != null)
         {
+            Debug.Log($"[NetworkedGameManager] Teleporting host to {hostPlayerSpawn.position}");
             TeleportHostClientRpc(hostPlayerSpawn.position, hostPlayerSpawn.rotation);
+        }
+        else
+        {
+            Debug.LogWarning($"[NetworkedGameManager] Cannot teleport host - player: {hostPlayer != null}, spawn: {hostPlayerSpawn != null}");
         }
 
         if (clientPlayer != null && clientPlayerSpawn != null)
         {
+            Debug.Log($"[NetworkedGameManager] Teleporting client to {clientPlayerSpawn.position}");
             TeleportClientClientRpc(clientPlayerSpawn.position, clientPlayerSpawn.rotation);
+        }
+        else
+        {
+            Debug.LogWarning($"[NetworkedGameManager] Cannot teleport client - player: {clientPlayer != null}, spawn: {clientPlayerSpawn != null}");
         }
     }
 
     [ClientRpc]
     private void TeleportHostClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams rpcParams = default)
     {
+        Debug.Log($"[NetworkedGameManager-Client] TeleportHost RPC received - IsHost: {IsHost}");
+
         if (!IsHost) return; // only execute on host
 
-        GameObject player = NetworkManager.Singleton.LocalClient.PlayerObject.gameObject;
+        GameObject player = NetworkManager.Singleton.LocalClient.PlayerObject?.gameObject;
 
+        if (player == null)
+        {
+            Debug.LogError("[NetworkedGameManager-Client] Host player object is null!");
+            return;
+        }
+
+        Debug.Log($"[NetworkedGameManager-Client] Teleporting host player to {position}");
+
+        // Disable character controller
         CharacterController cc = player.GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = false;
+        MainCharacterMovement mcm = player.GetComponent<MainCharacterMovement>();
 
+        if (cc != null) cc.enabled = false;
+        if (mcm != null) mcm.enabled = false;
+
+        // Teleport
         player.transform.position = position;
         player.transform.rotation = rotation;
 
+        // Reset physics
         Rigidbody rb = player.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -189,22 +222,46 @@ public class NetworkedGameManager : NetworkBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
+        // Re-enable
         if (cc != null) cc.enabled = true;
+        if (mcm != null)
+        {
+            mcm.enabled = true;
+            mcm.ForceMovementRefresh();
+        }
+
+        Debug.Log($"[NetworkedGameManager-Client] Host teleport complete");
     }
 
     [ClientRpc]
     private void TeleportClientClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams rpcParams = default)
     {
+        Debug.Log($"[NetworkedGameManager-Client] TeleportClient RPC received - IsHost: {IsHost}");
+
         if (IsHost) return; // only execute on non-host clients
 
-        GameObject player = NetworkManager.Singleton.LocalClient.PlayerObject.gameObject;
+        GameObject player = NetworkManager.Singleton.LocalClient.PlayerObject?.gameObject;
 
+        if (player == null)
+        {
+            Debug.LogError("[NetworkedGameManager-Client] Client player object is null!");
+            return;
+        }
+
+        Debug.Log($"[NetworkedGameManager-Client] Teleporting client player to {position}");
+
+        // Disable character controller
         CharacterController cc = player.GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = false;
+        MainCharacterMovement mcm = player.GetComponent<MainCharacterMovement>();
 
+        if (cc != null) cc.enabled = false;
+        if (mcm != null) mcm.enabled = false;
+
+        // Teleport
         player.transform.position = position;
         player.transform.rotation = rotation;
 
+        // Reset physics
         Rigidbody rb = player.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -212,23 +269,35 @@ public class NetworkedGameManager : NetworkBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
+        // Re-enable
         if (cc != null) cc.enabled = true;
+        if (mcm != null)
+        {
+            mcm.enabled = true;
+            mcm.ForceMovementRefresh();
+        }
+
+        Debug.Log($"[NetworkedGameManager-Client] Client teleport complete");
     }
 
     private IEnumerator ResetPlayersAfterDelay(float delay)
     {
+        Debug.Log($"[NetworkedGameManager] Waiting {delay}s before reset...");
+
+        // Use realtime so it works even if timeScale was 0
         yield return new WaitForSecondsRealtime(delay);
+
+        Debug.Log("[NetworkedGameManager] Delay complete, resetting players...");
 
         if (IsServer)
         {
             ResetPlayersToSpawn();
+            Debug.Log("[NetworkedGameManager] Players reset complete");
         }
 
         // Hide UI for all clients
         HideGameOverUIClientRpc();
     }
-
-
 
     /// <summary>
     /// Locks all pickup spawning (used by default at game start).
@@ -608,17 +677,37 @@ public class NetworkedGameManager : NetworkBehaviour
 
     private IEnumerator StartNextRoundAfterDelay(float delay)
     {
+        Debug.Log($"[NetworkedGameManager] Waiting {delay}s before starting next round...");
+
         yield return new WaitForSecondsRealtime(delay);
-        StartNextRound();
+
+        Debug.Log("[NetworkedGameManager] Delay complete, calling StartNextRound");
+
+        if (IsServer)
+        {
+            StartNextRound();
+        }
     }
 
     public void StartNextRound()
     {
         Debug.Log("[NetworkedGameManager] StartNextRound called");
 
-        // Resume time
+        // CRITICAL: Only server should execute the main logic
+        if (!IsServer)
+        {
+            Debug.LogWarning("[NetworkedGameManager] StartNextRound called on client - ignoring");
+            return;
+        }
+
+        // Resume time FIRST (so coroutines work)
         Time.timeScale = 1f;
         isPaused = false;
+
+        Debug.Log("[NetworkedGameManager] Time scale restored to 1");
+
+        // Tell all clients to resume their time
+        ResumeTimeClientRpc();
 
         // Remove all balls (server only)
         RemoveAllBalls();
@@ -626,18 +715,22 @@ public class NetworkedGameManager : NetworkBehaviour
         // Reset players after short delay
         StartCoroutine(ResetPlayersAfterDelay(0.1f));
 
-        // Hide UI
-        HideGameOverUIClientRpc();
-
         // Set all players' balls back to serving
-        if (IsServer)
-            SetPlayersToServingState();
+        SetPlayersToServingStateClientRpc();
 
-        // Ensure local input is active
+        Debug.Log("[NetworkedGameManager] Next round started.");
+    }
+
+    [ClientRpc]
+    private void ResumeTimeClientRpc()
+    {
+        Time.timeScale = 1f;
+        isPaused = false;
+
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
 
-        Debug.Log("[NetworkedGameManager] Next round started.");
+        Debug.Log("[NetworkedGameManager-Client] Time resumed");
     }
 
     /// <summary>
@@ -746,33 +839,64 @@ public class NetworkedGameManager : NetworkBehaviour
         }
     }
 
-    // Round over (after a point)
     public void GameOverRound(string message)
     {
-        Time.timeScale = 0f;
-        if (gameOverUI != null) gameOverUI.SetActive(true);
-        if (WinLoseText != null) WinLoseText.text = message;
+        Debug.Log($"[NetworkedGameManager] GameOverRound: {message}");
+
+        // Show UI on all clients
+        ShowGameOverUIClientRpc(message);
+
+        // After 3 seconds, start next round (server only)
+        if (IsServer)
+        {
+            StartCoroutine(StartNextRoundAfterDelay(3f));
+        }
     }
 
     public void GameOverFinal(string message)
     {
-        Time.timeScale = 0f;
-        if (gameOverUI != null) gameOverUI.SetActive(true);
-        if (WinLoseText != null) WinLoseText.text = message;
+        Debug.Log($"[NetworkedGameManager] GameOverFinal: {message}");
+
+        // Show UI on all clients
+        ShowGameOverUIClientRpc(message);
+
+        // Don't auto-restart - wait for player input
     }
 
-    private void SetPlayersToServingState()
+    // Add this new ClientRpc to show game over UI
+    [ClientRpc]
+    private void ShowGameOverUIClientRpc(string message)
     {
-        if (!IsServer) return;
+        Time.timeScale = 0f;
+        isPaused = true;
 
-        NetworkedBall[] allBalls = FindObjectsOfType<NetworkedBall>();
-        foreach (NetworkedBall ball in allBalls)
+        if (gameOverUI != null)
+            gameOverUI.SetActive(true);
+
+        if (WinLoseText != null)
+            WinLoseText.text = message;
+
+        if (playerInput != null)
+            playerInput.SwitchCurrentActionMap("UI");
+
+        Debug.Log($"[NetworkedGameManager-Client] Game over UI shown: {message}");
+    }
+
+    [ClientRpc]
+    private void SetPlayersToServingStateClientRpc()
+    {
+        Debug.Log($"[NetworkedGameManager-Client {NetworkManager.Singleton.LocalClientId}] Setting local balls to serving");
+
+        // Each client finds THEIR OWN NetworkedBall components
+        NetworkedBall[] localBalls = FindObjectsOfType<NetworkedBall>();
+
+        foreach (NetworkedBall ball in localBalls)
         {
-            // Only call on balls owned by players
+            // Only modify balls we own
             if (ball.IsOwner)
             {
                 ball.SetToServingState();
-                Debug.Log($"[NetworkedGameManager] Set player {ball.OwnerClientId} ball to SERVING state.");
+                Debug.Log($"[NetworkedGameManager-Client] Set ball to SERVING state");
             }
         }
     }
