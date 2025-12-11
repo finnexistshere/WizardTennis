@@ -511,7 +511,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 if (target != null)
                 {
                     StartCoroutine(FollowTransform(effectObj, target.transform, 5f));
-                    StartCoroutine(FreezeOpponentMovement(target, 5f));
+                    // REMOVED: Freeze is now handled by network RPCs
                 }
                 StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
                 break;
@@ -867,88 +867,102 @@ public class NetworkedSpellEffects : NetworkBehaviour
         ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
         ulong targetClientId = opponent?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
+        bool isLocalCaster = (player != null && NetworkManager.Singleton.LocalClientId == casterClientId);
+
+        Debug.Log($"[SpellEffects] Casting {spellName} - isLocalCaster: {isLocalCaster}");
+
         switch (spellName)
         {
             case "Lightning":
-                var mcm = player.GetComponent<MainCharacterMovement>();
-                if (mcm != null)
+                if (isLocalCaster)
                 {
-                    // Stop any existing lightning effect
-                    if (activeLightningCoroutine != null)
+                    var mcm = player.GetComponent<MainCharacterMovement>();
+                    if (mcm != null)
                     {
-                        StopCoroutine(activeLightningCoroutine);
-                    }
+                        if (activeLightningCoroutine != null)
+                            StopCoroutine(activeLightningCoroutine);
 
-                    // Start new lightning effect
-                    activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(mcm, 5f));
-                    Debug.Log("[SpellEffects] Lightning speed boost applied");
+                        activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(mcm, 5f));
+                        Debug.Log("[SpellEffects] Lightning speed boost applied");
+                    }
                 }
                 break;
 
             case "Ice":
-                if (opponent != null && iceBlockPrefab != null)
+                if (isLocalCaster && opponent != null && iceBlockPrefab != null)
                 {
-                    // Request server to spawn ice block
-                    SpawnEffectServerRpc("Ice", casterClientId, targetClientId, opponent.transform.position, opponent.transform.rotation);
+                    // Spawn ice block on opponent
+                    SpawnEffectServerRpc("Ice", casterClientId, targetClientId,
+                        opponent.transform.position, opponent.transform.rotation);
+
+                    // Freeze opponent across all clients
+                    FreezePlayerServerRpc(targetClientId, 5f);
+
+                    Debug.Log($"[SpellEffects] Ice spawned and freeze requested for opponent");
                 }
-                Invoke(nameof(resetSpellEffect), 5f);
+                ScheduleReset(5f);
                 break;
 
             case "Fireball":
-                resetOnOppHit = true;  // This tells the system to reset when opponent hits
-                resetOnPlrHit = false; // Don't reset when player hits
-
-                // Mark the ball with Fireball status
-                GameObject fireballBallObj = GameObject.FindWithTag("Ball");
-                if (fireballBallObj != null)
+                if (isLocalCaster)
                 {
-                    CollisionTrackerBall tracker = fireballBallObj.GetComponent<CollisionTrackerBall>();
-                    if (tracker != null)
-                    {
-                        tracker.LastHitWizard = "Player"; // Mark as our ball
-                    }
-                }
+                    resetOnOppHit = true;
+                    resetOnPlrHit = false;
 
-                Debug.Log("[SpellEffects] Fireball armed - opponent will be knocked back on hit");
+                    GameObject fireballBallObj = GameObject.FindWithTag("Ball");
+                    if (fireballBallObj != null)
+                    {
+                        CollisionTrackerBall tracker = fireballBallObj.GetComponent<CollisionTrackerBall>();
+                        if (tracker != null)
+                        {
+                            tracker.LastHitWizard = "Player";
+                        }
+                    }
+
+                    Debug.Log("[SpellEffects] Fireball armed");
+                }
                 break;
 
             case "Shadow":
-                if (opponent != null)
+                if (isLocalCaster && opponent != null)
                 {
                     Debug.Log($"[SpellEffects] Casting Shadow - making {player.name} invisible to {opponent.name}");
                     ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
                     resetOnOppHit = true;
                 }
-                else
+                else if (isLocalCaster)
                 {
                     Debug.LogWarning("[SpellEffects] Shadow cast failed - no opponent found");
                 }
                 break;
 
             case "Green":
-                var greenBall = player.GetComponent<NetworkedBall>();
-                if (greenBall != null)
+                if (isLocalCaster)
                 {
-                    greenBall.green = true;
-
-                    // Update UI on caster's client
-                    if (IsOwner)
+                    var greenBall = player.GetComponent<NetworkedBall>();
+                    if (greenBall != null)
                     {
-                        var uiManager = player.GetComponent<NetworkedUIManager>();
-                        if (uiManager != null)
+                        greenBall.green = true;
+
+                        if (IsOwner)
                         {
-                            uiManager.UpdateSpellStatus("Green Active", Color.green);
+                            var uiManager = player.GetComponent<NetworkedUIManager>();
+                            if (uiManager != null)
+                            {
+                                uiManager.UpdateSpellStatus("Green Active", Color.green);
+                            }
                         }
+
+                        Debug.Log("[SpellEffects] Green spell activated");
                     }
 
-                    Debug.Log("[SpellEffects] Green spell activated");
+                    // Green lasts 10 seconds
+                    ScheduleReset(10f);
                 }
-
-                // Green lasts indefinitely until resetF
                 break;
 
             case "Stone":
-                if (player != null && stoneWallPrefab != null)
+                if (isLocalCaster && player != null && stoneWallPrefab != null)
                 {
                     Vector3 spawnPos = player.transform.position + player.transform.forward * 2f;
                     SpawnEffectServerRpc("Stone", casterClientId, targetClientId, spawnPos, Quaternion.identity);
@@ -956,56 +970,52 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Chronos":
-                StartCoroutine(ApplyChronosAfterExplanation());
+                if (isLocalCaster)
+                {
+                    StartCoroutine(ApplyChronosAfterExplanation());
+                }
                 break;
 
             case "Gemini":
-                if (player != null && geminiPrefab != null)
+                if (isLocalCaster && player != null && geminiPrefab != null)
                 {
                     Vector3 gemPos = player.transform.position;
                     gemPos.x = -player.transform.position.x;
                     SpawnEffectServerRpc("Gemini", casterClientId, targetClientId, gemPos, player.transform.rotation);
                 }
-                Invoke(nameof(resetSpellEffect), 5f);
+                ScheduleReset(5f);
                 break;
 
             case "Blink":
-                // Store the current movement direction WHEN THE SPELL IS CAST
-                var blinkMCM = player.GetComponent<MainCharacterMovement>();
-                if (blinkMCM != null && blinkMCM.controller != null)
+                if (isLocalCaster)
                 {
-                    // Get current velocity from CharacterController
-                    Vector3 velocity = blinkMCM.controller.velocity;
-                    velocity.y = 0; // Ignore vertical component
-
-                    if (velocity.magnitude > 0.1f)
+                    var blinkMCM = player.GetComponent<MainCharacterMovement>();
+                    if (blinkMCM != null && blinkMCM.controller != null)
                     {
-                        // Player is moving - blink in that direction
-                        storedBlinkDirection = velocity.normalized * 3f;
+                        Vector3 velocity = blinkMCM.controller.velocity;
+                        velocity.y = 0;
+
+                        if (velocity.magnitude > 0.1f)
+                            storedBlinkDirection = velocity.normalized * 3f;
+                        else
+                        {
+                            storedBlinkDirection = player.transform.forward * 3f;
+                            storedBlinkDirection.y = 0;
+                        }
                     }
                     else
                     {
-                        // Player is stationary - blink forward
                         storedBlinkDirection = player.transform.forward * 3f;
                         storedBlinkDirection.y = 0;
                     }
 
-                    Debug.Log($"[SpellEffects] Blink direction stored: {storedBlinkDirection}");
+                    PerformBlink(player);
                 }
-                else
-                {
-                    // Fallback - blink forward
-                    storedBlinkDirection = player.transform.forward * 3f;
-                    storedBlinkDirection.y = 0;
-                }
-
-                // Perform blink immediately
-                PerformBlink(player);
-                Invoke(nameof(resetSpellEffect), 5f);
+                ScheduleReset(5f);
                 break;
 
             case "Jolly":
-                if (player != null && jollyPrefab != null)
+                if (isLocalCaster && player != null && jollyPrefab != null)
                 {
                     // Expand player collider
                     var capsule = player.GetComponent<CapsuleCollider>();
@@ -1058,63 +1068,74 @@ public class NetworkedSpellEffects : NetworkBehaviour
                         SpawnEffectServerRpc("Jolly", casterClientId, targetClientId, player.transform.position, Quaternion.identity);
                     }
                 }
-                Invoke(nameof(resetSpellEffect), 5f);
+                ScheduleReset(5f);
                 break;
 
             case "Mud":
-                resetOnOppHit = true;  // Will spawn mud when opponent hits
-                resetOnBounce = true;  // Will spawn mud when ball bounces
-                Debug.Log("[SpellEffects] Mud spell armed");
+                if (isLocalCaster)
+                {
+                    resetOnOppHit = true;
+                    resetOnBounce = true;
+                    Debug.Log("[SpellEffects] Mud spell armed");
+                }
                 break;
 
             case "Warp":
-                Invoke(nameof(resetSpellEffect), 0.5f);
+                ScheduleReset(0.5f);
                 break;
 
             case "Pisces":
-                if (player != null && orbiterPrefab != null)
+                if (isLocalCaster && player != null && orbiterPrefab != null)
                 {
-                    SpawnEffectServerRpc("Pisces", casterClientId, targetClientId, player.transform.position, player.transform.rotation);
+                    SpawnEffectServerRpc("Pisces", casterClientId, targetClientId,
+                        player.transform.position, player.transform.rotation);
                 }
                 break;
 
             case "Tether":
-                if (opponent != null && tetherPrefab != null)
+                if (isLocalCaster && opponent != null && tetherPrefab != null)
                 {
                     Vector3 tetherPos = opponent.transform.position;
                     tetherPos.y = 1.45f;
 
-                    Debug.Log($"[SpellEffects] Spawning Tether at {tetherPos} for opponent {opponent.name}");
-
                     SpawnEffectServerRpc("Tether", casterClientId, targetClientId, tetherPos, Quaternion.identity);
+                    Debug.Log($"[SpellEffects] Tether spawn requested at {tetherPos}");
                 }
-                else
+                else if (isLocalCaster)
                 {
-                    Debug.LogWarning($"[SpellEffects] Tether spawn failed - opponent: {opponent != null}, prefab: {tetherPrefab != null}");
+                    Debug.LogWarning($"[SpellEffects] Tether spawn failed");
                 }
-                Invoke(nameof(resetSpellEffect), 5f);
+                ScheduleReset(5f);
                 break;
 
             case "Gorbino":
-                Gorbino = GameObject.Find("Gorbino");
-                if (Gorbino != null && BallPrefab != null)
+                if (isLocalCaster)
                 {
-                    SpawnEffectServerRpc("Gorbino", casterClientId, targetClientId, Gorbino.transform.position, Quaternion.identity);
-                    Gorbino.SetActive(false);
+                    Gorbino = GameObject.Find("Gorbino");
+                    if (Gorbino != null && BallPrefab != null)
+                    {
+                        SpawnEffectServerRpc("Gorbino", casterClientId, targetClientId,
+                            Gorbino.transform.position, Quaternion.identity);
+                        Gorbino.SetActive(false);
+                    }
                 }
-                Invoke(nameof(resetSpellEffect), 5f);
+                ScheduleReset(5f);
                 break;
 
             case "Gambit":
-                int spellInt = Random.Range(0, allSpells.Length);
-                spellName = allSpells[spellInt];
-                castSpell();
-                return;
-        }
+                if (isLocalCaster)
+                {
+                    int spellInt = Random.Range(0, allSpells.Length);
+                    spellName = allSpells[spellInt];
+                    castSpell();
+                    return;
+                }
+                break;
 
-        // Visual casting is already handled by NetworkedSpellcasting.CastSpellServerRpc
-        // No need to call CastSpellNormal here - it would cause duplicate visual spawning
-        // The ball visual is managed by NetworkedSpellcasting, not SpellEffects
+                // Visual casting is already handled by NetworkedSpellcasting.CastSpellServerRpc
+                // No need to call CastSpellNormal here - it would cause duplicate visual spawning
+                // The ball visual is managed by NetworkedSpellcasting, not SpellEffects
+        }
     }
 
     private void PerformBlink(GameObject player)
@@ -1209,6 +1230,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 }
                 break;
 
+            case "Green":
+                var greenBall = player.GetComponent<NetworkedBall>();
+                if (greenBall != null)
+                {
+                    greenBall.green = false;
+                    Debug.Log("[SpellEffects] Green deactivated");
+                }
+                break;
+
             case "Ice":
                 if (opponent != null)
                 {
@@ -1224,14 +1254,23 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Fireball":
-                // Spawn flame effect on opponent
+                resetOnOppHit = false;
+
+                // Only spawn flame once - from the caster's client
                 if (flamePrefab != null && opponent != null)
                 {
-                    ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                    ulong targetClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    ulong localClientId = NetworkManager.Singleton.LocalClientId;
+                    ulong playerClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
-                    SpawnEffectServerRpc("Flame", casterClientId, targetClientId, opponent.transform.position, Quaternion.identity);
+                    // Only spawn if we're the caster
+                    if (localClientId == playerClientId)
+                    {
+                        ulong targetClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                        SpawnEffectServerRpc("Flame", playerClientId, targetClientId,
+                            opponent.transform.position, Quaternion.identity);
+                    }
                 }
+                break;
 
                 resetOnOppHit = false;
                 break;
@@ -1286,23 +1325,19 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
                 if (mudPrefab != null && opponent != null)
                 {
-                    // Raycast downward from the opponent’s position
                     Vector3 rayOrigin = opponent.transform.position + Vector3.up * 1f;
 
                     if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 5f))
                     {
                         Vector3 spawnPos = hit.point;
-
                         ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
-                        if (IsServer)
-                            SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
-                        else
-                            SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
+                        // Only spawn once - server will handle it
+                        SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
                     }
                     else
                     {
-                        Debug.LogWarning("Mud cast failed: Could not find ground under opponent.");
+                        Debug.LogWarning("Mud spawn failed: Could not find ground.");
                     }
                 }
                 break;
@@ -1819,5 +1854,48 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
             yield return null;
         }
+    }
+
+    /// <summary>
+    /// Helper: Schedule a reset and cancel any pending resets for this spell
+    /// </summary>
+    private void ScheduleReset(float delay)
+    {
+        // Cancel any existing scheduled reset
+        CancelInvoke(nameof(resetSpellEffect));
+
+        // Schedule new reset
+        Invoke(nameof(resetSpellEffect), delay);
+    }
+
+    /// <summary>
+    /// Server RPC to freeze a player across all clients
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    private void FreezePlayerServerRpc(ulong targetClientId, float duration, ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+
+        Debug.Log($"[SpellEffects-Server] Freezing player {targetClientId} for {duration}s");
+
+        // Tell ALL clients to freeze this player
+        FreezePlayerClientRpc(targetClientId, duration);
+    }
+
+    /// <summary>
+    /// Client RPC to freeze a player locally
+    /// </summary>
+    [ClientRpc]
+    private void FreezePlayerClientRpc(ulong targetClientId, float duration)
+    {
+        GameObject target = GetPlayerByClientId(targetClientId);
+        if (target == null)
+        {
+            Debug.LogWarning($"[SpellEffects-Client] Cannot freeze - target {targetClientId} not found");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-Client] Freezing {target.name} locally");
+        StartCoroutine(FreezeOpponentMovement(target, duration));
     }
 }
