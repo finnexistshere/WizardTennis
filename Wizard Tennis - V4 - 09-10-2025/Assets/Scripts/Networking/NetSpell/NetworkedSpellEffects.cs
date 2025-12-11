@@ -80,6 +80,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
     private bool networkSpellActive = false;
     private GameObject Gorbino;
 
+    private Vector3 storedBlinkDirection = Vector3.zero;
+
+    private Coroutine activeLightningCoroutine = null;
+
     // Track active networked effects for cleanup
     private Dictionary<string, ulong> activeNetworkEffects = new Dictionary<string, ulong>();
 
@@ -784,12 +788,14 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     public void castSpell()
     {
-        // Prevent duplicate activation
-        if (networkSpellActive)
+        // Check for valid spell name FIRST
+        if (string.IsNullOrEmpty(spellName))
         {
-            Debug.Log($"[SpellEffects] castSpell ignored because another spell is active ({spellName})");
+            Debug.LogError("[SpellEffects] castSpell called with no spell name!");
+            networkSpellActive = false;  // Clear the lock
             return;
         }
+
         networkSpellActive = true;
 
         GameObject player = GetPlayer();
@@ -856,8 +862,18 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             case "Lightning":
                 var mcm = player.GetComponent<MainCharacterMovement>();
-                if (mcm != null) mcm.speed = 17;
-                Invoke(nameof(resetSpellEffect), 5f);
+                if (mcm != null)
+                {
+                    // Stop any existing lightning effect
+                    if (activeLightningCoroutine != null)
+                    {
+                        StopCoroutine(activeLightningCoroutine);
+                    }
+
+                    // Start new lightning effect
+                    activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(mcm, 5f));
+                    Debug.Log("[SpellEffects] Lightning speed boost applied");
+                }
                 break;
 
             case "Ice":
@@ -945,7 +961,36 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Blink":
-                // Client-side teleport (no network needed)
+                // Store the current movement direction WHEN THE SPELL IS CAST
+                var blinkMCM = player.GetComponent<MainCharacterMovement>();
+                if (blinkMCM != null && blinkMCM.controller != null)
+                {
+                    // Get current velocity from CharacterController
+                    Vector3 velocity = blinkMCM.controller.velocity;
+                    velocity.y = 0; // Ignore vertical component
+
+                    if (velocity.magnitude > 0.1f)
+                    {
+                        // Player is moving - blink in that direction
+                        storedBlinkDirection = velocity.normalized * 3f;
+                    }
+                    else
+                    {
+                        // Player is stationary - blink forward
+                        storedBlinkDirection = player.transform.forward * 3f;
+                        storedBlinkDirection.y = 0;
+                    }
+
+                    Debug.Log($"[SpellEffects] Blink direction stored: {storedBlinkDirection}");
+                }
+                else
+                {
+                    // Fallback - blink forward
+                    storedBlinkDirection = player.transform.forward * 3f;
+                    storedBlinkDirection.y = 0;
+                }
+
+                // Perform blink immediately
                 PerformBlink(player);
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
@@ -1071,51 +1116,35 @@ public class NetworkedSpellEffects : NetworkBehaviour
             return;
         }
 
-        Vector3 input = Vector3.zero;
+        // Use the stored direction
+        Vector3 blinkDirection = storedBlinkDirection;
 
-        KeyCode forward = KeyCode.W;
-        KeyCode backward = KeyCode.S;
-        KeyCode left = KeyCode.A;
-        KeyCode right = KeyCode.D;
-
-        if (OptionsManager.Instance != null && OptionsManager.Instance.leftHandedMode)
+        if (blinkDirection.magnitude < 0.1f)
         {
-            forward = KeyCode.UpArrow;
-            backward = KeyCode.DownArrow;
-            left = KeyCode.LeftArrow;
-            right = KeyCode.RightArrow;
-        }
-
-        // Build movement direction (multiply by 3 for distance)
-        if (Input.GetKey(forward)) input.z += 3;
-        if (Input.GetKey(backward)) input.z -= 3;
-        if (Input.GetKey(right)) input.x += 3;
-        if (Input.GetKey(left)) input.x -= 3;
-
-        // If no input, blink forward by default
-        if (input.magnitude < 0.1f)
-        {
-            input = player.transform.forward * 3f;
-            input.y = 0;
+            // Fallback - shouldn't happen, but just in case
+            blinkDirection = player.transform.forward * 3f;
+            blinkDirection.y = 0;
         }
 
         // Calculate new position
-        Vector3 newPos = player.transform.position + input;
+        Vector3 newPos = player.transform.position + blinkDirection;
 
         // Clamp to court boundaries
         if (player.transform.position.z > 0)
         {
+            // Front court (player side)
             newPos.z = Mathf.Clamp(newPos.z, 0.5f, 10.9f);
         }
         else
         {
+            // Back court (opponent side)
             newPos.z = Mathf.Clamp(newPos.z, -11.5f, -1f);
         }
 
         newPos.x = Mathf.Clamp(newPos.x, -4.9f, 4.9f);
         newPos.y = player.transform.position.y; // Keep same height
 
-        Debug.Log($"[SpellEffects] Blink: {player.transform.position} -> {newPos}");
+        Debug.Log($"[SpellEffects] Blink: {player.transform.position} -> {newPos} (direction: {blinkDirection})");
 
         // Disable components temporarily
         var movement = player.GetComponent<MainCharacterMovement>();
@@ -1136,6 +1165,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
 
         Debug.Log($"[SpellEffects] Blink completed to {player.transform.position}");
+
+        // Clear stored direction
+        storedBlinkDirection = Vector3.zero;
     }
 
     public void resetSpellEffect()
@@ -1152,8 +1184,20 @@ public class NetworkedSpellEffects : NetworkBehaviour
         switch (spellName)
         {
             case "Lightning":
+                // Stop the coroutine if it's still running
+                if (activeLightningCoroutine != null)
+                {
+                    StopCoroutine(activeLightningCoroutine);
+                    activeLightningCoroutine = null;
+                }
+
+                // Restore speed
                 var mcm = player.GetComponent<MainCharacterMovement>();
-                if (mcm != null) mcm.speed = 7;
+                if (mcm != null)
+                {
+                    mcm.speed = 7;
+                    Debug.Log("[SpellEffects] Lightning reset: Speed restored to 7");
+                }
                 break;
 
             case "Ice":
@@ -1347,6 +1391,48 @@ public class NetworkedSpellEffects : NetworkBehaviour
             mcm.speed = originalMcmSpeed;
             Debug.Log($"[SpellEffects] Restored {target.name} movement to {originalMcmSpeed}");
         }
+    }
+
+    private IEnumerator ApplyLightningSpeed(MainCharacterMovement mcm, float duration)
+    {
+        if (mcm == null)
+        {
+            Debug.LogWarning("[SpellEffects] Lightning: MCM is null");
+            yield break;
+        }
+
+        float originalSpeed = mcm.speed;
+        float boostedSpeed = 17f;
+
+        Debug.Log($"[SpellEffects] Lightning: Setting speed from {originalSpeed} to {boostedSpeed}");
+        mcm.speed = boostedSpeed;
+
+        float elapsed = 0f;
+
+        // Continuously enforce the speed for the duration
+        while (elapsed < duration)
+        {
+            if (mcm == null) yield break;
+
+            // Keep enforcing the boosted speed
+            if (mcm.speed != boostedSpeed)
+            {
+                Debug.Log($"[SpellEffects] Lightning: Speed changed to {mcm.speed}, re-applying boost");
+                mcm.speed = boostedSpeed;
+            }
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // Restore original speed
+        if (mcm != null)
+        {
+            mcm.speed = originalSpeed;
+            Debug.Log($"[SpellEffects] Lightning: Restored speed to {originalSpeed}");
+        }
+
+        activeLightningCoroutine = null;
     }
 
     [ServerRpc(RequireOwnership = false)]

@@ -788,6 +788,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                     SpellEffects.RegisterNetworkedEffect(spellName, effectNetId);
                 }
 
+                SpellEffects.spellName = spellName;
                 SpellEffects.plrHitSpell = boolBook.ContainsKey(spellName) && boolBook[spellName];
                 SpellEffects.castSpell();
             }
