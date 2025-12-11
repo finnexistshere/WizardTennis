@@ -66,6 +66,8 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private NetworkedUIManager uiManager;
 
+    public bool green;
+
     private void Awake()
     {
         AutoSetupReferences();
