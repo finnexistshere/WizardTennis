@@ -904,6 +904,12 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Fireball":
+                Debug.Log($"[SpellEffects-castSpell] === FIREBALL CAST START ===");
+                Debug.Log($"[SpellEffects-castSpell] LocalClientId: {NetworkManager.Singleton.LocalClientId}");
+                Debug.Log($"[SpellEffects-castSpell] isLocalCaster: {isLocalCaster}");
+                Debug.Log($"[SpellEffects-castSpell] player: {player?.name}, clientId: {casterClientId}");
+                Debug.Log($"[SpellEffects-castSpell] opponent: {opponent?.name}, clientId: {targetClientId}");
+
                 if (isLocalCaster)
                 {
                     resetOnOppHit = true;
@@ -916,11 +922,22 @@ public class NetworkedSpellEffects : NetworkBehaviour
                         if (tracker != null)
                         {
                             tracker.LastHitWizard = "Player";
+                            Debug.Log("[SpellEffects-castSpell] Marked ball tracker LastHitWizard = Player");
+                        }
+                        else
+                        {
+                            Debug.LogWarning("[SpellEffects-castSpell] Ball has no CollisionTrackerBall component!");
                         }
                     }
+                    else
+                    {
+                        Debug.LogWarning("[SpellEffects-castSpell] Ball not found with tag!");
+                    }
 
-                    Debug.Log("[SpellEffects] Fireball armed");
+                    Debug.Log($"[SpellEffects-castSpell] Fireball armed - resetOnOppHit: {resetOnOppHit}");
+                    Debug.Log($"[SpellEffects-castSpell] Current context - currentPlayer: {currentPlayer?.name}, currentOpponent: {currentOpponent?.name}");
                 }
+                Debug.Log($"[SpellEffects-castSpell] === FIREBALL CAST END ===");
                 break;
 
             case "Shadow":
@@ -1256,23 +1273,23 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Fireball":
                 resetOnOppHit = false;
 
-                // Only spawn flame once - from the caster's client
-                if (flamePrefab != null && opponent != null)
+                // Spawn flame effect on the victim (currentOpponent was set by OnPlayerHitBall)
+                if (flamePrefab != null && currentOpponent != null)
                 {
                     ulong localClientId = NetworkManager.Singleton.LocalClientId;
-                    ulong playerClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    GameObject casterPlayer = currentPlayer ?? GetPlayer(); // Changed variable name
+                    ulong playerClientId = casterPlayer?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
-                    // Only spawn if we're the caster
+                    // Only caster spawns the flame
                     if (localClientId == playerClientId)
                     {
-                        ulong targetClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                        ulong targetClientId = currentOpponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
                         SpawnEffectServerRpc("Flame", playerClientId, targetClientId,
-                            opponent.transform.position, Quaternion.identity);
+                            currentOpponent.transform.position, Quaternion.identity);
+
+                        Debug.Log($"[SpellEffects] Fireball reset - spawning flame on {currentOpponent.name}");
                     }
                 }
-                break;
-
-                resetOnOppHit = false;
                 break;
 
             case "Shadow":
@@ -1502,21 +1519,42 @@ public class NetworkedSpellEffects : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void ApplyFireballKnockbackServerRpc(ulong victimClientId, ServerRpcParams rpcParams = default)
     {
-        if (!IsServer) return;
+        Debug.Log($"[SpellEffects-ServerRpc] === ApplyFireballKnockbackServerRpc START ===");
+        Debug.Log($"[SpellEffects-ServerRpc] IsServer: {IsServer}");
+        Debug.Log($"[SpellEffects-ServerRpc] victimClientId: {victimClientId}");
 
-        // Get the actual caster from context (who originally cast Fireball)
-        GameObject caster = currentPlayer; // This is set by SetContext when spell was cast
-
-        // Find the victim by their client ID
-        GameObject victim = GetPlayerByClientId(victimClientId);
-
-        if (victim == null)
+        if (!IsServer)
         {
-            Debug.LogWarning($"[SpellEffects-Server] Fireball knockback - victim not found for client {victimClientId}");
+            Debug.LogWarning("[SpellEffects-ServerRpc] EXIT - Not server!");
             return;
         }
 
-        Debug.Log($"[SpellEffects-Server] Applying Fireball knockback to {victim.name}");
+        // Use context: currentPlayer = caster, currentOpponent = victim
+        GameObject caster = currentPlayer;
+        GameObject victim = GetPlayerByClientId(victimClientId);
+
+        Debug.Log($"[SpellEffects-ServerRpc] caster (from context): {caster?.name ?? "NULL"}");
+        Debug.Log($"[SpellEffects-ServerRpc] victim (from GetPlayerByClientId): {victim?.name ?? "NULL"}");
+
+        if (victim == null)
+        {
+            Debug.LogError($"[SpellEffects-ServerRpc] ? FAILED - victim not found for client {victimClientId}");
+            return;
+        }
+
+        // Check for required components
+        var controller = victim.GetComponent<CharacterController>();
+        var movement = victim.GetComponent<MainCharacterMovement>();
+
+        Debug.Log($"[SpellEffects-ServerRpc] Victim components - CharacterController: {controller != null}, MainCharacterMovement: {movement != null}");
+
+        if (controller == null)
+        {
+            Debug.LogError($"[SpellEffects-ServerRpc] ? FAILED - victim {victim.name} has no CharacterController!");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-ServerRpc] ? Applying Fireball knockback - caster: {caster?.name ?? "NULL"}, victim: {victim.name}");
 
         // Calculate knockback direction
         Vector3 knockbackDirection = Vector3.back; // Default fallback
@@ -1524,28 +1562,36 @@ public class NetworkedSpellEffects : NetworkBehaviour
         if (caster != null)
         {
             Vector3 directionFromCaster = (victim.transform.position - caster.transform.position).normalized;
-
-            // Horizontal push away from caster
             Vector3 horizontal = new Vector3(directionFromCaster.x, 0, directionFromCaster.z).normalized;
-
-            // Add upward lift
             Vector3 upward = Vector3.up * 0.75f;
-
             knockbackDirection = (horizontal + upward).normalized;
+
+            Debug.Log($"[SpellEffects-ServerRpc] Calculated direction from caster: {knockbackDirection}");
+        }
+        else
+        {
+            Vector3 awayFromCenter = (victim.transform.position - Vector3.zero).normalized;
+            knockbackDirection = (new Vector3(awayFromCenter.x, 0, awayFromCenter.z) + Vector3.up * 0.75f).normalized;
+
+            Debug.Log($"[SpellEffects-ServerRpc] Using fallback direction (no caster): {knockbackDirection}");
         }
 
-        // Strong knockback force
         float forceStrength = 20f;
         Vector3 knockbackForce = knockbackDirection * forceStrength;
-
-        // Longer push duration
         float duration = 0.45f;
 
-        // Apply knockback on server
+        Debug.Log($"[SpellEffects-ServerRpc] knockbackForce: {knockbackForce}, duration: {duration}");
+        Debug.Log($"[SpellEffects-ServerRpc] Starting ApplyKnockback coroutine on server");
+
         StartCoroutine(ApplyKnockback(victim, knockbackForce, duration));
 
-        // Tell all clients to also apply knockback for smooth visuals
+        Debug.Log($"[SpellEffects-ServerRpc] Broadcasting ApplyFireballKnockbackClientRpc to all clients");
         ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, forceStrength, duration);
+
+        Debug.Log($"[SpellEffects-ServerRpc] Scheduling resetSpellEffect in {duration + 0.1f}s");
+        Invoke(nameof(resetSpellEffect), duration + 0.1f);
+
+        Debug.Log($"[SpellEffects-ServerRpc] === ApplyFireballKnockbackServerRpc END ===");
     }
 
     /// <summary>
@@ -1588,37 +1634,136 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     private IEnumerator ApplyKnockback(GameObject target, Vector3 knockbackForce, float duration)
     {
+        Debug.Log($"[ApplyKnockback] === START === target: {target?.name}, IsServer: {IsServer}, LocalClientId: {NetworkManager.Singleton.LocalClientId}");
+
+        if (target == null)
+        {
+            Debug.LogError($"[ApplyKnockback] ? Target is NULL!");
+            yield break;
+        }
+
         var controller = target.GetComponent<CharacterController>();
         var movement = target.GetComponent<MainCharacterMovement>();
+        var netObj = target.GetComponent<NetworkObject>();
+
+        Debug.Log($"[ApplyKnockback] Target: {target.name}");
+        Debug.Log($"[ApplyKnockback] - CharacterController: {controller != null}");
+        Debug.Log($"[ApplyKnockback] - MainCharacterMovement: {movement != null}");
+        Debug.Log($"[ApplyKnockback] - NetworkObject: {netObj != null}");
+        Debug.Log($"[ApplyKnockback] - NetworkObject.OwnerClientId: {netObj?.OwnerClientId}");
+        Debug.Log($"[ApplyKnockback] - Initial Position: {target.transform.position}");
 
         if (controller == null)
         {
-            Debug.LogWarning($"[SpellEffects] Knockback failed: No CharacterController on {target.name}");
+            Debug.LogError($"[ApplyKnockback] ? FAILED - No CharacterController on {target.name}");
             yield break;
         }
+
+        Debug.Log($"[ApplyKnockback] CharacterController properties:");
+        Debug.Log($"  - enabled: {controller.enabled}");
+        Debug.Log($"  - isGrounded: {controller.isGrounded}");
+        Debug.Log($"  - detectCollisions: {controller.detectCollisions}");
+        Debug.Log($"  - height: {controller.height}");
+        Debug.Log($"  - radius: {controller.radius}");
 
         bool wasMovementEnabled = true;
         if (movement != null)
         {
             wasMovementEnabled = movement.enabled;
             movement.enabled = false;
+            Debug.Log($"[ApplyKnockback] Disabled MainCharacterMovement (was: {wasMovementEnabled})");
+        }
+        else
+        {
+            Debug.LogWarning($"[ApplyKnockback] No MainCharacterMovement component found on {target.name}");
         }
 
         float elapsed = 0f;
+        Vector3 startPosition = target.transform.position;
+        float totalDistance = 0f;
 
+        Debug.Log($"[ApplyKnockback] Starting knockback loop:");
+        Debug.Log($"  - knockbackForce: {knockbackForce}");
+        Debug.Log($"  - duration: {duration}");
+        Debug.Log($"  - force magnitude: {knockbackForce.magnitude}");
+
+        int frameCount = 0;
         while (elapsed < duration)
         {
+            if (target == null)
+            {
+                Debug.LogError("[ApplyKnockback] Target became null during knockback!");
+                yield break;
+            }
+
+            if (controller == null)
+            {
+                Debug.LogError("[ApplyKnockback] CharacterController became null during knockback!");
+                yield break;
+            }
+
             elapsed += Time.deltaTime;
             float t = 1f - (elapsed / duration);
 
             Vector3 frameKnockback = knockbackForce * t * Time.deltaTime;
-            controller.Move(frameKnockback);
+            Vector3 positionBefore = target.transform.position;
 
+            // Try to move
+            CollisionFlags flags = controller.Move(frameKnockback);
+
+            Vector3 positionAfter = target.transform.position;
+            float frameMoveDistance = Vector3.Distance(positionBefore, positionAfter);
+            totalDistance += frameMoveDistance;
+
+            // Log every 10 frames to avoid spam
+            if (frameCount % 10 == 0 || frameCount < 5)
+            {
+                Debug.Log($"[ApplyKnockback] Frame {frameCount}: t={t:F3}, elapsed={elapsed:F3}");
+                Debug.Log($"  - frameKnockback: {frameKnockback}");
+                Debug.Log($"  - position before: {positionBefore}");
+                Debug.Log($"  - position after: {positionAfter}");
+                Debug.Log($"  - moved: {frameMoveDistance:F3}m");
+                Debug.Log($"  - collision flags: {flags}");
+                Debug.Log($"  - controller.enabled: {controller.enabled}");
+                Debug.Log($"  - controller.isGrounded: {controller.isGrounded}");
+            }
+
+            frameCount++;
             yield return null;
         }
 
+        Vector3 endPosition = target.transform.position;
+        Vector3 totalMovement = endPosition - startPosition;
+
+        Debug.Log($"[ApplyKnockback] === KNOCKBACK COMPLETE ===");
+        Debug.Log($"  - Total frames: {frameCount}");
+        Debug.Log($"  - Start position: {startPosition}");
+        Debug.Log($"  - End position: {endPosition}");
+        Debug.Log($"  - Total movement: {totalMovement}");
+        Debug.Log($"  - Total distance: {totalDistance:F3}m");
+        Debug.Log($"  - Expected movement: ~{(knockbackForce.magnitude * duration):F3}m");
+
+        if (totalDistance < 0.1f)
+        {
+            Debug.LogError($"[ApplyKnockback] ??? KNOCKBACK FAILED - Player barely moved ({totalDistance:F3}m)!");
+            Debug.LogError($"[ApplyKnockback] Possible causes:");
+            Debug.LogError($"  1. CharacterController is disabled or constrained");
+            Debug.LogError($"  2. Player is colliding with something immovable");
+            Debug.LogError($"  3. Another script is overriding position");
+            Debug.LogError($"  4. Network ownership issue");
+        }
+        else
+        {
+            Debug.Log($"[ApplyKnockback] ? Knockback successful - moved {totalDistance:F3}m");
+        }
+
         if (movement != null)
+        {
             movement.enabled = wasMovementEnabled;
+            Debug.Log($"[ApplyKnockback] Re-enabled MainCharacterMovement");
+        }
+
+        Debug.Log($"[ApplyKnockback] === END ===");
     }
 
     private IEnumerator ApplyChronosAfterExplanation()
@@ -1782,51 +1927,87 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
     }
 
-    public void OnPlayerHitOpponent(GameObject hitter, GameObject victim)
+    /// <summary>
+    /// Called when a player hits the ball - checks if spell should trigger
+    /// Server-side only (called by NetworkedCollisionTrackerBall on server)
+    /// </summary>
+    public void OnPlayerHitBall(GameObject hitter, GameObject ballOwner)
     {
-        if (string.IsNullOrEmpty(spellName)) return;
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] === START ===");
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] spellName: '{spellName}' (empty={string.IsNullOrEmpty(spellName)})");
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] IsServer: {IsServer}");
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] hitter: {hitter?.name ?? "NULL"}");
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] ballOwner: {ballOwner?.name ?? "NULL"}");
 
-        if (resetOnOppHit)
+        if (string.IsNullOrEmpty(spellName))
         {
-            if (spellName == "Fireball")
-            {
-                if (victim != null)
-                {
-                    Debug.Log("[SpellEffects] Fireball hit - requesting knockback via ServerRpc");
+            Debug.Log("[SpellEffects-OnPlayerHitBall] EXIT - spellName is null/empty");
+            return;
+        }
 
-                    ulong victimClientId = victim.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+        if (!IsServer)
+        {
+            Debug.LogWarning("[SpellEffects-OnPlayerHitBall] EXIT - Not server!");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] Active spell: {spellName}, resetOnOppHit: {resetOnOppHit}");
+
+        // Fireball: knockback when OPPONENT hits the enchanted ball
+        if (spellName == "Fireball")
+        {
+            Debug.Log($"[SpellEffects-OnPlayerHitBall] FIREBALL CHECK:");
+            Debug.Log($"  - resetOnOppHit: {resetOnOppHit}");
+            Debug.Log($"  - ballOwner != null: {ballOwner != null}");
+            Debug.Log($"  - hitter != ballOwner: {hitter != ballOwner}");
+
+            if (resetOnOppHit)
+            {
+                if (ballOwner != null && hitter != ballOwner)
+                {
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? FIREBALL TRIGGERED! Applying knockback to {hitter.name}");
+
+                    ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Victim ClientId: {victimClientId}");
 
                     if (victimClientId != ulong.MaxValue)
                     {
-                        // Request server to apply knockback
+                        Debug.Log($"[SpellEffects-OnPlayerHitBall] Setting context: caster={ballOwner.name}, victim={hitter.name}");
+                        SetContext(ballOwner, hitter, null);
+
+                        Debug.Log($"[SpellEffects-OnPlayerHitBall] Calling ApplyFireballKnockbackServerRpc({victimClientId})");
                         ApplyFireballKnockbackServerRpc(victimClientId);
                     }
                     else
                     {
-                        Debug.LogError("[SpellEffects] Cannot apply Fireball knockback - victim has no NetworkObject");
+                        Debug.LogError("[SpellEffects-OnPlayerHitBall] ? FAILED - hitter has no NetworkObject or invalid ClientId");
                     }
                 }
                 else
                 {
-                    Debug.LogError("[SpellEffects] Cannot Apply Knockback! Victim is Null!");
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Fireball not triggered - ballOwner={ballOwner?.name ?? "NULL"}, hitter={hitter?.name}, same={hitter == ballOwner}");
                 }
             }
-
-            resetSpellEffect();
-        }
-
-        if (spellName == "Mud")
-        {
-            if (mudPrefab != null && victim != null)
+            else
             {
-                ulong casterClientId = hitter?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                ulong targetClientId = victim.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-
-                SpawnEffectServerRpc("Mud", casterClientId, targetClientId, victim.transform.position, Quaternion.identity);
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Fireball not armed (resetOnOppHit=false)");
             }
 
-            resetSpellEffect();
+            Debug.Log($"[SpellEffects-OnPlayerHitBall] === END (Fireball) ===");
+            return;
         }
+
+        // Shadow: reset when opponent hits
+        if (spellName == "Shadow" && resetOnOppHit)
+        {
+            if (ballOwner != null && hitter != ballOwner)
+            {
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] Shadow broken by {hitter.name} hitting the ball");
+                resetSpellEffect();
+            }
+        }
+
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] === END ===");
     }
 
     private IEnumerator MirrorMovement(GameObject gemini, MainCharacterMovement casterMCM, float duration)

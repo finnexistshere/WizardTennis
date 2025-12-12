@@ -550,83 +550,12 @@ public class NetworkedBall : NetworkBehaviour
 
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} set to SERVING state.");
     }
-
-    /// <summary>
-    /// SIMPLER VERSION: Check using LastHitWizard tracker
-    /// Use this if the above context-based version doesn't work
-    /// </summary>
     private void CheckFireballHit()
     {
-        Debug.Log($"[NetworkedBall] CheckFireballHit_Simple called for Player {OwnerClientId}");
+        // OLD SYSTEM - Now handled by NetworkedCollisionTrackerBall + NetworkedSpellEffects
+        // Keeping this method for backward compatibility but returning early
 
-        if (spellEffects == null)
-        {
-            Debug.LogWarning($"[NetworkedBall] spellEffects is null!");
-            return;
-        }
-
-        Debug.Log($"[NetworkedBall] spellName: '{spellEffects.spellName}', resetOnOppHit: {spellEffects.resetOnOppHit}");
-
-        // Check if Fireball spell is active
-        if (!spellEffects.resetOnOppHit || spellEffects.spellName != "Fireball")
-        {
-            Debug.Log($"[NetworkedBall] Not Fireball scenario");
-            return;
-        }
-
-        GameObject ballObj = GameObject.FindGameObjectWithTag("Ball");
-        if (ballObj == null)
-        {
-            Debug.LogWarning($"[NetworkedBall] Cannot find ball!");
-            return;
-        }
-
-        CollisionTrackerBall tracker = ballObj.GetComponent<CollisionTrackerBall>();
-        if (tracker == null)
-        {
-            Debug.LogWarning($"[NetworkedBall] No tracker on ball!");
-            return;
-        }
-
-        Debug.Log($"[NetworkedBall] LastHitWizard: '{tracker.LastHitWizard}'");
-
-        // FIXED LOGIC:
-        // - When I hit the ball in OnTriggerEnter, tracker.LastHitWizard gets set to "Player"
-        // - But BEFORE that happens, CheckFireballHit() runs
-        // - So LastHitWizard still contains whoever hit it LAST (the opponent)
-        // - If opponent cast Fireball and hit the ball, LastHitWizard would NOT be "Player"
-        // - When I then hit that ball, I should get knocked back
-
-        // So the check is: Is the ball currently NOT marked as mine?
-        bool ballIsOpponents = (tracker.LastHitWizard != "Player");
-
-        Debug.Log($"[NetworkedBall] Ball belongs to opponent? {ballIsOpponents}");
-
-        if (!ballIsOpponents)
-        {
-            // Ball is mine, I cast Fireball on it, no knockback for me
-            Debug.Log($"[NetworkedBall] This is MY Fireball ball - no knockback");
-            return;
-        }
-
-        // Ball is opponent's and has Fireball - I get knocked back!
-        Debug.Log($"[NetworkedBall] Hitting opponent's Fireball ball - applying knockback to ME!");
-
-        // Get my client ID
-        NetworkObject myNetObj = GetComponent<NetworkObject>();
-        ulong myClientId = myNetObj != null ? myNetObj.OwnerClientId : ulong.MaxValue;
-
-        if (myClientId == ulong.MaxValue)
-        {
-            Debug.LogError($"[NetworkedBall] Cannot get my ClientId!");
-            return;
-        }
-
-        Debug.Log($"[NetworkedBall] Calling ApplyFireballKnockbackServerRpc({myClientId})");
-
-        // Apply knockback to ME
-        spellEffects.ApplyFireballKnockbackServerRpc(myClientId);
-
-        Debug.Log($"[NetworkedBall] Fireball knockback applied!");
+        Debug.Log("[NetworkedBall] Fireball check bypassed - handled by NetworkedSpellEffects");
+        return;
     }
 }

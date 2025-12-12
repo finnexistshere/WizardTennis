@@ -6,10 +6,15 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     [Header("References")]
     public NetworkedGameManager gameManager;
     public SpellEffects spellEffects;
+    public NetworkedSpellEffects networkedSpellEffects; // ADD THIS
 
     [Header("State")]
     public string LastHitWizard = "";
     public bool hasBounced = false;
+
+    // ADD THESE
+    private GameObject lastHitterGameObject;
+    private GameObject previousHitterGameObject;
 
     private bool canTrigger = true;
 
@@ -20,6 +25,10 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         if (spellEffects == null)
             spellEffects = FindObjectOfType<SpellEffects>();
+
+        // ADD THIS
+        if (networkedSpellEffects == null)
+            networkedSpellEffects = NetworkedSpellEffects.Instance;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -62,6 +71,15 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
             case "BounceCheck":
                 // Bounce is now handled by BounceChecker calling HandleBounceCheck()
+
+                // ADD THIS: Check for Mud spell on bounce
+                if (networkedSpellEffects != null &&
+                    networkedSpellEffects.spellName == "Mud" &&
+                    networkedSpellEffects.resetOnBounce)
+                {
+                    Debug.Log("[Ball] Mud spell triggered on bounce");
+                    networkedSpellEffects.resetSpellEffect();
+                }
                 break;
         }
     }
@@ -71,19 +89,52 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     // ---------------------------------------------------------
     private void TryMarkLastHitPlayer(Collider other)
     {
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] === START === Collider: {other.name}, Tag: {other.tag}");
+
         NetworkObject netObj = other.GetComponentInParent<NetworkObject>();
         if (netObj == null)
         {
-            Debug.Log("[Ball] Hit player object but no NetworkObject found!");
+            Debug.LogError($"[Ball-TryMarkLastHitPlayer] FAILED - No NetworkObject on {other.name} or parent!");
             return;
         }
 
         ulong hitterId = netObj.OwnerClientId;
+        GameObject hitterObject = netObj.gameObject;
+
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] Found NetworkObject: {hitterObject.name}, ClientId: {hitterId}");
+
+        // Track previous hitter for spell effects
+        previousHitterGameObject = lastHitterGameObject;
+        lastHitterGameObject = hitterObject;
+
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] Previous: {previousHitterGameObject?.name ?? "NULL"}, Current: {lastHitterGameObject?.name}");
 
         // Convert numeric clientId -> string label used by your scoring logic
         LastHitWizard = hitterId == 0 ? "Player_0" : "Player_1";
 
-        Debug.Log($"[Ball] LastHitWizard updated ? {LastHitWizard} (OwnerClientId={hitterId})");
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] LastHitWizard set to: {LastHitWizard}");
+
+        // === Notify SpellEffects about the hit ===
+        if (networkedSpellEffects == null)
+        {
+            Debug.LogError("[Ball-TryMarkLastHitPlayer] networkedSpellEffects is NULL!");
+            return;
+        }
+
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] networkedSpellEffects found, active spell: '{networkedSpellEffects.spellName}'");
+
+        if (previousHitterGameObject != null)
+        {
+            Debug.Log($"[Ball-TryMarkLastHitPlayer] Calling OnPlayerHitBall(hitter={hitterObject.name}, owner={previousHitterGameObject.name})");
+            networkedSpellEffects.OnPlayerHitBall(hitterObject, previousHitterGameObject);
+        }
+        else
+        {
+            Debug.Log($"[Ball-TryMarkLastHitPlayer] First hit by {hitterObject.name} - no previous hitter");
+            networkedSpellEffects.OnPlayerHitBall(hitterObject, null);
+        }
+
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] === END ===");
     }
 
     // ---------------------------------------------------------
@@ -173,5 +224,15 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     private void ToggleTriggerGate()
     {
         canTrigger = !canTrigger;
+    }
+
+    // ADD THIS: Public method to reset tracking on new round
+    public void ResetTracking()
+    {
+        LastHitWizard = "";
+        hasBounced = false;
+        lastHitterGameObject = null;
+        previousHitterGameObject = null;
+        canTrigger = true;
     }
 }
