@@ -68,6 +68,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
     private Material originalOpponentMaterial;
     private Renderer opponentRenderer;
 
+    [Header("Other Spell Settings")]
+    public float fireballForceStrength = 20f;
+
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
     private float lastOriginalTimeScale = 1f;
@@ -912,8 +915,22 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
                 if (isLocalCaster)
                 {
+                    // Set locally
                     resetOnOppHit = true;
                     resetOnPlrHit = false;
+
+                    // === NEW: Tell the server to arm Fireball too ===
+                    if (IsServer)
+                    {
+                        // Already on server, flags are already set
+                        Debug.Log("[SpellEffects-castSpell] Already on server, Fireball armed locally");
+                    }
+                    else
+                    {
+                        // Client needs to tell server
+                        Debug.Log("[SpellEffects-castSpell] Client telling server to arm Fireball");
+                        SetSpellArmedServerRpc(true, false);
+                    }
 
                     GameObject fireballBallObj = GameObject.FindWithTag("Ball");
                     if (fireballBallObj != null)
@@ -944,12 +961,38 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 if (isLocalCaster && opponent != null)
                 {
                     Debug.Log($"[SpellEffects] Casting Shadow - making {player.name} invisible to {opponent.name}");
-                    ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
+
+                    // Set locally
                     resetOnOppHit = true;
+
+                    // Tell server to arm Shadow
+                    if (!IsServer)
+                    {
+                        SetSpellArmedServerRpc(true, false);
+                    }
+
+                    ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
                 }
                 else if (isLocalCaster)
                 {
                     Debug.LogWarning("[SpellEffects] Shadow cast failed - no opponent found");
+                }
+                break;
+
+            case "Mud":
+                if (isLocalCaster)
+                {
+                    // Set locally
+                    resetOnOppHit = true;
+                    resetOnBounce = true;
+
+                    // Tell server to arm Mud
+                    if (!IsServer)
+                    {
+                        SetSpellArmedServerRpc(true, false);
+                    }
+
+                    Debug.Log("[SpellEffects] Mud spell armed");
                 }
                 break;
 
@@ -1086,15 +1129,6 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     }
                 }
                 ScheduleReset(5f);
-                break;
-
-            case "Mud":
-                if (isLocalCaster)
-                {
-                    resetOnOppHit = true;
-                    resetOnBounce = true;
-                    Debug.Log("[SpellEffects] Mud spell armed");
-                }
                 break;
 
             case "Warp":
@@ -1271,13 +1305,20 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Fireball":
+                // Clear locally
                 resetOnOppHit = false;
+
+                // Tell server to disarm
+                if (!IsServer)
+                {
+                    SetSpellArmedServerRpc(false, false);
+                }
 
                 // Spawn flame effect on the victim (currentOpponent was set by OnPlayerHitBall)
                 if (flamePrefab != null && currentOpponent != null)
                 {
                     ulong localClientId = NetworkManager.Singleton.LocalClientId;
-                    GameObject casterPlayer = currentPlayer ?? GetPlayer(); // Changed variable name
+                    GameObject casterPlayer = currentPlayer ?? GetPlayer();
                     ulong playerClientId = casterPlayer?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
                     // Only caster spawns the flame
@@ -1293,7 +1334,14 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Shadow":
+                // Clear locally
                 resetOnOppHit = false;
+
+                // Tell server to disarm
+                if (!IsServer)
+                {
+                    SetSpellArmedServerRpc(false, false);
+                }
 
                 // Remove Shadow invisibility via server
                 if (player != null && opponent != null)
@@ -1337,8 +1385,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Mud":
+                // Clear locally
                 resetOnOppHit = false;
                 resetOnBounce = false;
+
+                // Tell server to disarm
+                if (!IsServer)
+                {
+                    SetSpellArmedServerRpc(false, false);
+                }
 
                 if (mudPrefab != null && opponent != null)
                 {
@@ -1556,6 +1611,12 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         Debug.Log($"[SpellEffects-ServerRpc] ? Applying Fireball knockback - caster: {caster?.name ?? "NULL"}, victim: {victim.name}");
 
+        if (movement != null)
+        {
+            movement.inputDisabled = true;
+            Debug.Log($"[SpellEffects-ServerRpc] Disabled victim's input on server");
+        }
+
         // Calculate knockback direction
         Vector3 knockbackDirection = Vector3.back; // Default fallback
 
@@ -1576,8 +1637,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
             Debug.Log($"[SpellEffects-ServerRpc] Using fallback direction (no caster): {knockbackDirection}");
         }
 
-        float forceStrength = 20f;
-        Vector3 knockbackForce = knockbackDirection * forceStrength;
+        Vector3 knockbackForce = knockbackDirection * fireballForceStrength;
         float duration = 0.45f;
 
         Debug.Log($"[SpellEffects-ServerRpc] knockbackForce: {knockbackForce}, duration: {duration}");
@@ -1586,12 +1646,28 @@ public class NetworkedSpellEffects : NetworkBehaviour
         StartCoroutine(ApplyKnockback(victim, knockbackForce, duration));
 
         Debug.Log($"[SpellEffects-ServerRpc] Broadcasting ApplyFireballKnockbackClientRpc to all clients");
-        ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, forceStrength, duration);
+        ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, fireballForceStrength, duration);
+
+        StartCoroutine(ReenableInputAfterDelay(movement, duration));
 
         Debug.Log($"[SpellEffects-ServerRpc] Scheduling resetSpellEffect in {duration + 0.1f}s");
         Invoke(nameof(resetSpellEffect), duration + 0.1f);
 
         Debug.Log($"[SpellEffects-ServerRpc] === ApplyFireballKnockbackServerRpc END ===");
+    }
+
+    /// <summary>
+    /// Re-enable input after knockback completes
+    /// </summary>
+    private IEnumerator ReenableInputAfterDelay(MainCharacterMovement movement, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (movement != null)
+        {
+            movement.inputDisabled = false;
+            Debug.Log($"[SpellEffects] Re-enabled input for {movement.gameObject.name}");
+        }
     }
 
     /// <summary>
@@ -1601,10 +1677,17 @@ public class NetworkedSpellEffects : NetworkBehaviour
     private void ApplyFireballKnockbackClientRpc(ulong victimClientId, Vector3 knockbackDirection, float forceStrength, float duration)
     {
         GameObject victim = GetPlayerByClientId(victimClientId);
-
         if (victim == null) return;
 
         Debug.Log($"[SpellEffects-Client] Applying Fireball knockback to {victim.name}");
+
+        // === NEW: Disable input on client's copy too ===
+        var movement = victim.GetComponent<MainCharacterMovement>();
+        if (movement != null)
+        {
+            movement.inputDisabled = true;
+            StartCoroutine(ReenableInputAfterDelay(movement, duration));
+        }
 
         Vector3 knockbackForce = knockbackDirection * forceStrength;
         StartCoroutine(ApplyKnockback(victim, knockbackForce, duration));
@@ -1682,10 +1765,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
         Vector3 startPosition = target.transform.position;
         float totalDistance = 0f;
 
+        // Track vertical velocity for gravity
+        float verticalVelocity = knockbackForce.y;
+        float gravity = 25f; // Match your MainCharacterMovement gravity value
+
         Debug.Log($"[ApplyKnockback] Starting knockback loop:");
         Debug.Log($"  - knockbackForce: {knockbackForce}");
         Debug.Log($"  - duration: {duration}");
         Debug.Log($"  - force magnitude: {knockbackForce.magnitude}");
+        Debug.Log($"  - initial vertical velocity: {verticalVelocity}");
 
         int frameCount = 0;
         while (elapsed < duration)
@@ -1705,11 +1793,36 @@ public class NetworkedSpellEffects : NetworkBehaviour
             elapsed += Time.deltaTime;
             float t = 1f - (elapsed / duration);
 
-            Vector3 frameKnockback = knockbackForce * t * Time.deltaTime;
+            // Calculate horizontal knockback (decreases over time)
+            Vector3 horizontalKnockback = new Vector3(knockbackForce.x, 0, knockbackForce.z) * t * Time.deltaTime;
+
+            // Apply gravity to vertical velocity
+            if (!controller.isGrounded)
+            {
+                verticalVelocity -= gravity * Time.deltaTime;
+            }
+            else
+            {
+                verticalVelocity = Mathf.Max(verticalVelocity, -2f); // Small downward force when grounded
+            }
+
+            // Combine horizontal and vertical movement
+            Vector3 frameMovement = horizontalKnockback + new Vector3(0, verticalVelocity * Time.deltaTime, 0);
+
             Vector3 positionBefore = target.transform.position;
 
             // Try to move
-            CollisionFlags flags = controller.Move(frameKnockback);
+            CollisionFlags flags = controller.Move(frameMovement);
+
+            // If we hit something above or below, stop vertical velocity
+            if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0)
+            {
+                verticalVelocity = 0;
+            }
+            if ((flags & CollisionFlags.Below) != 0 && verticalVelocity < 0)
+            {
+                verticalVelocity = 0;
+            }
 
             Vector3 positionAfter = target.transform.position;
             float frameMoveDistance = Vector3.Distance(positionBefore, positionAfter);
@@ -1719,12 +1832,12 @@ public class NetworkedSpellEffects : NetworkBehaviour
             if (frameCount % 10 == 0 || frameCount < 5)
             {
                 Debug.Log($"[ApplyKnockback] Frame {frameCount}: t={t:F3}, elapsed={elapsed:F3}");
-                Debug.Log($"  - frameKnockback: {frameKnockback}");
+                Debug.Log($"  - frameMovement: {frameMovement}");
+                Debug.Log($"  - verticalVelocity: {verticalVelocity:F3}");
                 Debug.Log($"  - position before: {positionBefore}");
                 Debug.Log($"  - position after: {positionAfter}");
                 Debug.Log($"  - moved: {frameMoveDistance:F3}m");
                 Debug.Log($"  - collision flags: {flags}");
-                Debug.Log($"  - controller.enabled: {controller.enabled}");
                 Debug.Log($"  - controller.isGrounded: {controller.isGrounded}");
             }
 
@@ -1819,6 +1932,20 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
 
         Invoke(nameof(resetSpellEffect), 0.1f);
+    }
+
+    /// <summary>
+    /// Tell the server to arm Fireball (or other on-hit spells)
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    private void SetSpellArmedServerRpc(bool oppHit, bool plrHit, ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+
+        resetOnOppHit = oppHit;
+        resetOnPlrHit = plrHit;
+
+        Debug.Log($"[SpellEffects-Server] Spell armed - resetOnOppHit: {resetOnOppHit}, resetOnPlrHit: {resetOnPlrHit}");
     }
 
     private IEnumerator ShowSpellExplanation(string spell)

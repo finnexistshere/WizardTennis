@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.Windows;
+using Unity.Netcode;
 
 public class MainCharacterMovement : MonoBehaviour
 {
@@ -21,6 +21,10 @@ public class MainCharacterMovement : MonoBehaviour
 
     public bool gemini = false;
 
+    // ADD THESE for multiplayer knockback support
+    [HideInInspector] public bool inputDisabled = false;
+    private NetworkObject netObj; // Cache the NetworkObject if present
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -28,10 +32,27 @@ public class MainCharacterMovement : MonoBehaviour
 
         if (meshChild != null)
             meshOriginalLocalPos = meshChild.localPosition;
+
+        // ADD THIS - Check if we're in multiplayer
+        netObj = GetComponent<NetworkObject>();
     }
 
     void Update()
     {
+        // ADD THIS - In multiplayer, only run on owner
+        if (netObj != null && !netObj.IsOwner)
+            return;
+
+        // ADD THIS - Skip input if disabled (for knockback)
+        if (inputDisabled)
+        {
+            // Still apply gravity even when input is disabled
+            moveDirection.y -= gravity * Time.deltaTime;
+            controller.Move(moveDirection * Time.deltaTime);
+            HandleMeshBounce();
+            return;
+        }
+
         if (controller.isGrounded)
         {
             Vector3 input = Vector3.zero;
