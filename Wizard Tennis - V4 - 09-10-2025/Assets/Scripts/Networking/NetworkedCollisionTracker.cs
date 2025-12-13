@@ -6,13 +6,12 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     [Header("References")]
     public NetworkedGameManager gameManager;
     public SpellEffects spellEffects;
-    public NetworkedSpellEffects networkedSpellEffects; // ADD THIS
+    public NetworkedSpellEffects networkedSpellEffects;
 
     [Header("State")]
     public string LastHitWizard = "";
     public bool hasBounced = false;
 
-    // ADD THESE
     private GameObject lastHitterGameObject;
     private GameObject previousHitterGameObject;
 
@@ -26,7 +25,6 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         if (spellEffects == null)
             spellEffects = FindObjectOfType<SpellEffects>();
 
-        // ADD THIS
         if (networkedSpellEffects == null)
             networkedSpellEffects = NetworkedSpellEffects.Instance;
     }
@@ -70,9 +68,7 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
                 break;
 
             case "BounceCheck":
-                // Bounce is now handled by BounceChecker calling HandleBounceCheck()
-
-                // ADD THIS: Check for Mud spell on bounce
+                // Check for Mud spell on bounce
                 if (networkedSpellEffects != null &&
                     networkedSpellEffects.spellName == "Mud" &&
                     networkedSpellEffects.resetOnBounce)
@@ -84,9 +80,6 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         }
     }
 
-    // ---------------------------------------------------------
-    // MARK LAST HIT PLAYER BASED ON NETWORK OWNERSHIP
-    // ---------------------------------------------------------
     private void TryMarkLastHitPlayer(Collider other)
     {
         Debug.Log($"[Ball-TryMarkLastHitPlayer] === START === Collider: {other.name}, Tag: {other.tag}");
@@ -109,12 +102,12 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         Debug.Log($"[Ball-TryMarkLastHitPlayer] Previous: {previousHitterGameObject?.name ?? "NULL"}, Current: {lastHitterGameObject?.name}");
 
-        // Convert numeric clientId -> string label used by your scoring logic
+        // Convert numeric clientId -> string label used by scoring logic
         LastHitWizard = hitterId == 0 ? "Player_0" : "Player_1";
 
         Debug.Log($"[Ball-TryMarkLastHitPlayer] LastHitWizard set to: {LastHitWizard}");
 
-        // === Notify SpellEffects about the hit ===
+        // Notify SpellEffects about the hit
         if (networkedSpellEffects == null)
         {
             Debug.LogError("[Ball-TryMarkLastHitPlayer] networkedSpellEffects is NULL!");
@@ -138,24 +131,26 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     }
 
     // ---------------------------------------------------------
-    // SCORING LOGIC BELOW (unchanged)
+    // SCORING LOGIC - FIXED TO USE "Player" and "Opponent"
     // ---------------------------------------------------------
 
     private void HandleOutOfBounds()
     {
         if (!hasBounced)
         {
+            // Ball went out without bouncing
             if (LastHitWizard == "Player_0")
-                AwardPoint("Host", "Player 1 Wins! Player 2 missed!");
+                AwardPoint("Opponent", "Player 2 Wins! Player 1 missed!");
             else if (LastHitWizard == "Player_1")
-                AwardPoint("Host", "Player 1 Wins! Player 2 hit it out!");
+                AwardPoint("Player", "Player 1 Wins! Player 2 hit it out!");
         }
         else
         {
+            // Ball bounced then went out
             if (LastHitWizard == "Player_0")
-                AwardPoint("Host", "Player 1 Wins! Player 2 Missed!");
+                AwardPoint("Opponent", "Player 2 Wins! Player 1 Missed!");
             else if (LastHitWizard == "Player_1")
-                AwardPoint("Host", "Player 2 messed up, Player 1 wins the point!");
+                AwardPoint("Player", "Player 1 wins! Player 2 messed up!");
         }
     }
 
@@ -163,36 +158,39 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     {
         if (!hasBounced)
         {
+            // Ball went out without bouncing
             if (LastHitWizard == "Player_0")
-                AwardPoint("Client", "Player 2 Wins! Player 1 missed!");
+                AwardPoint("Player", "Player 1 Wins! Player 2 missed!");
             else if (LastHitWizard == "Player_1")
-                AwardPoint("Client", "Player 2 Wins! Player 1 missed!");
+                AwardPoint("Opponent", "Player 2 Wins! Player 1 missed!");
         }
         else
         {
+            // Ball bounced then went out
             if (LastHitWizard == "Player_0")
-                AwardPoint("Client", "Player 2 wins! Player 1 Missed!");
+                AwardPoint("Player", "Player 1 wins! Player 2 Missed!");
             else if (LastHitWizard == "Player_1")
-                AwardPoint("Client", "Player 2 wins! Player 1 Missed!");
+                AwardPoint("Opponent", "Player 2 wins! Player 1 Missed!");
         }
     }
 
     private void HandleNetHit()
     {
         if (LastHitWizard == "Player_0")
-            AwardPoint("Client", "Player 2 Wins! Player 1 hit the net!");
+            AwardPoint("Opponent", "Player 2 Wins! Player 1 hit the net!");
         else if (LastHitWizard == "Player_1")
-            AwardPoint("Host", "Player 1 Wins! Player 2 hit the net!");
+            AwardPoint("Player", "Player 1 Wins! Player 2 hit the net!");
     }
 
     public void HandleBounceCheck()
     {
         if (hasBounced)
         {
+            // Double bounce
             if (LastHitWizard == "Player_0")
-                AwardPoint("Client", "Player 2 Wins! Double bounce by Player 1!");
+                AwardPoint("Opponent", "Player 2 Wins! Double bounce by Player 1!");
             else if (LastHitWizard == "Player_1")
-                AwardPoint("Host", "Player 1 Wins! Double bounce by Player 2!");
+                AwardPoint("Player", "Player 1 Wins! Double bounce by Player 2!");
         }
         else
         {
@@ -204,14 +202,29 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        Debug.Log($"[NetworkedCollisionTrackerBall] AwardPoint called - winner: '{winner}', message: '{message}'");
+
         if (spellEffects != null)
             spellEffects.ForceResetSpellExplanation();
 
         if (NetworkedScoreManager.Instance != null)
-            NetworkedScoreManager.Instance.AddPoint(winner);
+        {
+            Debug.Log($"[NetworkedCollisionTrackerBall] Calling ScoreManager.AddPointServerRpc('{winner}')");
+            NetworkedScoreManager.Instance.AddPointServerRpc(winner);
+        }
+        else
+        {
+            Debug.LogError("[NetworkedCollisionTrackerBall] NetworkedScoreManager.Instance is NULL!");
+        }
 
         if (gameManager != null)
+        {
             gameManager.RoundOver(message);
+        }
+        else
+        {
+            Debug.LogError("[NetworkedCollisionTrackerBall] gameManager is NULL!");
+        }
 
         Debug.Log($"[NetworkedCollisionTrackerBall] Point awarded to {winner}: {message}");
     }
@@ -226,7 +239,6 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         canTrigger = !canTrigger;
     }
 
-    // ADD THIS: Public method to reset tracking on new round
     public void ResetTracking()
     {
         LastHitWizard = "";

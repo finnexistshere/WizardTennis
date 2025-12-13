@@ -88,6 +88,26 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether" };
 
+    [SerializeField]
+    private string[] gambitSpells = new string[]
+{
+    "Lightning",
+    "Ice",
+    "Fireball",
+    "Shadow",
+    "Mud",
+    "Green",
+    "Stone",
+    "Chronos",
+    "Gemini",
+    "Blink",
+    "Jolly",
+    "Warp",
+    "Pisces",
+    "Tether",
+    "Gorbino"
+};
+
     private bool networkSpellActive = false;
     private GameObject Gorbino;
 
@@ -1296,10 +1316,8 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Gambit":
                 if (isLocalCaster)
                 {
-                    int spellInt = Random.Range(0, allSpells.Length);
-                    spellName = allSpells[spellInt];
-                    castSpell();
-                    return;
+                    Debug.Log("[SpellEffects] Gambit cast — requesting server roll");
+                    ResolveGambitServerRpc(casterClientId);
                 }
                 break;
 
@@ -2432,5 +2450,57 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         Debug.Log($"[SpellEffects-Client] Freezing {target.name} locally");
         StartCoroutine(FreezeOpponentMovement(target, duration));
+    }
+
+    /// <summary>
+    /// Called when the local player wins a point - plays victory sound
+    /// </summary>
+    public void OnPointWon()
+    {
+        if (pointSource != null && pointWon != null)
+        {
+            pointSource.PlayOneShot(pointWon, pointSFXVolume);
+            Debug.Log("[SpellEffects] Point won sound played");
+        }
+    }
+
+    /// <summary>
+    /// Called when the local player loses a point - plays defeat sound
+    /// </summary>
+    public void OnPointLost()
+    {
+        if (pointSource != null && pointlost != null)
+        {
+            pointSource.PlayOneShot(pointlost, pointSFXVolume);
+            Debug.Log("[SpellEffects] Point lost sound played");
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void ResolveGambitServerRpc(ulong casterClientId)
+    {
+        int index = Random.Range(0, gambitSpells.Length);
+        string chosenSpell = gambitSpells[index];
+
+        Debug.Log($"[Gambit-Server] Rolled spell: {chosenSpell}");
+
+        ResolveGambitClientRpc(casterClientId, chosenSpell);
+    }
+
+    [ClientRpc]
+    private void ResolveGambitClientRpc(ulong casterClientId, string chosenSpell)
+    {
+        // Only the caster actually executes it
+        if (NetworkManager.Singleton.LocalClientId != casterClientId)
+            return;
+
+        Debug.Log($"[Gambit-Client] Casting resolved spell: {chosenSpell}");
+
+        string originalSpell = spellName;
+
+        spellName = chosenSpell;
+        castSpell();
+
+        spellName = originalSpell; // restore
     }
 }

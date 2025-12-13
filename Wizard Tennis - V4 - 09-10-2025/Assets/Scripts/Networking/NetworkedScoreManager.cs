@@ -10,16 +10,20 @@ public class NetworkedScoreManager : NetworkBehaviour
     [Header("UI References")]
     public TextMeshProUGUI playerScoreText;
     public TextMeshProUGUI opponentScoreText;
-    private SpellEffects spellEffects;
 
     [Header("Scoring Settings")]
     public int winningScore = 5;
 
-    // NetworkVariables for synced scores
-    private NetworkVariable<int> hostScore = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    private NetworkVariable<int> clientScore = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    // Network synced scores
+    private NetworkVariable<int> playerScore = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<int> opponentScore = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    public int greenPoints;
+    // Green spell tracking - server authoritative
+    private NetworkVariable<int> currentRallyCount = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<int> greenPointsAccumulated = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    [Header("Green Spell Settings")]
+    [SerializeField] private int ralliesPerGreenPoint = 3; // Every 3 rallies = 1 green point
 
     private void Awake()
     {
@@ -28,7 +32,6 @@ public class NetworkedScoreManager : NetworkBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject);
             SceneManager.sceneLoaded += OnSceneLoaded;
-            spellEffects = FindObjectOfType<SpellEffects>();
         }
         else
         {
@@ -38,33 +41,28 @@ public class NetworkedScoreManager : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Subscribe to score changes
-        hostScore.OnValueChanged += OnHostScoreChanged;
-        clientScore.OnValueChanged += OnClientScoreChanged;
+        base.OnNetworkSpawn();
 
-        // Initialize UI with current values
+        // Subscribe to value changes
+        playerScore.OnValueChanged += OnPlayerScoreChanged;
+        opponentScore.OnValueChanged += OnOpponentScoreChanged;
+        currentRallyCount.OnValueChanged += OnRallyCountChanged;
+        greenPointsAccumulated.OnValueChanged += OnGreenPointsChanged;
+
+        // Update UI immediately
         UpdateScoreUI();
-
-        Debug.Log($"[NetworkedScoreManager] Spawned - Host: {hostScore.Value}, Client: {clientScore.Value}");
+        UpdateGreenPointsUI();
     }
 
     public override void OnNetworkDespawn()
     {
-        // Unsubscribe from score changes
-        hostScore.OnValueChanged -= OnHostScoreChanged;
-        clientScore.OnValueChanged -= OnClientScoreChanged;
-    }
+        base.OnNetworkDespawn();
 
-    private void OnHostScoreChanged(int previousValue, int newValue)
-    {
-        UpdateScoreUI();
-        Debug.Log($"[NetworkedScoreManager] Host score changed: {previousValue} -> {newValue}");
-    }
-
-    private void OnClientScoreChanged(int previousValue, int newValue)
-    {
-        UpdateScoreUI();
-        Debug.Log($"[NetworkedScoreManager] Client score changed: {previousValue} -> {newValue}");
+        // Unsubscribe
+        playerScore.OnValueChanged -= OnPlayerScoreChanged;
+        opponentScore.OnValueChanged -= OnOpponentScoreChanged;
+        currentRallyCount.OnValueChanged -= OnRallyCountChanged;
+        greenPointsAccumulated.OnValueChanged -= OnGreenPointsChanged;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -79,173 +77,239 @@ public class NetworkedScoreManager : NetworkBehaviour
             opponentScoreText = opponentText.GetComponent<TextMeshProUGUI>();
 
         UpdateScoreUI();
+        UpdateGreenPointsUI();
     }
 
     /// <summary>
-    /// Call this from collision detection scripts to add a point
+    /// Called when a player hits the ball - increments rally count
+    /// Should be called from CollisionTrackerBall on the server
     /// </summary>
-    public void AddPoint(string scorer)
-    {
-        if (!IsServer)
-        {
-            // If not server, request via ServerRpc
-            AddPointServerRpc(scorer);
-            return;
-        }
-
-        // Server processes the point
-        ServerAddPoint(scorer);
-    }
-
     [ServerRpc(RequireOwnership = false)]
-    private void AddPointServerRpc(string scorer, ServerRpcParams rpcParams = default)
-    {
-        ServerAddPoint(scorer);
-    }
-
-    private void ServerAddPoint(string scorer)
+    public void IncrementRallyCountServerRpc()
     {
         if (!IsServer) return;
 
-        // Determine which score to increment based on scorer
-        // "Player" = host side, "Opponent" = client side
-        if (scorer == "Host" || scorer == "Player")
+        currentRallyCount.Value++;
+
+        Debug.Log($"[ScoreManager-Server] Rally count: {currentRallyCount.Value}");
+
+        // Check if Green spell is active
+        bool greenActive = IsGreenSpellActive();
+
+        if (greenActive)
         {
-            hostScore.Value = hostScore.Value + 1 + greenPoints;
-            Debug.Log($"[NetworkedScoreManager] Host scored! New score: {hostScore.Value}");
-        }
-        else if (scorer == "Client" || scorer == "Opponent")
-        {
-            clientScore.Value = clientScore.Value + 1 + greenPoints;
-            Debug.Log($"[NetworkedScoreManager] Client scored! New score: {clientScore.Value}");
+            // Every 3 rallies = 1 green point
+            if (currentRallyCount.Value % ralliesPerGreenPoint == 0)
+            {
+                greenPointsAccumulated.Value++;
+                Debug.Log($"[ScoreManager-Server] Green point earned! Total: {greenPointsAccumulated.Value}");
+            }
         }
 
-        // Trigger spell effects
-        TriggerSpellEffectsClientRpc(scorer);
-
-        // Check win conditions
-        if (hostScore.Value >= winningScore)
-        {
-            GameOverClientRpc("Host Wins the Match!");
-        }
-        else if (clientScore.Value >= winningScore)
-        {
-            GameOverClientRpc("Client Wins the Match!");
-        }
-        else
-        {
-            if (scorer == "Host" || scorer == "Player")
-                RoundOverClientRpc("Point for Host!");
-            else
-                RoundOverClientRpc("Point for Client!");
-        }
+        // Update UI for all clients
+        UpdateRallyCountClientRpc(currentRallyCount.Value);
     }
 
-    [ClientRpc]
-    private void TriggerSpellEffectsClientRpc(string scorer)
+    /// <summary>
+    /// Checks if Green spell is currently active
+    /// </summary>
+    private bool IsGreenSpellActive()
     {
-        if (spellEffects == null)
-        {
-            spellEffects = FindObjectOfType<SpellEffects>();
-        }
-
+        // Check if any player has Green spell active
+        var spellEffects = NetworkedSpellEffects.Instance;
         if (spellEffects != null)
         {
-            if (scorer == "Host" || scorer == "Player")
+            // Check if spellName is "Green"
+            return spellEffects.spellName == "Green";
+        }
+
+        // Fallback: check NetworkedBall components
+        var balls = FindObjectsOfType<NetworkedBall>();
+        foreach (var ball in balls)
+        {
+            if (ball.green)
             {
+                Debug.Log("[ScoreManager] Green spell detected via NetworkedBall");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Awards a point to the winner, including any accumulated green points
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    public void AddPointServerRpc(string scorer)
+    {
+        if (!IsServer) return;
+
+        Debug.Log($"[ScoreManager-Server] AddPoint - scorer: {scorer}, greenPoints: {greenPointsAccumulated.Value}");
+
+        int pointsToAdd = 1 + greenPointsAccumulated.Value;
+
+        if (scorer == "Player")
+        {
+            playerScore.Value += pointsToAdd;
+            Debug.Log($"[ScoreManager-Server] Player scored {pointsToAdd} points (base 1 + {greenPointsAccumulated.Value} green)");
+        }
+        else if (scorer == "Opponent")
+        {
+            opponentScore.Value += pointsToAdd;
+            Debug.Log($"[ScoreManager-Server] Opponent scored {pointsToAdd} points (base 1 + {greenPointsAccumulated.Value} green)");
+        }
+
+        // Reset rally count and green points for next round
+        currentRallyCount.Value = 0;
+        greenPointsAccumulated.Value = 0;
+
+        // Check win condition
+        CheckWinConditionClientRpc(scorer);
+    }
+
+    [ClientRpc]
+    private void CheckWinConditionClientRpc(string scorer)
+    {
+        // Play sound effects
+        var spellEffects = NetworkedSpellEffects.Instance;
+        if (spellEffects != null)
+        {
+            if (scorer == "Player")
                 spellEffects.OnPointWon();
-            }
-            else if (scorer == "Client" || scorer == "Opponent")
-            {
+            else if (scorer == "Opponent")
                 spellEffects.OnPointLost();
-            }
+        }
+
+        // Only the server/host should handle game over logic
+        if (!IsServer) return;
+
+        if (playerScore.Value >= winningScore)
+        {
+            NetworkedGameManager.Instance?.GameOverFinal("You Win the Match!");
+        }
+        else if (opponentScore.Value >= winningScore)
+        {
+            NetworkedGameManager.Instance?.GameOverFinal("Opponent Wins the Match!");
+        }
+        else
+        {
+            if (scorer == "Player")
+                NetworkedGameManager.Instance?.GameOverRound("Point for Player!");
+            else
+                NetworkedGameManager.Instance?.GameOverRound("Point for Opponent!");
         }
     }
 
+    /// <summary>
+    /// Updates rally count UI on all clients
+    /// </summary>
     [ClientRpc]
-    private void RoundOverClientRpc(string message)
+    private void UpdateRallyCountClientRpc(int rallyCount)
     {
-        if (NetworkedGameManager.Instance != null)
+        // Update local player's UI
+        var uiManager = NetworkedUIManager.GetLocalPlayerUI();
+        if (uiManager != null)
         {
-            NetworkedGameManager.Instance.GameOverRound(message);
-        }
-        else if (GameManager.Instance != null)
-        {
-            GameManager.Instance.GameOverRound(message);
+            uiManager.UpdateRallyCount(rallyCount);
         }
     }
 
-    [ClientRpc]
-    private void GameOverClientRpc(string message)
+    // Callback when values change
+    private void OnPlayerScoreChanged(int oldValue, int newValue)
     {
-        if (NetworkedGameManager.Instance != null)
-        {
-            NetworkedGameManager.Instance.GameOverFinal(message);
-        }
-        else if (GameManager.Instance != null)
-        {
-            GameManager.Instance.GameOverFinal(message);
-        }
+        UpdateScoreUI();
     }
 
+    private void OnOpponentScoreChanged(int oldValue, int newValue)
+    {
+        UpdateScoreUI();
+    }
+
+    private void OnRallyCountChanged(int oldValue, int newValue)
+    {
+        Debug.Log($"[ScoreManager-Client] Rally count changed: {oldValue} -> {newValue}");
+        UpdateRallyCountClientRpc(newValue);
+    }
+
+    private void OnGreenPointsChanged(int oldValue, int newValue)
+    {
+        Debug.Log($"[ScoreManager-Client] Green points changed: {oldValue} -> {newValue}");
+        UpdateGreenPointsUI();
+    }
+
+    /// <summary>
+    /// Updates the main score UI
+    /// </summary>
     public void UpdateScoreUI()
     {
-        // Display scores based on perspective
-        // If you're the host, you see your score on left, client on right
-        // If you're the client, you see your score on left, host on right
+        if (playerScoreText != null)
+            playerScoreText.text = playerScore.Value.ToString();
 
-        if (IsServer || NetworkManager.Singleton == null)
-        {
-            // Host perspective or standalone
-            if (playerScoreText != null)
-                playerScoreText.text = hostScore.Value.ToString();
-            if (opponentScoreText != null)
-                opponentScoreText.text = clientScore.Value.ToString();
-        }
-        else
-        {
-            // Client perspective - swap the scores
-            if (playerScoreText != null)
-                playerScoreText.text = clientScore.Value.ToString();
-            if (opponentScoreText != null)
-                opponentScoreText.text = hostScore.Value.ToString();
-        }
+        if (opponentScoreText != null)
+            opponentScoreText.text = opponentScore.Value.ToString();
     }
 
-    public void LoadSavedScores()
+    /// <summary>
+    /// Updates green points UI for local player
+    /// </summary>
+    private void UpdateGreenPointsUI()
     {
-        // In networked mode, scores are managed by the server
-        // This is kept for compatibility but doesn't do anything in multiplayer
-        UpdateScoreUI();
-    }
-
-    public void ResetScores()
-    {
-        if (!IsServer)
+        var uiManager = NetworkedUIManager.GetLocalPlayerUI();
+        if (uiManager != null)
         {
-            ResetScoresServerRpc();
-            return;
+            uiManager.UpdateGreenPoints(greenPointsAccumulated.Value);
         }
-
-        hostScore.Value = 0;
-        clientScore.Value = 0;
-        UpdateScoreUI();
-        Debug.Log("[NetworkedScoreManager] Scores reset.");
     }
 
+    /// <summary>
+    /// Resets rally count (call at start of each round)
+    /// </summary>
     [ServerRpc(RequireOwnership = false)]
-    private void ResetScoresServerRpc()
+    public void ResetRallyCountServerRpc()
     {
-        hostScore.Value = 0;
-        clientScore.Value = 0;
+        if (!IsServer) return;
+
+        currentRallyCount.Value = 0;
+        greenPointsAccumulated.Value = 0;
+
+        Debug.Log("[ScoreManager-Server] Rally count and green points reset");
     }
 
-    // Helper method for collision scripts to determine scorer
-    public void AddPointForClient(ulong clientId)
+    /// <summary>
+    /// Resets all scores (call at start of new match)
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    public void ResetScoresServerRpc()
     {
-        if (clientId == 0)
-            AddPoint("Host");
+        if (!IsServer) return;
+
+        playerScore.Value = 0;
+        opponentScore.Value = 0;
+        currentRallyCount.Value = 0;
+        greenPointsAccumulated.Value = 0;
+
+        Debug.Log("[ScoreManager-Server] All scores reset");
+    }
+
+    // Public getters
+    public int GetPlayerScore() => playerScore.Value;
+    public int GetOpponentScore() => opponentScore.Value;
+    public int GetRallyCount() => currentRallyCount.Value;
+    public int GetGreenPoints() => greenPointsAccumulated.Value;
+
+    /// <summary>
+    /// Helper method to add points from legacy code
+    /// </summary>
+    public void AddPoint(string scorer)
+    {
+        if (IsServer)
+        {
+            AddPointServerRpc(scorer);
+        }
         else
-            AddPoint("Client");
+        {
+            Debug.LogWarning("[ScoreManager] AddPoint called on client - use AddPointServerRpc instead");
+        }
     }
 }

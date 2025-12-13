@@ -12,11 +12,8 @@ public class NetworkedBall : NetworkBehaviour
     public NetworkedScoreManager scoreManager;
     private NetworkedUIManager uiManager;
 
-    [Header("Rally Tracking")]
-    private NetworkVariable<int> rallyCount = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    private NetworkVariable<int> greenRallyCount = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    public bool green = false;
-    private NetworkVariable<int> greenPoints = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    [Header("Green Spell State")]
+    public bool green = false; // Local state only - rally tracking handled by ScoreManager
 
     [Header("Ball Spawn")]
     public Transform ballSpawnPoint;
@@ -39,19 +36,19 @@ public class NetworkedBall : NetworkBehaviour
     private float lastHitTime = -999f;
     private float hitDebounce = 0.15f;
     private float lastServeTime = -999f;
-    private float serveProtectionWindow = 0.3f; // Can't hit for 0.3s after serving
+    private float serveProtectionWindow = 0.3f;
 
     // Local state
     private bool nearBall = false;
     private bool hitting = true;
-    private bool localServing = true; // Local flag, no networking needed
+    private bool localServing = true;
 
     private Camera cam;
     private static GameObject currentBallInstance;
-    private static float lastGlobalServerHitTime = -999f; // Static for ALL players
+    private static float lastGlobalServerHitTime = -999f;
     private static float serverHitDebounce = 0.2f;
 
-    // PAUSE BALL FUNCTIONS FOR TESTING PURPOSES
+    // Pause ball state (for testing)
     private static Vector3 savedVelocity;
     private static RigidbodyConstraints savedConstraints;
     private static bool ballPaused = false;
@@ -95,48 +92,9 @@ public class NetworkedBall : NetworkBehaviour
                 Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} has no NetworkedUIManager component!");
         }
 
-        // Subscribe to NetworkVariable changes to update UI
-        rallyCount.OnValueChanged += OnRallyCountChanged;
-        greenPoints.OnValueChanged += OnGreenPointsChanged;
-
-        // Initialize UI with current values
-        if (IsOwner && uiManager != null)
-        {
-            uiManager.UpdateRallyCount(rallyCount.Value);
-            if (greenPoints.Value > 0)
-            {
-                uiManager.UpdateGreenPoints(greenPoints.Value);
-            }
-        }
-
         if (IsOwner)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} spawned and ready.");
-        }
-    }
-
-    public override void OnNetworkDespawn()
-    {
-        // Unsubscribe from NetworkVariable changes
-        rallyCount.OnValueChanged -= OnRallyCountChanged;
-        greenPoints.OnValueChanged -= OnGreenPointsChanged;
-    }
-
-    private void OnRallyCountChanged(int previousValue, int newValue)
-    {
-        // Update UI when rally count changes
-        if (IsOwner && uiManager != null)
-        {
-            uiManager.UpdateRallyCount(newValue);
-        }
-    }
-
-    private void OnGreenPointsChanged(int previousValue, int newValue)
-    {
-        // Update UI when green points change
-        if (IsOwner && uiManager != null)
-        {
-            uiManager.UpdateGreenPoints(newValue);
         }
     }
 
@@ -150,6 +108,7 @@ public class NetworkedBall : NetworkBehaviour
             SpawnBallServerRpc(ballSpawnPoint.position, ballSpawnPoint.rotation);
         }
 
+        // Pause/Resume for testing
         if (Input.GetKeyDown(KeyCode.R))
         {
             if (!ballPaused)
@@ -163,7 +122,7 @@ public class NetworkedBall : NetworkBehaviour
         {
             ServeBallServerRpc();
             localServing = false;
-            lastServeTime = Time.time; // Record serve time
+            lastServeTime = Time.time;
             if (servingBarriers != null) servingBarriers.SetActive(false);
         }
     }
@@ -184,7 +143,6 @@ public class NetworkedBall : NetworkBehaviour
         rb.constraints = RigidbodyConstraints.FreezeAll;
 
         ballPaused = true;
-
         PauseBallClientRpc();
     }
 
@@ -204,11 +162,9 @@ public class NetworkedBall : NetworkBehaviour
 
         rb.constraints = RigidbodyConstraints.None;
         rb.useGravity = true;
-
         rb.linearVelocity = savedVelocity;
 
         ballPaused = false;
-
         ResumeBallClientRpc(savedVelocity);
     }
 
@@ -250,7 +206,6 @@ public class NetworkedBall : NetworkBehaviour
     [ClientRpc]
     private void NotifyBallSpawnedClientRpc()
     {
-        // Find the ball on all clients
         currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
         if (currentBallInstance != null)
         {
@@ -278,10 +233,6 @@ public class NetworkedBall : NetworkBehaviour
         if (rb != null)
         {
             rb.useGravity = true;
-
-            // Match original Ball.cs exactly: gentle upward toss
-            // new Vector3(0, upForce, 0).normalized gives (0, 1, 0)
-            // multiplied by strength/2 gives a gentle upward velocity
             Vector3 upVector = new Vector3(0, ogUpForce, 0);
             rb.linearVelocity = upVector.normalized * (strength / 2f);
 
@@ -296,7 +247,7 @@ public class NetworkedBall : NetworkBehaviour
     {
         localServing = false;
         hitting = true;
-        lastServeTime = Time.time; // All clients record the serve time
+        lastServeTime = Time.time;
         if (servingBarriers != null) servingBarriers.SetActive(false);
     }
 
@@ -305,7 +256,7 @@ public class NetworkedBall : NetworkBehaviour
     {
         if (!IsServer || currentBallInstance == null) return;
 
-        // Server-side debounce: ignore hits that come too quickly
+        // Server-side debounce
         if (Time.time - lastGlobalServerHitTime < serverHitDebounce)
         {
             Debug.Log($"[Server] Ignoring hit from client {rpcParams.Receive.SenderClientId} - too soon after last hit ({Time.time - lastGlobalServerHitTime:F2}s ago)");
@@ -317,24 +268,19 @@ public class NetworkedBall : NetworkBehaviour
         Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            // Ensure gravity is always on during gameplay
             rb.useGravity = true;
-
-            // Apply velocity: normalized direction * force + upward component
             Vector3 velocity = direction.normalized * force + new Vector3(0, upwardForce, 0);
             rb.linearVelocity = velocity;
 
-            Debug.Log($"[Server] Ball hit by client {rpcParams.Receive.SenderClientId} - velocity: {velocity}, gravity: {rb.useGravity}");
+            Debug.Log($"[Server] Ball hit by client {rpcParams.Receive.SenderClientId} - velocity: {velocity}");
         }
 
-        // Notify all clients to play effects
         PlayHitEffectsClientRpc(currentBallInstance.transform.position);
     }
 
     [ClientRpc]
     private void PlayHitEffectsClientRpc(Vector3 position)
     {
-        // Play particle effect
         GameObject particleObj = GameObject.FindGameObjectWithTag("Player Hit Particle");
         if (particleObj != null)
         {
@@ -347,45 +293,18 @@ public class NetworkedBall : NetworkBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    private void IncrementRallyCountServerRpc(ServerRpcParams rpcParams = default)
-    {
-        if (!IsServer) return;
-
-        rallyCount.Value++;
-        Debug.Log($"[Server] Rally count incremented to {rallyCount.Value}");
-
-        if (green)
-        {
-            greenRallyCount.Value++;
-            if (greenRallyCount.Value % 4 == 0)
-            {
-                greenPoints.Value++;
-                if (scoreManager != null)
-                {
-                    scoreManager.greenPoints = greenPoints.Value;
-                }
-                Debug.Log($"[Server] Green points incremented to {greenPoints.Value}");
-            }
-        }
-    }
-
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log($"[NetworkedBall] Player {OwnerClientId} OnTriggerEnter with tag: {other?.tag}");
-
         if (other == null || other.tag != "Ball") return;
 
-        Debug.Log($"[NetworkedBall] Player {OwnerClientId} detected ball - nearBall: {nearBall}, hitting: {hitting}, timeSinceLastHit: {Time.time - lastHitTime:F2}s, timeSinceServe: {Time.time - lastServeTime:F2}s");
-
-        // Protection window: don't hit immediately after serving
+        // Serve protection window
         if (Time.time - lastServeTime < serveProtectionWindow)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} in serve protection window");
             return;
         }
 
-        // Debounce
+        // Hit debounce
         if (Time.time - lastHitTime < hitDebounce)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} hit debounced");
@@ -394,14 +313,13 @@ public class NetworkedBall : NetworkBehaviour
 
         nearBall = true;
 
-        // Can't hit if hitting is disabled
         if (!hitting)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} can't hit - hitting is disabled");
             return;
         }
 
-        // Only allow hit if this player is the closest to the ball
+        // Only allow hit if this player is closest to the ball
         if (!IsClosestPlayerToBall(other.transform.position))
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} not closest to ball, ignoring hit.");
@@ -411,7 +329,7 @@ public class NetworkedBall : NetworkBehaviour
         lastHitTime = Time.time;
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} processing hit!");
 
-        // Calculate upforce based on position
+        // Calculate upforce
         if (35.5f < transform.position.x) upForce = ogUpForce + 2f;
         else upForce = ogUpForce;
         if (-6.25f < transform.position.z || transform.position.z < 6.25f) upForce += 2f;
@@ -436,20 +354,19 @@ public class NetworkedBall : NetworkBehaviour
             new Vector3(xPos, aimTarget.position.y, aimTarget.position.z) :
             transform.position + transform.forward * 10f;
 
-        // Play local audio immediately
+        // Play local audio
         Vector3 contactPoint = other.ClosestPoint(transform.position);
         PlayHitsound(contactPoint);
 
         // Request server to apply physics
         Vector3 direction = targetPos - transform.position;
-        Debug.Log($"[NetworkedBall] Player {OwnerClientId} hitting - direction: {direction}, targetPos: {targetPos}, myPos: {transform.position}, force: {strength}, upForce: {upForce}");
         HitBallServerRpc(direction, strength, upForce);
 
-        // Update rally count via server
-        IncrementRallyCountServerRpc();
-
-        // *** NEW: Check for Fireball knockback BEFORE resetting spell effects ***
-        CheckFireballHit();
+        // *** Update rally count via NetworkedScoreManager (handles green points automatically) ***
+        if (NetworkedScoreManager.Instance != null)
+        {
+            NetworkedScoreManager.Instance.IncrementRallyCountServerRpc();
+        }
 
         // Reset spell effects (if not already reset by Fireball)
         if (spellEffects != null && spellEffects.resetOnPlrHit)
@@ -476,14 +393,12 @@ public class NetworkedBall : NetworkBehaviour
     {
         float myDistance = Vector3.Distance(transform.position, ballPosition);
 
-        // If we have an opponent reference, check their distance
         if (opponent != null)
         {
             float opponentDistance = Vector3.Distance(opponent.transform.position, ballPosition);
             return myDistance < opponentDistance;
         }
 
-        // If no opponent, we're the only player, so we're closest
         return true;
     }
 
@@ -541,21 +456,12 @@ public class NetworkedBall : NetworkBehaviour
 
     public void SetToServingState()
     {
-        hitting = false;      // Not hitting yet
-        localServing = true;  // Ready to serve the next ball
+        hitting = false;
+        localServing = true;
 
-        // Optional: re-enable serving barriers
         if (servingBarriers != null)
             servingBarriers.SetActive(true);
 
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} set to SERVING state.");
-    }
-    private void CheckFireballHit()
-    {
-        // OLD SYSTEM - Now handled by NetworkedCollisionTrackerBall + NetworkedSpellEffects
-        // Keeping this method for backward compatibility but returning early
-
-        Debug.Log("[NetworkedBall] Fireball check bypassed - handled by NetworkedSpellEffects");
-        return;
     }
 }

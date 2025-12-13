@@ -693,14 +693,13 @@ public class NetworkedGameManager : NetworkBehaviour
     {
         Debug.Log("[NetworkedGameManager] StartNextRound called");
 
-        // CRITICAL: Only server should execute the main logic
         if (!IsServer)
         {
             Debug.LogWarning("[NetworkedGameManager] StartNextRound called on client - ignoring");
             return;
         }
 
-        // Resume time FIRST (so coroutines work)
+        // Resume time FIRST
         Time.timeScale = 1f;
         isPaused = false;
 
@@ -709,8 +708,23 @@ public class NetworkedGameManager : NetworkBehaviour
         // Tell all clients to resume their time
         ResumeTimeClientRpc();
 
-        // Remove all balls (server only)
+        // Remove all balls
         RemoveAllBalls();
+
+        // Reset rally count for new round
+        if (NetworkedScoreManager.Instance != null)
+        {
+            NetworkedScoreManager.Instance.ResetRallyCountServerRpc();
+            Debug.Log("[NetworkedGameManager] Rally count reset for new round");
+        }
+
+        // Reset collision tracker
+        NetworkedCollisionTrackerBall tracker = FindObjectOfType<NetworkedCollisionTrackerBall>();
+        if (tracker != null)
+        {
+            tracker.ResetTracking();
+            Debug.Log("[NetworkedGameManager] Collision tracker reset");
+        }
 
         // Reset players after short delay
         StartCoroutine(ResetPlayersAfterDelay(0.1f));
