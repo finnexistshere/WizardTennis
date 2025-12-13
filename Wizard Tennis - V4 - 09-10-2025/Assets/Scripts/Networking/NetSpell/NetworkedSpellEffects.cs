@@ -826,7 +826,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 go.GetComponent<CharacterController>() == null &&
                 go.GetComponent<Rigidbody>() == null)
             {
-                // This is probably PlayerSpawner — skip
+                // This is probably PlayerSpawner ï¿½ skip
                 continue;
             }
 
@@ -1563,54 +1563,67 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Warp":
-                float min, max;
-
-                var netBallComp = player.GetComponent<NetworkedBall>();
-                if (netBallComp != null && netBallComp.aimTarget != null && netBallComp.aimTarget.position.x > 0)
                 {
-                    min = -4.5f;
-                    max = 0f;
-                }
-                else
-                {
-                    min = 0f;
-                    max = 4.5f;
-                }
+                    float min, max;
 
-                float ballX = Random.Range(min, max);
-                GameObject warpBall = GameObject.FindWithTag("Ball");
-
-                if (warpBall != null)
-                {
-                    // Disable physics temporarily
-                    Rigidbody ballRb = warpBall.GetComponent<Rigidbody>();
-                    bool hadGravity = true;
-
-                    if (ballRb != null)
+                    var netBallComp = player.GetComponent<NetworkedBall>();
+                    if (netBallComp != null && netBallComp.aimTarget != null && netBallComp.aimTarget.position.x > 0)
                     {
-                        hadGravity = ballRb.useGravity;
-                        ballRb.useGravity = false;
-                        ballRb.linearVelocity = Vector3.zero;
+                        min = -4.5f;
+                        max = 0f;
+                    }
+                    else
+                    {
+                        min = 0f;
+                        max = 4.5f;
                     }
 
-                    // Warp position
-                    Vector3 ballPos = warpBall.transform.position;
-                    ballPos.x = ballX;
-                    warpBall.transform.position = ballPos;
+                    float ballX = Random.Range(min, max);
+                    GameObject warpBall = GameObject.FindWithTag("Ball");
 
-                    Debug.Log($"[SpellEffects] Warped ball to x={ballX}");
-
-                    // Re-enable physics
-                    if (ballRb != null)
+                    if (warpBall != null)
                     {
-                        ballRb.useGravity = hadGravity;
+                        Rigidbody ballRb = warpBall.GetComponent<Rigidbody>();
+
+                        Vector3 savedVelocity = Vector3.zero;
+                        Vector3 savedAngularVelocity = Vector3.zero;
+                        bool hadGravity = true;
+
+                        if (ballRb != null)
+                        {
+                            // Cache momentum
+                            savedVelocity = ballRb.linearVelocity;
+                            savedAngularVelocity = ballRb.angularVelocity;
+                            hadGravity = ballRb.useGravity;
+
+                            // Temporarily stabilize
+                            ballRb.useGravity = false;
+                            ballRb.isKinematic = true;
+                        }
+
+                        // Warp position only
+                        Vector3 ballPos = warpBall.transform.position;
+                        ballPos.x = ballX;
+                        warpBall.transform.position = ballPos;
+
+                        Debug.Log($"[SpellEffects] Warped ball to x={ballX}");
+
+                        if (ballRb != null)
+                        {
+                            // Restore physics & momentum
+                            ballRb.isKinematic = false;
+                            ballRb.useGravity = hadGravity;
+                            ballRb.linearVelocity = savedVelocity;
+                            ballRb.angularVelocity = savedAngularVelocity;
+                        }
                     }
+                    else
+                    {
+                        Debug.LogWarning("[SpellEffects] Warp failed - ball not found");
+                    }
+
+                    break;
                 }
-                else
-                {
-                    Debug.LogWarning("[SpellEffects] Warp failed - ball not found");
-                }
-                break;
 
             case "Pisces":
                 // Despawn handled by DespawnEffectAfterDelay
