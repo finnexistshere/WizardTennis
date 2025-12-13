@@ -17323,7 +17323,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &276903870
 RectTransform:
   m_ObjectHideFlags: 0
@@ -23808,7 +23808,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &450155295
 RectTransform:
   m_ObjectHideFlags: 0
@@ -42574,7 +42574,7 @@ MonoBehaviour:
   playerScoreText: {fileID: 983660000}
   opponentScoreText: {fileID: 212450837}
   winningScore: 5
-  greenPoints: 0
+  ralliesPerGreenPoint: 3
 --- !u!1 &1580895396
 GameObject:
   m_ObjectHideFlags: 0
@@ -42793,7 +42793,6 @@ MonoBehaviour:
   - {fileID: 1755797482189511185, guid: 0b106650e60baa147b743fdb409c5668, type: 3}
   - {fileID: 9079658379876589094, guid: e328815db9acfad46b9b8ddee4b16016, type: 3}
   - {fileID: 7928743636784295957, guid: 0e92ddd96f9aaff4d8df25b00ecc9d6f, type: 3}
-  - {fileID: 2826478064174441474, guid: 936ba2fe973340c4c859f2bb351d7793, type: 3}
   spawnInterval: 7
   spawnRadius: 5
   maxActivePickupsPerPlayer: 4
@@ -42875,6 +42874,22 @@ MonoBehaviour:
   shadowCasterMaterial: {fileID: 2100000, guid: 4861d9c0b7f020c49a0694223e19806c, type: 2}
   fireballForceStrength: 10
   spellHit: 0
+  gambitSpells:
+  - Lightning
+  - Ice
+  - Fireball
+  - Shadow
+  - Mud
+  - Green
+  - Stone
+  - Chronos
+  - Gemini
+  - Blink
+  - Jolly
+  - Warp
+  - Pisces
+  - Tether
+  - Gorbino
 --- !u!1 &1596896129
 GameObject:
   m_ObjectHideFlags: 0
