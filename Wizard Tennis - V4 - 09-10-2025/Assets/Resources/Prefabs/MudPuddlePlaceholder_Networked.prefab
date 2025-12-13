@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 7884575279718249380}
   - component: {fileID: 5934451085162627992}
   m_Layer: 0
-  m_Name: MudPuddlePlaceholder
+  m_Name: MudPuddlePlaceholder_Networked
   m_TagString: Mud
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -108,7 +108,7 @@ CapsuleCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
@@ -128,7 +128,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 2773061022
+  GlobalObjectIdHash: 1128732788
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 7
@@ -153,6 +153,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d28574a1323f7604d99946558552c41d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  slowMultiplier: 0.5
+  lifetime: 5
 --- !u!1001 &7248243507861260093
 PrefabInstance:
   m_ObjectHideFlags: 0

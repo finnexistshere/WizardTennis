@@ -1102,9 +1102,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Mud":
                 if (isLocalCaster)
                 {
-                    // Set locally
+                    // Set locally - arm Mud to trigger on opponent hit
                     resetOnOppHit = true;
-                    resetOnBounce = true;
+                    resetOnBounce = false; // Mud triggers on hit, not bounce
 
                     // Tell server to arm Mud
                     if (!IsServer)
@@ -1112,7 +1112,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
                         SetSpellArmedServerRpc(true, false);
                     }
 
-                    Debug.Log("[SpellEffects] Mud spell armed");
+                    Debug.Log("[SpellEffects] Mud spell armed - will spawn pit when opponent hits ball");
                 }
                 break;
 
@@ -1546,6 +1546,8 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Mud":
+                Debug.Log($"[SpellEffects-Reset] === MUD RESET START ===");
+
                 // Clear locally
                 resetOnOppHit = false;
                 resetOnBounce = false;
@@ -1556,23 +1558,8 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     SetSpellArmedServerRpc(false, false);
                 }
 
-                if (mudPrefab != null && opponent != null)
-                {
-                    Vector3 rayOrigin = opponent.transform.position + Vector3.up * 1f;
-
-                    if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 5f))
-                    {
-                        Vector3 spawnPos = hit.point;
-                        ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-
-                        // Only spawn once - server will handle it
-                        SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
-                    }
-                    else
-                    {
-                        Debug.LogWarning("Mud spawn failed: Could not find ground.");
-                    }
-                }
+                Debug.Log($"[SpellEffects-Reset] Mud disarmed");
+                Debug.Log($"[SpellEffects-Reset] === MUD RESET END ===");
                 break;
 
             case "Warp":
@@ -1772,12 +1759,6 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         Debug.Log($"[SpellEffects-ServerRpc] ? Applying Fireball knockback - caster: {caster?.name ?? "NULL"}, victim: {victim.name}");
 
-        if (movement != null)
-        {
-            movement.inputDisabled = true;
-            Debug.Log($"[SpellEffects-ServerRpc] Disabled victim's input on server");
-        }
-
         // Calculate knockback direction
         Vector3 knockbackDirection = Vector3.back; // Default fallback
 
@@ -1802,32 +1783,56 @@ public class NetworkedSpellEffects : NetworkBehaviour
         float duration = 0.45f;
 
         Debug.Log($"[SpellEffects-ServerRpc] knockbackForce: {knockbackForce}, duration: {duration}");
-        Debug.Log($"[SpellEffects-ServerRpc] Starting ApplyKnockback coroutine on server");
 
-        StartCoroutine(ApplyKnockback(victim, knockbackForce, duration));
+        // IMPORTANT: Start knockback coroutine that handles re-enabling
+        StartCoroutine(ApplyKnockbackWithRestore(victim, knockbackForce, duration));
 
         Debug.Log($"[SpellEffects-ServerRpc] Broadcasting ApplyFireballKnockbackClientRpc to all clients");
         ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, fireballForceStrength, duration);
 
-        StartCoroutine(ReenableInputAfterDelay(movement, duration));
-
-        Debug.Log($"[SpellEffects-ServerRpc] Scheduling resetSpellEffect in {duration + 0.1f}s");
-        Invoke(nameof(resetSpellEffect), duration + 0.1f);
+        // Reset spell AFTER knockback completes (add small buffer)
+        Debug.Log($"[SpellEffects-ServerRpc] Scheduling resetSpellEffect in {duration + 0.2f}s");
+        Invoke(nameof(resetSpellEffect), duration + 0.2f);
 
         Debug.Log($"[SpellEffects-ServerRpc] === ApplyFireballKnockbackServerRpc END ===");
     }
 
     /// <summary>
-    /// Re-enable input after knockback completes
+    /// Applies knockback and guarantees input restoration
     /// </summary>
-    private IEnumerator ReenableInputAfterDelay(MainCharacterMovement movement, float delay)
+    private IEnumerator ApplyKnockbackWithRestore(GameObject target, Vector3 knockbackForce, float duration)
     {
-        yield return new WaitForSeconds(delay);
+        if (target == null) yield break;
 
+        var controller = target.GetComponent<CharacterController>();
+        var movement = target.GetComponent<MainCharacterMovement>();
+
+        if (controller == null)
+        {
+            Debug.LogError($"[ApplyKnockbackWithRestore] No CharacterController on {target.name}");
+            yield break;
+        }
+
+        // Disable input at START
+        bool wasInputDisabled = false;
         if (movement != null)
         {
-            movement.inputDisabled = false;
-            Debug.Log($"[SpellEffects] Re-enabled input for {movement.gameObject.name}");
+            wasInputDisabled = movement.inputDisabled;
+            movement.inputDisabled = true;
+            Debug.Log($"[ApplyKnockbackWithRestore] Disabled input on {target.name} (was: {wasInputDisabled})");
+        }
+
+        // Apply the knockback
+        yield return StartCoroutine(ApplyKnockback(target, knockbackForce, duration));
+
+        // GUARANTEED restore at END
+        if (movement != null)
+        {
+            // CRITICAL: Clear the moveDirection before re-enabling
+            movement.ClearMoveDirection();
+
+            movement.inputDisabled = wasInputDisabled; // Restore original state
+            Debug.Log($"[ApplyKnockbackWithRestore] ? Re-enabled input for {target.name}");
         }
     }
 
@@ -1842,16 +1847,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         Debug.Log($"[SpellEffects-Client] Applying Fireball knockback to {victim.name}");
 
-        // === NEW: Disable input on client's copy too ===
-        var movement = victim.GetComponent<MainCharacterMovement>();
-        if (movement != null)
-        {
-            movement.inputDisabled = true;
-            StartCoroutine(ReenableInputAfterDelay(movement, duration));
-        }
-
         Vector3 knockbackForce = knockbackDirection * forceStrength;
-        StartCoroutine(ApplyKnockback(victim, knockbackForce, duration));
+
+        // Use the new method that guarantees restoration
+        StartCoroutine(ApplyKnockbackWithRestore(victim, knockbackForce, duration));
     }
 
     // Keep the old method for backward compatibility but mark it as obsolete
@@ -2293,6 +2292,63 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 Debug.Log($"[SpellEffects-OnPlayerHitBall] Shadow broken by {hitter.name} hitting the ball");
                 resetSpellEffect();
             }
+        }
+
+        if (spellName == "Mud")
+        {
+            Debug.Log($"[SpellEffects-OnPlayerHitBall] MUD CHECK:");
+            Debug.Log($"  - resetOnOppHit: {resetOnOppHit}");
+            Debug.Log($"  - ballOwner != null: {ballOwner != null}");
+            Debug.Log($"  - hitter != ballOwner: {hitter != ballOwner}");
+
+            if (resetOnOppHit)
+            {
+                if (ballOwner != null && hitter != ballOwner)
+                {
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? MUD TRIGGERED! Spawning pit under {hitter.name}");
+
+                    // Find ground position under the victim
+                    Vector3 rayOrigin = hitter.transform.position + Vector3.up * 1f;
+
+                    if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 5f))
+                    {
+                        Vector3 spawnPos = hit.point;
+
+                        ulong casterClientId = ballOwner.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+
+                        if (casterClientId != ulong.MaxValue)
+                        {
+                            Debug.Log($"[SpellEffects-OnPlayerHitBall] Spawning mud pit at {spawnPos}");
+
+                            // Spawn the mud pit
+                            SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
+
+                            // Reset the spell after spawning
+                            resetSpellEffect();
+                        }
+                        else
+                        {
+                            Debug.LogError("[SpellEffects-OnPlayerHitBall] ? FAILED - ballOwner has no NetworkObject or invalid ClientId");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[SpellEffects-OnPlayerHitBall] Mud spawn failed: Could not find ground under victim.");
+                        resetSpellEffect(); // Still reset even if spawn fails
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Mud not triggered - ballOwner={ballOwner?.name ?? "NULL"}, hitter={hitter?.name}, same={hitter == ballOwner}");
+                }
+            }
+            else
+            {
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Mud not armed (resetOnOppHit=false)");
+            }
+
+            Debug.Log($"[SpellEffects-OnPlayerHitBall] === END (Mud) ===");
+            return;
         }
 
         Debug.Log($"[SpellEffects-OnPlayerHitBall] === END ===");

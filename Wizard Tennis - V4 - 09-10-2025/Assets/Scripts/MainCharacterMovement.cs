@@ -33,22 +33,28 @@ public class MainCharacterMovement : MonoBehaviour
         if (meshChild != null)
             meshOriginalLocalPos = meshChild.localPosition;
 
-        // ADD THIS - Check if we're in multiplayer
+        // Check if we're in multiplayer
         netObj = GetComponent<NetworkObject>();
     }
 
     void Update()
     {
-        // ADD THIS - In multiplayer, only run on owner
+        //In multiplayer, only run on owner
         if (netObj != null && !netObj.IsOwner)
             return;
 
-        // ADD THIS - Skip input if disabled (for knockback)
+        // Skip input if disabled (for knockback)
         if (inputDisabled)
         {
-            // Still apply gravity even when input is disabled
-            moveDirection.y -= gravity * Time.deltaTime;
-            controller.Move(moveDirection * Time.deltaTime);
+            // DON'T apply moveDirection here - it contains knockback velocity
+            // Only apply gravity separately
+            Vector3 gravityOnly = Vector3.zero;
+            gravityOnly.y = moveDirection.y - (gravity * Time.deltaTime);
+            controller.Move(gravityOnly * Time.deltaTime);
+
+            // Keep the y component for gravity continuity
+            moveDirection.y = gravityOnly.y;
+
             HandleMeshBounce();
             return;
         }
@@ -97,6 +103,15 @@ public class MainCharacterMovement : MonoBehaviour
 
         // Bounce effect when moving
         HandleMeshBounce();
+    }
+
+    /// <summary>
+    /// Clears moveDirection - called after knockback to prevent lingering velocity
+    /// </summary>
+    public void ClearMoveDirection()
+    {
+        moveDirection = Vector3.zero;
+        Debug.Log($"[MainCharacterMovement] Cleared moveDirection for {gameObject.name}");
     }
 
     private void HandleMeshBounce()
