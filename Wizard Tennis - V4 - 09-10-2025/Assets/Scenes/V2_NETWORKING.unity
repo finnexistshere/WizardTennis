@@ -42114,6 +42114,7 @@ MonoBehaviour:
   activeBall: {fileID: 0}
   activeFlame: {fileID: 0}
   invisibleMaterial: {fileID: 2100000, guid: 67c1b31b8fad99349abd6994386c91a6, type: 2}
+  shadowCasterMaterial: {fileID: 2100000, guid: 70be9b064068ba742a8eb53b924662be, type: 2}
   fireballForceStrength: 10
   spellHit: 0
 --- !u!1 &1596896129

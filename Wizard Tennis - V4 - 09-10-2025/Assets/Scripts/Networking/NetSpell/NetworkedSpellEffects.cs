@@ -8,6 +8,13 @@ using Unity.Netcode;
 /// NetworkedSpellEffects - Complete spell system with server-authoritative spawning
 /// Handles both networked and client-side spell effects
 /// </summary>
+
+// Welcome to my carnival of madness
+
+// God is no longer here
+
+// Only suffering awaits below
+
 public class NetworkedSpellEffects : NetworkBehaviour
 {
     public static NetworkedSpellEffects Instance { get; private set; }
@@ -64,7 +71,8 @@ public class NetworkedSpellEffects : NetworkBehaviour
     [HideInInspector] public GameObject activeFlame;
 
     [Header("Shadow Spell Settings")]
-    public Material invisibleMaterial;
+    public Material invisibleMaterial;  // Material opponent sees (invisible/transparent)
+    public Material shadowCasterMaterial;  // Material caster sees (visual feedback - e.g. glowing/outlined)
     private Material originalOpponentMaterial;
     private Renderer opponentRenderer;
 
@@ -247,6 +255,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         // Tell the OPPONENT client to make the caster invisible
         ApplyShadowToOpponentClientRpc(casterClientId, opponentClientId);
+
+        // Tell the CASTER client to apply visual feedback
+        ApplyShadowToCasterClientRpc(casterClientId, opponentClientId);
     }
 
     /// <summary>
@@ -256,10 +267,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
     private void ApplyShadowToOpponentClientRpc(ulong casterClientId, ulong opponentClientId)
     {
         // Only the OPPONENT client should apply invisibility
-        // The caster should still see themselves normally
         if (NetworkManager.Singleton.LocalClientId != opponentClientId)
         {
-            Debug.Log($"[SpellEffects-Client] Not the opponent ({NetworkManager.Singleton.LocalClientId} != {opponentClientId}), ignoring Shadow");
+            Debug.Log($"[SpellEffects-Client] Not the opponent ({NetworkManager.Singleton.LocalClientId} != {opponentClientId}), ignoring Shadow invisibility");
             return;
         }
 
@@ -279,13 +289,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             // Skip certain objects (like racket effects, particles, etc.)
             if (renderer.gameObject.name.Contains("Particle") ||
-                renderer.gameObject.name.Contains("Effect"))
+                renderer.gameObject.name.Contains("Effect") ||
+                renderer.gameObject.name.Contains("Trail"))
                 continue;
 
             // Store original material if not already stored
             if (!shadowOriginalMaterials.ContainsKey(renderer))
             {
                 shadowOriginalMaterials[renderer] = renderer.material;
+                Debug.Log($"[SpellEffects-Client] Stored original material for {renderer.gameObject.name}");
             }
 
             // Apply invisible material
@@ -311,6 +323,69 @@ public class NetworkedSpellEffects : NetworkBehaviour
     }
 
     /// <summary>
+    /// Client applies Shadow visual feedback (only caster sees it)
+    /// </summary>
+    [ClientRpc]
+    private void ApplyShadowToCasterClientRpc(ulong casterClientId, ulong opponentClientId)
+    {
+        // Only the CASTER client should apply visual feedback
+        if (NetworkManager.Singleton.LocalClientId != casterClientId)
+        {
+            Debug.Log($"[SpellEffects-Client] Not the caster ({NetworkManager.Singleton.LocalClientId} != {casterClientId}), ignoring Shadow feedback");
+            return;
+        }
+
+        GameObject caster = GetPlayerByClientId(casterClientId);
+        if (caster == null)
+        {
+            Debug.LogWarning($"[SpellEffects-Client] Could not find caster with ID {casterClientId} for Shadow feedback");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-Client] Applying Shadow visual feedback to {caster.name} (caster view)");
+
+        // Get all renderers in the caster (including children)
+        Renderer[] renderers = caster.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            // Skip certain objects (like racket effects, particles, etc.)
+            if (renderer.gameObject.name.Contains("Particle") ||
+                renderer.gameObject.name.Contains("Effect") ||
+                renderer.gameObject.name.Contains("Trail"))
+                continue;
+
+            // Store original material if not already stored
+            if (!shadowCasterOriginalMaterials.ContainsKey(renderer))
+            {
+                shadowCasterOriginalMaterials[renderer] = renderer.material;
+                Debug.Log($"[SpellEffects-Client] Stored original material for caster feedback on {renderer.gameObject.name}");
+            }
+
+            // Apply caster feedback material
+            if (shadowCasterMaterial != null)
+            {
+                renderer.material = shadowCasterMaterial;
+                Debug.Log($"[SpellEffects-Client] Applied shadow feedback material to {renderer.gameObject.name}");
+            }
+            else
+            {
+                // Fallback: make slightly transparent with blue tint
+                Material tempMat = new Material(renderer.material);
+                Color c = tempMat.color;
+                c.a = 0.7f;
+                c.b = Mathf.Min(c.b + 0.3f, 1f); // Add blue tint
+                tempMat.color = c;
+                renderer.material = tempMat;
+                Debug.Log($"[SpellEffects-Client] Applied fallback feedback to {renderer.gameObject.name}");
+            }
+        }
+
+        // Store who is currently seeing shadow feedback
+        currentShadowCasterFeedbackId = casterClientId;
+    }
+
+    /// <summary>
     /// Server removes Shadow invisibility effect
     /// </summary>
     [ServerRpc(RequireOwnership = false)]
@@ -322,10 +397,13 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         // Tell the OPPONENT client to restore visibility
         RemoveShadowFromOpponentClientRpc(casterClientId, opponentClientId);
+
+        // Tell the CASTER client to remove visual feedback
+        RemoveShadowFromCasterClientRpc(casterClientId, opponentClientId);
     }
 
     /// <summary>
-    /// Client removes Shadow invisibility
+    /// Client removes Shadow invisibility (opponent restores normal view)
     /// </summary>
     [ClientRpc]
     private void RemoveShadowFromOpponentClientRpc(ulong casterClientId, ulong opponentClientId)
@@ -336,22 +414,26 @@ public class NetworkedSpellEffects : NetworkBehaviour
             return;
         }
 
-        if (currentShadowCasterId != casterClientId)
-        {
-            Debug.LogWarning($"[SpellEffects-Client] Shadow caster mismatch: {currentShadowCasterId} != {casterClientId}");
-            return;
-        }
-
-        Debug.Log($"[SpellEffects-Client] Removing Shadow invisibility");
+        Debug.Log($"[SpellEffects-Client] Removing Shadow invisibility (opponent view)");
+        Debug.Log($"[SpellEffects-Client] Materials to restore: {shadowOriginalMaterials.Count}");
 
         // Restore all original materials
+        int restoredCount = 0;
         foreach (var kvp in shadowOriginalMaterials)
         {
-            if (kvp.Key != null)
+            if (kvp.Key != null && kvp.Value != null)
             {
                 kvp.Key.material = kvp.Value;
+                restoredCount++;
+                Debug.Log($"[SpellEffects-Client] Restored material for {kvp.Key.gameObject.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SpellEffects-Client] Null renderer or material in restoration - Renderer: {kvp.Key != null}, Material: {kvp.Value != null}");
             }
         }
+
+        Debug.Log($"[SpellEffects-Client] Restored {restoredCount} materials out of {shadowOriginalMaterials.Count}");
 
         shadowOriginalMaterials.Clear();
         currentShadowCasterId = ulong.MaxValue;
@@ -359,9 +441,50 @@ public class NetworkedSpellEffects : NetworkBehaviour
         Debug.Log($"[SpellEffects-Client] Shadow removed - visibility restored");
     }
 
-    // Track Shadow spell materials per renderer
+    /// <summary>
+    /// Client removes Shadow visual feedback (caster restores normal view)
+    /// </summary>
+    [ClientRpc]
+    private void RemoveShadowFromCasterClientRpc(ulong casterClientId, ulong opponentClientId)
+    {
+        // Only the CASTER client should remove feedback
+        if (NetworkManager.Singleton.LocalClientId != casterClientId)
+        {
+            return;
+        }
+
+        Debug.Log($"[SpellEffects-Client] Removing Shadow visual feedback (caster view)");
+        Debug.Log($"[SpellEffects-Client] Materials to restore: {shadowCasterOriginalMaterials.Count}");
+
+        // Restore all original materials
+        int restoredCount = 0;
+        foreach (var kvp in shadowCasterOriginalMaterials)
+        {
+            if (kvp.Key != null && kvp.Value != null)
+            {
+                kvp.Key.material = kvp.Value;
+                restoredCount++;
+                Debug.Log($"[SpellEffects-Client] Restored feedback material for {kvp.Key.gameObject.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SpellEffects-Client] Null renderer or material in caster restoration - Renderer: {kvp.Key != null}, Material: {kvp.Value != null}");
+            }
+        }
+
+        Debug.Log($"[SpellEffects-Client] Restored {restoredCount} feedback materials out of {shadowCasterOriginalMaterials.Count}");
+
+        shadowCasterOriginalMaterials.Clear();
+        currentShadowCasterFeedbackId = ulong.MaxValue;
+
+        Debug.Log($"[SpellEffects-Client] Shadow feedback removed - normal view restored");
+    }
+
+    // Track Shadow spell materials per renderer - SEPARATE dictionaries for opponent and caster
     private Dictionary<Renderer, Material> shadowOriginalMaterials = new Dictionary<Renderer, Material>();
+    private Dictionary<Renderer, Material> shadowCasterOriginalMaterials = new Dictionary<Renderer, Material>();
     private ulong currentShadowCasterId = ulong.MaxValue;
+    private ulong currentShadowCasterFeedbackId = ulong.MaxValue;
 
     // ========== NETWORK SPAWNING SYSTEM ==========
 
@@ -962,16 +1085,13 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 {
                     Debug.Log($"[SpellEffects] Casting Shadow - making {player.name} invisible to {opponent.name}");
 
-                    // Set locally
-                    resetOnOppHit = true;
-
-                    // Tell server to arm Shadow
-                    if (!IsServer)
-                    {
-                        SetSpellArmedServerRpc(true, false);
-                    }
-
+                    // Apply Shadow invisibility
                     ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
+
+                    // Schedule automatic reset after 10 seconds (time-based only)
+                    ScheduleReset(10f);
+
+                    Debug.Log("[SpellEffects] Shadow will auto-reset in 10 seconds");
                 }
                 else if (isLocalCaster)
                 {
@@ -1334,14 +1454,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Shadow":
-                // Clear locally
-                resetOnOppHit = false;
-
-                // Tell server to disarm
-                if (!IsServer)
-                {
-                    SetSpellArmedServerRpc(false, false);
-                }
+                Debug.Log($"[SpellEffects-Reset] === SHADOW RESET START ===");
+                Debug.Log($"[SpellEffects-Reset] player: {player?.name}, opponent: {opponent?.name}");
+                Debug.Log($"[SpellEffects-Reset] IsServer: {IsServer}");
 
                 // Remove Shadow invisibility via server
                 if (player != null && opponent != null)
@@ -1349,12 +1464,58 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
                     ulong opponentClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
-                    RemoveShadowInvisibilityServerRpc(casterClientId, opponentClientId);
+                    Debug.Log($"[SpellEffects-Reset] Calling RemoveShadowInvisibilityServerRpc - caster: {casterClientId}, opponent: {opponentClientId}");
+
+                    if (casterClientId != ulong.MaxValue && opponentClientId != ulong.MaxValue)
+                    {
+                        RemoveShadowInvisibilityServerRpc(casterClientId, opponentClientId);
+                    }
+                    else
+                    {
+                        Debug.LogError($"[SpellEffects-Reset] Invalid client IDs - caster: {casterClientId}, opponent: {opponentClientId}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[SpellEffects-Reset] Cannot remove Shadow via server - player or opponent is null!");
+
+                    // Emergency cleanup - try to restore materials locally
+                    Debug.Log($"[SpellEffects-Reset] Attempting emergency local cleanup");
+
+                    if (shadowOriginalMaterials.Count > 0)
+                    {
+                        Debug.Log($"[SpellEffects-Reset] Emergency local cleanup - restoring {shadowOriginalMaterials.Count} materials");
+                        foreach (var kvp in shadowOriginalMaterials)
+                        {
+                            if (kvp.Key != null && kvp.Value != null)
+                            {
+                                kvp.Key.material = kvp.Value;
+                            }
+                        }
+                        shadowOriginalMaterials.Clear();
+                        currentShadowCasterId = ulong.MaxValue;
+                    }
+
+                    if (shadowCasterOriginalMaterials.Count > 0)
+                    {
+                        Debug.Log($"[SpellEffects-Reset] Emergency local cleanup - restoring {shadowCasterOriginalMaterials.Count} caster materials");
+                        foreach (var kvp in shadowCasterOriginalMaterials)
+                        {
+                            if (kvp.Key != null && kvp.Value != null)
+                            {
+                                kvp.Key.material = kvp.Value;
+                            }
+                        }
+                        shadowCasterOriginalMaterials.Clear();
+                        currentShadowCasterFeedbackId = ulong.MaxValue;
+                    }
                 }
 
                 // Clean up any local references
                 opponentRenderer = null;
                 originalOpponentMaterial = null;
+
+                Debug.Log($"[SpellEffects-Reset] === SHADOW RESET END ===");
                 break;
 
             case "Chronos":
