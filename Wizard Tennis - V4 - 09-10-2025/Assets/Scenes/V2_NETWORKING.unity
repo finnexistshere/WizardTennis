@@ -42793,6 +42793,7 @@ MonoBehaviour:
   - {fileID: 1755797482189511185, guid: 0b106650e60baa147b743fdb409c5668, type: 3}
   - {fileID: 9079658379876589094, guid: e328815db9acfad46b9b8ddee4b16016, type: 3}
   - {fileID: 7928743636784295957, guid: 0e92ddd96f9aaff4d8df25b00ecc9d6f, type: 3}
+  - {fileID: 2826478064174441474, guid: 936ba2fe973340c4c859f2bb351d7793, type: 3}
   spawnInterval: 7
   spawnRadius: 5
   maxActivePickupsPerPlayer: 4
