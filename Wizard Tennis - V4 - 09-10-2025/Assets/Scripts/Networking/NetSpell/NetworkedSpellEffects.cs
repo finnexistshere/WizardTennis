@@ -1797,9 +1797,6 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         Debug.Log($"[SpellEffects-ServerRpc] knockbackForce: {knockbackForce}, duration: {duration}");
 
-        // IMPORTANT: Start knockback coroutine that handles re-enabling
-        StartCoroutine(ApplyKnockbackWithRestore(victim, knockbackForce, duration));
-
         Debug.Log($"[SpellEffects-ServerRpc] Broadcasting ApplyFireballKnockbackClientRpc to all clients");
         ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, fireballForceStrength, duration);
 
