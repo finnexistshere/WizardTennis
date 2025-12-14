@@ -4,10 +4,11 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
 using Steamworks;
+using Steamworks.Data;
+using Netcode.Transports.Facepunch;
 
 /// <summary>
-/// FREE Steam Lobby System - Uses Steam P2P networking
-/// FIXED: Robust version with proper error handling
+/// Steam Lobby System using Facepunch.Steamworks
 /// </summary>
 public class SteamLobbyManager : MonoBehaviour
 {
@@ -18,8 +19,7 @@ public class SteamLobbyManager : MonoBehaviour
     public int maxPlayers = 4;
 
     [Header("Steam Settings")]
-    [Tooltip("Your Steam App ID (use 480 for testing)")]
-    public uint steamAppId = 480;
+    public uint steamAppId = 480; // Not used directly, set in FacepunchSteamManager instead
 
     // Events
     public event Action<List<string>> OnPlayerListChanged;
@@ -28,23 +28,8 @@ public class SteamLobbyManager : MonoBehaviour
     public event Action<string> OnLobbyCodeGenerated;
 
     // Steam lobby data
-    private CSteamID currentLobbyId;
+    private Lobby? currentLobby;
     private bool isHost = false;
-    private string playerName = "Player";
-    private Dictionary<CSteamID, string> lobbyMembers = new Dictionary<CSteamID, string>();
-
-    // Callbacks
-    private Callback<LobbyCreated_t> lobbyCreatedCallback;
-    private Callback<LobbyEnter_t> lobbyEnterCallback;
-    private Callback<LobbyMatchList_t> lobbyListCallback;
-    private Callback<LobbyChatUpdate_t> lobbyChatUpdateCallback;
-    private Callback<GameLobbyJoinRequested_t> gameLobbyJoinRequestedCallback;
-    private Callback<LobbyDataUpdate_t> lobbyDataUpdateCallback;
-
-    // Netcode
-    private NetworkManager netManager;
-
-    // Game start tracking
     private bool isWaitingForGameStart = false;
     private bool hasStartedNetwork = false;
 
@@ -61,25 +46,26 @@ public class SteamLobbyManager : MonoBehaviour
             return;
         }
 
-        if (!SteamManager.Initialized)
+        // Check if Steam is initialized (FacepunchSteamManager should do this)
+        if (!FacepunchSteamManager.Initialized)
         {
-            Debug.LogError("[SteamLobby] Steam not initialized!");
+            Debug.LogError("[SteamLobby] Steam not initialized! Make sure FacepunchSteamManager is in scene.");
             return;
         }
 
-        Debug.Log("[SteamLobby] Steam initialized successfully");
-        Debug.Log($"[SteamLobby] Steam ID: {SteamUser.GetSteamID()}");
-        Debug.Log($"[SteamLobby] Username: {SteamFriends.GetPersonaName()}");
+        Debug.Log("[SteamLobby] Steam initialized successfully (Facepunch)");
+        Debug.Log($"[SteamLobby] Steam ID: {SteamClient.SteamId}");
+        Debug.Log($"[SteamLobby] Username: {SteamClient.Name}");
 
-        playerName = SteamFriends.GetPersonaName();
-
-        // Setup callbacks
-        lobbyCreatedCallback = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
-        lobbyEnterCallback = Callback<LobbyEnter_t>.Create(OnLobbyEntered);
-        lobbyListCallback = Callback<LobbyMatchList_t>.Create(OnLobbyList);
-        lobbyChatUpdateCallback = Callback<LobbyChatUpdate_t>.Create(OnLobbyChatUpdate);
-        gameLobbyJoinRequestedCallback = Callback<GameLobbyJoinRequested_t>.Create(OnGameLobbyJoinRequested);
-        lobbyDataUpdateCallback = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);
+        // Subscribe to lobby events
+        SteamMatchmaking.OnLobbyCreated += OnLobbyCreated;
+        SteamMatchmaking.OnLobbyEntered += OnLobbyEntered;
+        SteamMatchmaking.OnLobbyMemberJoined += OnLobbyMemberJoined;
+        SteamMatchmaking.OnLobbyMemberLeave += OnLobbyMemberLeave;
+        SteamMatchmaking.OnLobbyGameCreated += OnLobbyGameCreated;
+        SteamMatchmaking.OnLobbyInvite += OnLobbyInvite;
+        SteamMatchmaking.OnLobbyDataChanged += OnLobbyDataUpdate;
+        SteamFriends.OnGameLobbyJoinRequested += OnGameLobbyJoinRequested;
     }
 
     private void OnEnable()
@@ -94,14 +80,11 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        Debug.Log($"[SteamLobby] Scene loaded: {scene.name}, waiting for game start: {isWaitingForGameStart}");
+        Debug.Log($"[SteamLobby] Scene loaded: {scene.name}");
 
-        // When game scene loads, check if we need to start networking
         if (scene.name == gameSceneName && isWaitingForGameStart)
         {
             isWaitingForGameStart = false;
-
-            // Small delay to ensure scene is fully loaded
             Invoke(nameof(SetupAndStartNetworking), 0.5f);
         }
     }
@@ -110,52 +93,103 @@ public class SteamLobbyManager : MonoBehaviour
 
     public void Initialize(string customName = "")
     {
-        if (!string.IsNullOrEmpty(customName))
-            playerName = customName;
-        else
-            playerName = SteamFriends.GetPersonaName();
-
-        Debug.Log($"[SteamLobby] Player name: {playerName}");
+        // Facepunch sets name automatically from Steam
+        Debug.Log($"[SteamLobby] Player name: {SteamClient.Name}");
     }
 
-    public void CreateLobby(string lobbyName, int maxPlayers, bool isPrivate = false)
+    public async void CreateLobby(string lobbyName, int maxPlayers, bool isPrivate = false)
     {
-        if (!SteamManager.Initialized)
-        {
-            Debug.LogError("[SteamLobby] Steam not initialized!");
-            OnConnectionFailed?.Invoke();
-            return;
-        }
-
         this.maxPlayers = maxPlayers;
         isHost = true;
 
-        ELobbyType lobbyType = isPrivate ? ELobbyType.k_ELobbyTypePrivate : ELobbyType.k_ELobbyTypeFriendsOnly;
-
         Debug.Log($"[SteamLobby] Creating lobby: {lobbyName} (Max: {maxPlayers}, Private: {isPrivate})");
 
-        SteamMatchmaking.CreateLobby(lobbyType, maxPlayers);
+        try
+        {
+            var createLobbyTask = SteamMatchmaking.CreateLobbyAsync(maxPlayers);
+            var lobby = await createLobbyTask;
+
+            if (!lobby.HasValue)
+            {
+                Debug.LogError("[SteamLobby] Failed to create lobby");
+                OnConnectionFailed?.Invoke();
+                return;
+            }
+
+            currentLobby = lobby.Value;
+
+            // Set lobby visibility
+            if (isPrivate)
+            {
+                currentLobby.Value.SetPrivate();
+            }
+            else
+            {
+                currentLobby.Value.SetFriendsOnly();
+            }
+
+            currentLobby.Value.SetData("name", lobbyName);
+            currentLobby.Value.SetData("game_mode", "versus");
+            currentLobby.Value.SetData("in_game", "false");
+            currentLobby.Value.SetData("host_id", SteamClient.SteamId.ToString());
+
+            Debug.Log($"[SteamLobby] ? Lobby created! ID: {currentLobby.Value.Id}");
+
+            UpdateLobbyMembers();
+            OnLobbyCodeGenerated?.Invoke(currentLobby.Value.Id.ToString());
+            OnJoinedLobby?.Invoke();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[SteamLobby] Failed to create lobby: {e}");
+            OnConnectionFailed?.Invoke();
+        }
     }
 
-    public void JoinLobby(CSteamID lobbyId)
+    public async void JoinLobby(SteamId lobbyId)
     {
-        if (!SteamManager.Initialized)
-        {
-            Debug.LogError("[SteamLobby] Steam not initialized!");
-            OnConnectionFailed?.Invoke();
-            return;
-        }
-
         isHost = false;
         Debug.Log($"[SteamLobby] Joining lobby: {lobbyId}");
-        SteamMatchmaking.JoinLobby(lobbyId);
+
+        try
+        {
+            var lobby = await SteamMatchmaking.JoinLobbyAsync(lobbyId);
+
+            if (!lobby.HasValue)
+            {
+                Debug.LogError("[SteamLobby] Failed to join lobby");
+                OnConnectionFailed?.Invoke();
+                return;
+            }
+
+            currentLobby = lobby.Value;
+            Debug.Log($"[SteamLobby] ? Joined lobby: {currentLobby.Value.Id}");
+
+            UpdateLobbyMembers();
+            OnJoinedLobby?.Invoke();
+
+            // Check if game already started
+            string inGame = currentLobby.Value.GetData("in_game");
+            if (inGame == "true")
+            {
+                Debug.Log("[SteamLobby] Game already in progress, loading scene...");
+                isWaitingForGameStart = true;
+                hasStartedNetwork = false;
+                SceneManager.LoadScene(gameSceneName);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[SteamLobby] Failed to join lobby: {e}");
+            OnConnectionFailed?.Invoke();
+        }
     }
 
     public void JoinLobbyByString(string lobbyIdString)
     {
         if (ulong.TryParse(lobbyIdString, out ulong lobbyId))
         {
-            JoinLobby(new CSteamID(lobbyId));
+            JoinLobby(lobbyId);
         }
         else
         {
@@ -166,27 +200,25 @@ public class SteamLobbyManager : MonoBehaviour
 
     public void FindLobbies()
     {
-        if (!SteamManager.Initialized) return;
-
         Debug.Log("[SteamLobby] Searching for lobbies...");
-        SteamMatchmaking.RequestLobbyList();
+        // Facepunch lobby search is different, implement if needed
     }
 
     public string GetLobbyId()
     {
-        return currentLobbyId.m_SteamID.ToString();
+        return currentLobby?.Id.ToString() ?? "";
     }
 
-    public CSteamID GetCurrentLobbyId()
+    public SteamId GetCurrentLobbyId()
     {
-        return currentLobbyId;
+        return currentLobby?.Id ?? 0;
     }
 
     public void OpenSteamInviteDialog()
     {
-        if (currentLobbyId.IsValid())
+        if (currentLobby.HasValue)
         {
-            SteamFriends.ActivateGameOverlayInviteDialog(currentLobbyId);
+            SteamFriends.OpenGameInviteOverlay(currentLobby.Value.Id);
             Debug.Log("[SteamLobby] Opened Steam invite dialog");
         }
         else
@@ -197,22 +229,19 @@ public class SteamLobbyManager : MonoBehaviour
 
     public bool IsHost()
     {
-        return isHost && currentLobbyId.IsValid() &&
-               SteamMatchmaking.GetLobbyOwner(currentLobbyId) == SteamUser.GetSteamID();
+        if (!currentLobby.HasValue) return false;
+        return isHost && currentLobby.Value.Owner.Id == SteamClient.SteamId;
     }
 
     public List<string> GetPlayerNames()
     {
         List<string> names = new List<string>();
 
-        if (!currentLobbyId.IsValid()) return names;
+        if (!currentLobby.HasValue) return names;
 
-        int numMembers = SteamMatchmaking.GetNumLobbyMembers(currentLobbyId);
-        for (int i = 0; i < numMembers; i++)
+        foreach (var member in currentLobby.Value.Members)
         {
-            CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(currentLobbyId, i);
-            string name = SteamFriends.GetFriendPersonaName(memberId);
-            names.Add(name);
+            names.Add(member.Name);
         }
 
         return names;
@@ -226,21 +255,16 @@ public class SteamLobbyManager : MonoBehaviour
             return;
         }
 
-        Debug.Log("[SteamLobby] Host starting game...");
+        Debug.Log("[SteamLobby] ?? Host starting game...");
 
-        // Set lobby data to signal game start
-        SteamMatchmaking.SetLobbyData(currentLobbyId, "in_game", "true");
-
-        // Store host's Steam ID for clients to connect to
-        SteamMatchmaking.SetLobbyData(currentLobbyId, "host_id", SteamUser.GetSteamID().m_SteamID.ToString());
+        currentLobby.Value.SetData("in_game", "true");
+        currentLobby.Value.SetData("host_id", SteamClient.SteamId.ToString());
 
         Debug.Log("[SteamLobby] Marked game as starting, loading scene...");
 
-        // Flag that we're starting the game
         isWaitingForGameStart = true;
         hasStartedNetwork = false;
 
-        // Load the game scene
         SceneManager.LoadScene(gameSceneName);
     }
 
@@ -249,142 +273,81 @@ public class SteamLobbyManager : MonoBehaviour
         isWaitingForGameStart = false;
         hasStartedNetwork = false;
 
-        if (currentLobbyId.IsValid())
+        if (currentLobby.HasValue)
         {
             Debug.Log("[SteamLobby] Leaving lobby");
-            SteamMatchmaking.LeaveLobby(currentLobbyId);
-            currentLobbyId = CSteamID.Nil;
+            currentLobby.Value.Leave();
+            currentLobby = null;
         }
 
+        var netManager = NetworkManager.Singleton;
         if (netManager != null && netManager.IsListening)
         {
             Debug.Log("[SteamLobby] Shutting down NetworkManager");
             netManager.Shutdown();
         }
 
-        lobbyMembers.Clear();
         isHost = false;
     }
 
     #endregion
 
-    #region Steam Callbacks
+    #region Steam Callbacks (Facepunch)
 
-    private void OnLobbyCreated(LobbyCreated_t callback)
+    private void OnLobbyCreated(Result result, Lobby lobby)
     {
-        if (callback.m_eResult != EResult.k_EResultOK)
-        {
-            Debug.LogError($"[SteamLobby] Failed to create lobby: {callback.m_eResult}");
-            OnConnectionFailed?.Invoke();
-            return;
-        }
-
-        currentLobbyId = new CSteamID(callback.m_ulSteamIDLobby);
-
-        Debug.Log($"[SteamLobby] ? Lobby created! ID: {currentLobbyId}");
-        Debug.Log($"[SteamLobby] ? Share this ID: {currentLobbyId.m_SteamID}");
-
-        // Set lobby data
-        SteamMatchmaking.SetLobbyData(currentLobbyId, "name", "Game Lobby");
-        SteamMatchmaking.SetLobbyData(currentLobbyId, "game_mode", "versus");
-        SteamMatchmaking.SetLobbyData(currentLobbyId, "in_game", "false");
-        SteamMatchmaking.SetLobbyData(currentLobbyId, "host_id", SteamUser.GetSteamID().m_SteamID.ToString());
-
-        UpdateLobbyMembers();
-        OnLobbyCodeGenerated?.Invoke(currentLobbyId.m_SteamID.ToString());
-        OnJoinedLobby?.Invoke();
+        Debug.Log($"[SteamLobby] OnLobbyCreated callback: {result}");
     }
 
-    private void OnLobbyEntered(LobbyEnter_t callback)
+    private void OnLobbyEntered(Lobby lobby)
     {
-        currentLobbyId = new CSteamID(callback.m_ulSteamIDLobby);
-
-        if (callback.m_EChatRoomEnterResponse != 1)
-        {
-            Debug.LogError($"[SteamLobby] Failed to join lobby: {callback.m_EChatRoomEnterResponse}");
-            OnConnectionFailed?.Invoke();
-            return;
-        }
-
-        Debug.Log($"[SteamLobby] ? Joined lobby: {currentLobbyId}");
-
-        UpdateLobbyMembers();
-        OnJoinedLobby?.Invoke();
-
-        // Check if game already started
-        string inGame = SteamMatchmaking.GetLobbyData(currentLobbyId, "in_game");
-        if (inGame == "true" && !isHost)
-        {
-            Debug.Log("[SteamLobby] Game already in progress, loading scene...");
-            isWaitingForGameStart = true;
-            hasStartedNetwork = false;
-            SceneManager.LoadScene(gameSceneName);
-        }
+        Debug.Log($"[SteamLobby] OnLobbyEntered: {lobby.Id}");
     }
 
-    private void OnLobbyList(LobbyMatchList_t callback)
+    private void OnLobbyMemberJoined(Lobby lobby, Friend friend)
     {
-        Debug.Log($"[SteamLobby] Found {callback.m_nLobbiesMatching} lobbies");
-
-        for (int i = 0; i < callback.m_nLobbiesMatching; i++)
-        {
-            CSteamID lobbyId = SteamMatchmaking.GetLobbyByIndex(i);
-            string lobbyName = SteamMatchmaking.GetLobbyData(lobbyId, "name");
-            int numMembers = SteamMatchmaking.GetNumLobbyMembers(lobbyId);
-            int maxMembers = SteamMatchmaking.GetLobbyMemberLimit(lobbyId);
-
-            Debug.Log($"[SteamLobby] Lobby {i}: {lobbyName} ({numMembers}/{maxMembers}) - ID: {lobbyId}");
-        }
-    }
-
-    private void OnLobbyChatUpdate(LobbyChatUpdate_t callback)
-    {
-        if (callback.m_ulSteamIDLobby != currentLobbyId.m_SteamID)
-            return;
-
-        CSteamID userId = new CSteamID(callback.m_ulSteamIDUserChanged);
-        string userName = SteamFriends.GetFriendPersonaName(userId);
-
-        EChatMemberStateChange stateChange = (EChatMemberStateChange)callback.m_rgfChatMemberStateChange;
-
-        switch (stateChange)
-        {
-            case EChatMemberStateChange.k_EChatMemberStateChangeEntered:
-                Debug.Log($"[SteamLobby] {userName} joined the lobby");
-                break;
-            case EChatMemberStateChange.k_EChatMemberStateChangeLeft:
-                Debug.Log($"[SteamLobby] {userName} left the lobby");
-                break;
-            case EChatMemberStateChange.k_EChatMemberStateChangeDisconnected:
-                Debug.Log($"[SteamLobby] {userName} disconnected");
-                break;
-        }
-
+        Debug.Log($"[SteamLobby] {friend.Name} joined the lobby");
         UpdateLobbyMembers();
     }
 
-    private void OnGameLobbyJoinRequested(GameLobbyJoinRequested_t callback)
+    private void OnLobbyMemberLeave(Lobby lobby, Friend friend)
     {
-        Debug.Log($"[SteamLobby] Join requested from Steam overlay: {callback.m_steamIDLobby}");
-        JoinLobby(callback.m_steamIDLobby);
+        Debug.Log($"[SteamLobby] {friend.Name} left the lobby");
+        UpdateLobbyMembers();
     }
 
-    private void OnLobbyDataUpdate(LobbyDataUpdate_t callback)
+    private void OnLobbyGameCreated(Lobby lobby, uint ip, ushort port, SteamId steamId)
     {
-        if (callback.m_ulSteamIDLobby != currentLobbyId.m_SteamID)
+        Debug.Log($"[SteamLobby] Lobby game created");
+    }
+
+    private void OnLobbyInvite(Friend friend, Lobby lobby)
+    {
+        Debug.Log($"[SteamLobby] Lobby invite from {friend.Name}");
+    }
+
+    private void OnGameLobbyJoinRequested(Lobby lobby, SteamId steamId)
+    {
+        Debug.Log($"[SteamLobby] Join requested from Steam overlay: {lobby.Id}");
+        JoinLobby(lobby.Id);
+    }
+
+    private void OnLobbyDataUpdate(Lobby lobby)
+    {
+        if (!currentLobby.HasValue || lobby.Id != currentLobby.Value.Id)
             return;
 
-        Debug.Log("[SteamLobby] Lobby data updated!");
+        Debug.Log("[SteamLobby] ?? Lobby data updated!");
 
         // Check if game has started (for clients)
         if (!IsHost())
         {
-            string inGame = SteamMatchmaking.GetLobbyData(currentLobbyId, "in_game");
-            Debug.Log($"[SteamLobby] in_game status: '{inGame}'");
+            string inGame = lobby.GetData("in_game");
+            Debug.Log($"[SteamLobby] Checking in_game status: '{inGame}'");
 
             if (inGame == "true")
             {
-                Debug.Log("[SteamLobby] Host started game - loading scene...");
+                Debug.Log("[SteamLobby] ?? Host started game - loading scene...");
                 isWaitingForGameStart = true;
                 hasStartedNetwork = false;
                 SceneManager.LoadScene(gameSceneName);
@@ -394,10 +357,14 @@ public class SteamLobbyManager : MonoBehaviour
 
     #endregion
 
-    #region Networking Setup
+        #region Networking Setup
 
     private void SetupAndStartNetworking()
     {
+        Debug.Log("[SteamLobby] ============================================");
+        Debug.Log("[SteamLobby] === SETUP AND START NETWORKING ===");
+        Debug.Log("[SteamLobby] ============================================");
+
         if (hasStartedNetwork)
         {
             Debug.LogWarning("[SteamLobby] Network already started!");
@@ -405,175 +372,163 @@ public class SteamLobbyManager : MonoBehaviour
         }
 
         // Find NetworkManager in the newly loaded scene
-        netManager = NetworkManager.Singleton;
+        var netManager = NetworkManager.Singleton;
 
         if (netManager == null)
         {
-            Debug.LogError("[SteamLobby] NetworkManager not found in game scene!");
+            Debug.LogError("[SteamLobby] ? NetworkManager not found in game scene!");
             Debug.LogError("[SteamLobby] Make sure your game scene has a NetworkManager GameObject");
             return;
         }
 
+        Debug.Log($"[SteamLobby] ? NetworkManager found: {netManager.gameObject.name}");
+
         // Check if NetworkManager is already running
         if (netManager.IsListening)
         {
-            Debug.LogWarning("[SteamLobby] NetworkManager is already running! Shutting down first...");
+            Debug.LogWarning("[SteamLobby] ?? NetworkManager is already running! Shutting down first...");
             netManager.Shutdown();
 
             // Wait a frame before restarting
-            Invoke(nameof(SetupAndStartNetworking), 0.1f);
+            Invoke(nameof(SetupAndStartNetworking), 0.2f);
             return;
         }
 
-        Debug.Log($"[SteamLobby] Setting up networking - IsHost: {IsHost()}");
-        Debug.Log($"[SteamLobby] Current lobby: {currentLobbyId}");
-        Debug.Log($"[SteamLobby] My Steam ID: {SteamUser.GetSteamID()}");
+        Debug.Log($"[SteamLobby] Current lobby valid: {currentLobby.HasValue}");
+        if (currentLobby.HasValue)
+        {
+            Debug.Log($"[SteamLobby] Lobby ID: {currentLobby.Value.Id}");
+            Debug.Log($"[SteamLobby] Lobby Owner: {currentLobby.Value.Owner.Name} ({currentLobby.Value.Owner.Id})");
+            Debug.Log($"[SteamLobby] My Steam ID: {SteamClient.SteamId}");
+            Debug.Log($"[SteamLobby] Am I Host?: {IsHost()}");
+        }
 
         if (IsHost())
         {
-            StartAsHost();
+            StartAsHost(netManager);
         }
         else
         {
-            StartAsClient();
+            StartAsClient(netManager);
         }
     }
 
-    private void StartAsHost()
+    private void StartAsHost(NetworkManager netManager)
     {
-        Debug.Log("[SteamLobby] === STARTING AS HOST ===");
+        Debug.Log("[SteamLobby] ============================================");
+        Debug.Log("[SteamLobby] ===       STARTING AS HOST            ===");
+        Debug.Log("[SteamLobby] ============================================");
 
-        // Verify transport is configured
-        if (!VerifyTransport())
+        var transport = netManager.GetComponent<FacepunchTransport>();
+        if (transport == null)
         {
-            Debug.LogError("[SteamLobby] Transport verification failed!");
+            Debug.LogError("[SteamLobby] ? FacepunchTransport not found on NetworkManager!");
+            Debug.LogError("[SteamLobby] Add FacepunchTransport component to NetworkManager GameObject");
             return;
         }
 
-        Debug.Log("[SteamLobby] Starting NetworkManager.StartHost()...");
+        Debug.Log($"[SteamLobby] ? FacepunchTransport found: {transport}");
+
+        // Check if transport is assigned
+        if (netManager.NetworkConfig.NetworkTransport != transport)
+        {
+            Debug.LogWarning("[SteamLobby] ?? FacepunchTransport not set as NetworkTransport, setting it now...");
+            netManager.NetworkConfig.NetworkTransport = transport;
+        }
+
+        Debug.Log("[SteamLobby] ?? Calling NetworkManager.StartHost()...");
 
         bool success = netManager.StartHost();
 
         if (success)
         {
             hasStartedNetwork = true;
-            Debug.Log("[SteamLobby] ? Successfully started as Host");
+            Debug.Log("[SteamLobby] ============================================");
+            Debug.Log("[SteamLobby] ??? HOST STARTED SUCCESSFULLY ???");
+            Debug.Log("[SteamLobby] ============================================");
             Debug.Log($"[SteamLobby] NetworkManager.IsHost: {netManager.IsHost}");
             Debug.Log($"[SteamLobby] NetworkManager.IsServer: {netManager.IsServer}");
+            Debug.Log($"[SteamLobby] LocalClientId: {netManager.LocalClientId}");
         }
         else
         {
-            Debug.LogError("[SteamLobby] ? Failed to start as Host!");
-            Debug.LogError("[SteamLobby] Check these common issues:");
-            Debug.LogError("[SteamLobby]   1. Is SimpleSteamP2PTransport attached to NetworkManager?");
-            Debug.LogError("[SteamLobby]   2. Is the transport set as the NetworkTransport in NetworkManager?");
-            Debug.LogError("[SteamLobby]   3. Are there multiple NetworkManagers in the scene?");
-            Debug.LogError("[SteamLobby]   4. Check the Unity console for transport errors");
+            Debug.LogError("[SteamLobby] ============================================");
+            Debug.LogError("[SteamLobby] ??? FAILED TO START HOST ???");
+            Debug.LogError("[SteamLobby] ============================================");
+            Debug.LogError("[SteamLobby] Check these:");
+            Debug.LogError("[SteamLobby]   1. FacepunchTransport attached to NetworkManager?");
+            Debug.LogError("[SteamLobby]   2. NetworkTransport set correctly in NetworkManager?");
+            Debug.LogError("[SteamLobby]   3. Steam initialized properly?");
+            Debug.LogError("[SteamLobby]   4. Check console for other errors");
         }
     }
 
-    private void StartAsClient()
+    private void StartAsClient(NetworkManager netManager)
     {
-        Debug.Log("[SteamLobby] === STARTING AS CLIENT ===");
+        Debug.Log("[SteamLobby] ============================================");
+        Debug.Log("[SteamLobby] ===       STARTING AS CLIENT          ===");
+        Debug.Log("[SteamLobby] ============================================");
 
-        // Get the host's Steam ID
-        CSteamID hostId = GetHostSteamId();
-        Debug.Log($"[SteamLobby] Host Steam ID: {hostId}");
-
-        if (!hostId.IsValid())
+        if (!currentLobby.HasValue)
         {
-            Debug.LogError("[SteamLobby] Invalid host Steam ID!");
+            Debug.LogError("[SteamLobby] ? No lobby to connect to!");
             return;
         }
 
-        // Verify and configure transport
-        if (!VerifyTransport())
+        var transport = netManager.GetComponent<FacepunchTransport>();
+        if (transport == null)
         {
-            Debug.LogError("[SteamLobby] Transport verification failed!");
+            Debug.LogError("[SteamLobby] ? FacepunchTransport not found on NetworkManager!");
+            Debug.LogError("[SteamLobby] Add FacepunchTransport component to NetworkManager GameObject");
             return;
         }
 
-        // Set the target host Steam ID in transport
-        SetTransportTargetHost(hostId);
+        Debug.Log($"[SteamLobby] ? FacepunchTransport found: {transport}");
 
-        Debug.Log("[SteamLobby] Starting NetworkManager.StartClient()...");
+        // Check if transport is assigned
+        if (netManager.NetworkConfig.NetworkTransport != transport)
+        {
+            Debug.LogWarning("[SteamLobby] ?? FacepunchTransport not set as NetworkTransport, setting it now...");
+            netManager.NetworkConfig.NetworkTransport = transport;
+        }
+
+        // Get host Steam ID
+        SteamId hostId = currentLobby.Value.Owner.Id;
+        string hostName = currentLobby.Value.Owner.Name;
+
+        Debug.Log($"[SteamLobby] ?? Target Host: {hostName}");
+        Debug.Log($"[SteamLobby] ?? Host Steam ID: {hostId}");
+        Debug.Log($"[SteamLobby] ?? My Steam ID: {SteamClient.SteamId}");
+
+        // Configure transport
+        transport.targetSteamId = hostId;
+        Debug.Log($"[SteamLobby] ? Set FacepunchTransport.targetSteamId = {hostId}");
+
+        Debug.Log("[SteamLobby] ?? Calling NetworkManager.StartClient()...");
 
         bool success = netManager.StartClient();
 
         if (success)
         {
             hasStartedNetwork = true;
-            Debug.Log("[SteamLobby] ? Successfully started as Client");
+            Debug.Log("[SteamLobby] ============================================");
+            Debug.Log("[SteamLobby] ??? CLIENT STARTED SUCCESSFULLY ???");
+            Debug.Log("[SteamLobby] ============================================");
             Debug.Log($"[SteamLobby] NetworkManager.IsClient: {netManager.IsClient}");
-            Debug.Log($"[SteamLobby] Connecting to host: {hostId}");
+            Debug.Log($"[SteamLobby] Attempting connection to: {hostName} ({hostId})");
+            Debug.Log("[SteamLobby] ? Waiting for connection approval from host...");
         }
         else
         {
-            Debug.LogError("[SteamLobby] ? Failed to start as Client!");
-            Debug.LogError("[SteamLobby] Check these common issues:");
-            Debug.LogError("[SteamLobby]   1. Is SimpleSteamP2PTransport attached to NetworkManager?");
-            Debug.LogError("[SteamLobby]   2. Did the transport targetSteamId get set correctly?");
-            Debug.LogError("[SteamLobby]   3. Is the host actually running and listening?");
-            Debug.LogError("[SteamLobby]   4. Check the Unity console for transport errors");
+            Debug.LogError("[SteamLobby] ============================================");
+            Debug.LogError("[SteamLobby] ??? FAILED TO START CLIENT ???");
+            Debug.LogError("[SteamLobby] ============================================");
+            Debug.LogError("[SteamLobby] Check these:");
+            Debug.LogError("[SteamLobby]   1. FacepunchTransport attached to NetworkManager?");
+            Debug.LogError("[SteamLobby]   2. Host is actually running?");
+            Debug.LogError("[SteamLobby]   3. Both using same Steam App ID?");
+            Debug.LogError("[SteamLobby]   4. Check console for transport errors");
         }
-    }
-
-    private bool VerifyTransport()
-    {
-        var transport = netManager.GetComponent<SimpleSteamP2PTransport>();
-
-        if (transport == null)
-        {
-            Debug.LogError("[SteamLobby] SimpleSteamP2PTransport not found on NetworkManager!");
-            Debug.LogError("[SteamLobby] Add SimpleSteamP2PTransport component to your NetworkManager GameObject");
-            return false;
-        }
-
-        if (netManager.NetworkConfig.NetworkTransport != transport)
-        {
-            Debug.LogError("[SteamLobby] SimpleSteamP2PTransport exists but is not set as the NetworkTransport!");
-            Debug.LogError("[SteamLobby] In NetworkManager inspector, set 'Network Transport' to SimpleSteamP2PTransport");
-            return false;
-        }
-
-        Debug.Log("[SteamLobby] ? Transport verified: SimpleSteamP2PTransport");
-        return true;
-    }
-
-    private CSteamID GetHostSteamId()
-    {
-        string hostIdStr = SteamMatchmaking.GetLobbyData(currentLobbyId, "host_id");
-
-        Debug.Log($"[SteamLobby] Host ID from lobby data: '{hostIdStr}'");
-
-        if (string.IsNullOrEmpty(hostIdStr))
-        {
-            // Fallback to lobby owner
-            CSteamID owner = SteamMatchmaking.GetLobbyOwner(currentLobbyId);
-            Debug.Log($"[SteamLobby] Using lobby owner as host: {owner}");
-            return owner;
-        }
-
-        if (ulong.TryParse(hostIdStr, out ulong hostId))
-        {
-            return new CSteamID(hostId);
-        }
-
-        Debug.LogWarning($"[SteamLobby] Failed to parse host ID: '{hostIdStr}', using lobby owner");
-        return SteamMatchmaking.GetLobbyOwner(currentLobbyId);
-    }
-
-    private void SetTransportTargetHost(CSteamID hostId)
-    {
-        var transport = netManager.GetComponent<SimpleSteamP2PTransport>();
-        if (transport != null)
-        {
-            transport.targetSteamId = hostId.m_SteamID;
-            Debug.Log($"[SteamLobby] ? Set SimpleSteamP2PTransport target: {hostId.m_SteamID}");
-            return;
-        }
-
-        Debug.LogError("[SteamLobby] No SimpleSteamP2PTransport found on NetworkManager!");
     }
 
     #endregion
@@ -582,9 +537,8 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void UpdateLobbyMembers()
     {
-        if (!currentLobbyId.IsValid()) return;
+        if (!currentLobby.HasValue) return;
 
-        lobbyMembers.Clear();
         List<string> names = GetPlayerNames();
 
         Debug.Log($"[SteamLobby] Lobby has {names.Count} players:");
@@ -603,11 +557,22 @@ public class SteamLobbyManager : MonoBehaviour
     private void OnDestroy()
     {
         LeaveLobby();
+
+        // Unsubscribe from events
+        SteamMatchmaking.OnLobbyCreated -= OnLobbyCreated;
+        SteamMatchmaking.OnLobbyEntered -= OnLobbyEntered;
+        SteamMatchmaking.OnLobbyMemberJoined -= OnLobbyMemberJoined;
+        SteamMatchmaking.OnLobbyMemberLeave -= OnLobbyMemberLeave;
+        SteamMatchmaking.OnLobbyGameCreated -= OnLobbyGameCreated;
+        SteamMatchmaking.OnLobbyInvite -= OnLobbyInvite;
+        SteamMatchmaking.OnLobbyDataChanged -= OnLobbyDataUpdate;
+        SteamFriends.OnGameLobbyJoinRequested -= OnGameLobbyJoinRequested;
     }
 
     private void OnApplicationQuit()
     {
         LeaveLobby();
+        // Don't shutdown Steam here - FacepunchSteamManager handles it
     }
 
     #endregion
