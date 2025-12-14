@@ -135,7 +135,7 @@ public class SteamLobbyManager : MonoBehaviour
 
             Debug.Log($"[SteamLobby] ? Lobby created! ID: {currentLobby.Value.Id}");
 
-            UpdateLobbyMembers();
+            RefreshLobbyMembers();
             OnLobbyCodeGenerated?.Invoke(currentLobby.Value.Id.ToString());
             OnJoinedLobby?.Invoke();
         }
@@ -165,7 +165,7 @@ public class SteamLobbyManager : MonoBehaviour
             currentLobby = lobby.Value;
             Debug.Log($"[SteamLobby] ? Joined lobby: {currentLobby.Value.Id}");
 
-            UpdateLobbyMembers();
+            RefreshLobbyMembers();
             OnJoinedLobby?.Invoke();
 
             // Check if game already started
@@ -230,7 +230,7 @@ public class SteamLobbyManager : MonoBehaviour
     public bool IsHost()
     {
         if (!currentLobby.HasValue) return false;
-        return isHost && currentLobby.Value.Owner.Id == SteamClient.SteamId;
+        return currentLobby.Value.Owner.Id == SteamClient.SteamId;
     }
 
     public List<string> GetPlayerNames()
@@ -307,13 +307,13 @@ public class SteamLobbyManager : MonoBehaviour
     private void OnLobbyMemberJoined(Lobby lobby, Friend friend)
     {
         Debug.Log($"[SteamLobby] {friend.Name} joined the lobby");
-        UpdateLobbyMembers();
+        RefreshLobbyMembers();
     }
 
     private void OnLobbyMemberLeave(Lobby lobby, Friend friend)
     {
         Debug.Log($"[SteamLobby] {friend.Name} left the lobby");
-        UpdateLobbyMembers();
+        RefreshLobbyMembers();
     }
 
     private void OnLobbyGameCreated(Lobby lobby, uint ip, ushort port, SteamId steamId)
@@ -573,6 +573,15 @@ public class SteamLobbyManager : MonoBehaviour
     {
         LeaveLobby();
         // Don't shutdown Steam here - FacepunchSteamManager handles it
+    }
+
+    private void RefreshLobbyMembers()
+    {
+        if (!currentLobby.HasValue) return;
+
+        currentLobby.Value.Refresh();
+
+        UpdateLobbyMembers();
     }
 
     #endregion

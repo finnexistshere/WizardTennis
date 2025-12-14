@@ -189,6 +189,7 @@ public class SteamLobbyUI : MonoBehaviour
                 playerListText.text += $"• {player}\n";
             }
         }
+        startGameButton.gameObject.SetActive(SteamLobbyManager.Instance.IsHost());
     }
 
     private void OnConnectionFailed()
