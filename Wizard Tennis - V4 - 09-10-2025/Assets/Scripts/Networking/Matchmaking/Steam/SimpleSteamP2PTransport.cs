@@ -147,13 +147,21 @@ public class SimpleSteamP2PTransport : NetworkTransport
 
     public override bool StartClient()
     {
-        if (targetSteamId == 0)
+        if (!SteamManager.Initialized)
         {
-            Debug.LogError("[SteamTransport] Cannot start client: targetSteamId not set!");
+            Debug.LogError("[SteamTransport] Cannot start client - Steam not initialized!");
             return false;
         }
 
-        Debug.Log($"[SteamTransport] Starting client, connecting to {targetSteamId}");
+        if (targetSteamId == 0)
+        {
+            Debug.LogError("[SteamTransport] Cannot start client: targetSteamId not set!");
+            Debug.LogError("[SteamTransport] Make sure SteamLobbyManager sets the targetSteamId before starting client");
+            return false;
+        }
+
+        Debug.Log($"[SteamTransport] Starting client, connecting to Steam ID: {targetSteamId}");
+        Debug.Log($"[SteamTransport] My Steam ID: {SteamUser.GetSteamID()}");
 
         isInitialized = true;
 
@@ -162,19 +170,38 @@ public class SimpleSteamP2PTransport : NetworkTransport
         steamIdToClientId[targetSteamId] = ServerClientId;
         clientIdToSteamId[ServerClientId] = serverSteamId;
 
+        Debug.Log($"[SteamTransport] Mapped server: ClientID {ServerClientId} -> Steam ID {serverSteamId}");
+
         // Accept P2P session with server
         SteamNetworking.AcceptP2PSessionWithUser(serverSteamId);
+        Debug.Log($"[SteamTransport] Accepted P2P session with server");
 
         // Send initial packet to establish connection
         byte[] initPacket = new byte[1] { 0xFF };
-        SteamNetworking.SendP2PPacket(serverSteamId, initPacket, 1, EP2PSend.k_EP2PSendReliable, CHANNEL_DEFAULT);
+        bool sent = SteamNetworking.SendP2PPacket(serverSteamId, initPacket, 1, EP2PSend.k_EP2PSendReliable, CHANNEL_DEFAULT);
+
+        if (sent)
+        {
+            Debug.Log($"[SteamTransport] ? Sent initial connection packet to server");
+        }
+        else
+        {
+            Debug.LogError($"[SteamTransport] ? Failed to send initial packet to server!");
+        }
 
         return true;
     }
 
     public override bool StartServer()
     {
+        if (!SteamManager.Initialized)
+        {
+            Debug.LogError("[SteamTransport] Cannot start server - Steam not initialized!");
+            return false;
+        }
+
         Debug.Log("[SteamTransport] Starting server");
+        Debug.Log($"[SteamTransport] Server Steam ID: {SteamUser.GetSteamID()}");
         isInitialized = true;
         return true;
     }

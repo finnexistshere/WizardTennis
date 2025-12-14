@@ -2,15 +2,12 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
-using Unity.Netcode.Transports.UTP;
 using UnityEngine.SceneManagement;
 using Steamworks;
-// Add your Steam transport using directive here
-// using Netcode.Transports.Facepunch; // Example
 
 /// <summary>
 /// FREE Steam Lobby System - Uses Steam P2P networking
-/// FIXED: Now properly establishes P2P connections between players
+/// FIXED: Robust version with proper error handling
 /// </summary>
 public class SteamLobbyManager : MonoBehaviour
 {
@@ -49,6 +46,7 @@ public class SteamLobbyManager : MonoBehaviour
 
     // Game start tracking
     private bool isWaitingForGameStart = false;
+    private bool hasStartedNetwork = false;
 
     private void Awake()
     {
@@ -96,11 +94,15 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        Debug.Log($"[SteamLobby] Scene loaded: {scene.name}, waiting for game start: {isWaitingForGameStart}");
+
         // When game scene loads, check if we need to start networking
         if (scene.name == gameSceneName && isWaitingForGameStart)
         {
             isWaitingForGameStart = false;
-            SetupAndStartNetworking();
+
+            // Small delay to ensure scene is fully loaded
+            Invoke(nameof(SetupAndStartNetworking), 0.5f);
         }
     }
 
@@ -236,6 +238,7 @@ public class SteamLobbyManager : MonoBehaviour
 
         // Flag that we're starting the game
         isWaitingForGameStart = true;
+        hasStartedNetwork = false;
 
         // Load the game scene
         SceneManager.LoadScene(gameSceneName);
@@ -244,6 +247,7 @@ public class SteamLobbyManager : MonoBehaviour
     public void LeaveLobby()
     {
         isWaitingForGameStart = false;
+        hasStartedNetwork = false;
 
         if (currentLobbyId.IsValid())
         {
@@ -254,6 +258,7 @@ public class SteamLobbyManager : MonoBehaviour
 
         if (netManager != null && netManager.IsListening)
         {
+            Debug.Log("[SteamLobby] Shutting down NetworkManager");
             netManager.Shutdown();
         }
 
@@ -312,6 +317,7 @@ public class SteamLobbyManager : MonoBehaviour
         {
             Debug.Log("[SteamLobby] Game already in progress, loading scene...");
             isWaitingForGameStart = true;
+            hasStartedNetwork = false;
             SceneManager.LoadScene(gameSceneName);
         }
     }
@@ -380,6 +386,7 @@ public class SteamLobbyManager : MonoBehaviour
             {
                 Debug.Log("[SteamLobby] Host started game - loading scene...");
                 isWaitingForGameStart = true;
+                hasStartedNetwork = false;
                 SceneManager.LoadScene(gameSceneName);
             }
         }
@@ -391,71 +398,160 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void SetupAndStartNetworking()
     {
+        if (hasStartedNetwork)
+        {
+            Debug.LogWarning("[SteamLobby] Network already started!");
+            return;
+        }
+
+        // Find NetworkManager in the newly loaded scene
         netManager = NetworkManager.Singleton;
 
         if (netManager == null)
         {
             Debug.LogError("[SteamLobby] NetworkManager not found in game scene!");
+            Debug.LogError("[SteamLobby] Make sure your game scene has a NetworkManager GameObject");
             return;
         }
 
-        // CRITICAL: Setup Steam transport
-        // Replace this with your actual Steam transport setup
-        // Example for Facepunch.Steamworks transport:
-        /*
-        var transport = netManager.GetComponent<FacepunchTransport>();
-        if (transport != null)
+        // Check if NetworkManager is already running
+        if (netManager.IsListening)
         {
-            transport.targetSteamId = GetHostSteamId();
-        }
-        */
+            Debug.LogWarning("[SteamLobby] NetworkManager is already running! Shutting down first...");
+            netManager.Shutdown();
 
-        // EXAMPLE: If using a custom Steam transport
-        // Configure it here with the host's Steam ID
+            // Wait a frame before restarting
+            Invoke(nameof(SetupAndStartNetworking), 0.1f);
+            return;
+        }
 
         Debug.Log($"[SteamLobby] Setting up networking - IsHost: {IsHost()}");
+        Debug.Log($"[SteamLobby] Current lobby: {currentLobbyId}");
+        Debug.Log($"[SteamLobby] My Steam ID: {SteamUser.GetSteamID()}");
 
         if (IsHost())
         {
-            Debug.Log("[SteamLobby] Starting as Host...");
-            if (netManager.StartHost())
-            {
-                Debug.Log("[SteamLobby] ? Successfully started as Host");
-            }
-            else
-            {
-                Debug.LogError("[SteamLobby] ? Failed to start as Host!");
-            }
+            StartAsHost();
         }
         else
         {
-            // Get the host's Steam ID from lobby data
-            CSteamID hostId = GetHostSteamId();
-            Debug.Log($"[SteamLobby] Starting as Client, connecting to host: {hostId}");
-
-            // CRITICAL: Set the target host Steam ID in your transport
-            // This is transport-specific, adjust based on your Steam transport
-            SetTransportTargetHost(hostId);
-
-            if (netManager.StartClient())
-            {
-                Debug.Log("[SteamLobby] ? Successfully started as Client");
-            }
-            else
-            {
-                Debug.LogError("[SteamLobby] ? Failed to start as Client!");
-            }
+            StartAsClient();
         }
+    }
+
+    private void StartAsHost()
+    {
+        Debug.Log("[SteamLobby] === STARTING AS HOST ===");
+
+        // Verify transport is configured
+        if (!VerifyTransport())
+        {
+            Debug.LogError("[SteamLobby] Transport verification failed!");
+            return;
+        }
+
+        Debug.Log("[SteamLobby] Starting NetworkManager.StartHost()...");
+
+        bool success = netManager.StartHost();
+
+        if (success)
+        {
+            hasStartedNetwork = true;
+            Debug.Log("[SteamLobby] ? Successfully started as Host");
+            Debug.Log($"[SteamLobby] NetworkManager.IsHost: {netManager.IsHost}");
+            Debug.Log($"[SteamLobby] NetworkManager.IsServer: {netManager.IsServer}");
+        }
+        else
+        {
+            Debug.LogError("[SteamLobby] ? Failed to start as Host!");
+            Debug.LogError("[SteamLobby] Check these common issues:");
+            Debug.LogError("[SteamLobby]   1. Is SimpleSteamP2PTransport attached to NetworkManager?");
+            Debug.LogError("[SteamLobby]   2. Is the transport set as the NetworkTransport in NetworkManager?");
+            Debug.LogError("[SteamLobby]   3. Are there multiple NetworkManagers in the scene?");
+            Debug.LogError("[SteamLobby]   4. Check the Unity console for transport errors");
+        }
+    }
+
+    private void StartAsClient()
+    {
+        Debug.Log("[SteamLobby] === STARTING AS CLIENT ===");
+
+        // Get the host's Steam ID
+        CSteamID hostId = GetHostSteamId();
+        Debug.Log($"[SteamLobby] Host Steam ID: {hostId}");
+
+        if (!hostId.IsValid())
+        {
+            Debug.LogError("[SteamLobby] Invalid host Steam ID!");
+            return;
+        }
+
+        // Verify and configure transport
+        if (!VerifyTransport())
+        {
+            Debug.LogError("[SteamLobby] Transport verification failed!");
+            return;
+        }
+
+        // Set the target host Steam ID in transport
+        SetTransportTargetHost(hostId);
+
+        Debug.Log("[SteamLobby] Starting NetworkManager.StartClient()...");
+
+        bool success = netManager.StartClient();
+
+        if (success)
+        {
+            hasStartedNetwork = true;
+            Debug.Log("[SteamLobby] ? Successfully started as Client");
+            Debug.Log($"[SteamLobby] NetworkManager.IsClient: {netManager.IsClient}");
+            Debug.Log($"[SteamLobby] Connecting to host: {hostId}");
+        }
+        else
+        {
+            Debug.LogError("[SteamLobby] ? Failed to start as Client!");
+            Debug.LogError("[SteamLobby] Check these common issues:");
+            Debug.LogError("[SteamLobby]   1. Is SimpleSteamP2PTransport attached to NetworkManager?");
+            Debug.LogError("[SteamLobby]   2. Did the transport targetSteamId get set correctly?");
+            Debug.LogError("[SteamLobby]   3. Is the host actually running and listening?");
+            Debug.LogError("[SteamLobby]   4. Check the Unity console for transport errors");
+        }
+    }
+
+    private bool VerifyTransport()
+    {
+        var transport = netManager.GetComponent<SimpleSteamP2PTransport>();
+
+        if (transport == null)
+        {
+            Debug.LogError("[SteamLobby] SimpleSteamP2PTransport not found on NetworkManager!");
+            Debug.LogError("[SteamLobby] Add SimpleSteamP2PTransport component to your NetworkManager GameObject");
+            return false;
+        }
+
+        if (netManager.NetworkConfig.NetworkTransport != transport)
+        {
+            Debug.LogError("[SteamLobby] SimpleSteamP2PTransport exists but is not set as the NetworkTransport!");
+            Debug.LogError("[SteamLobby] In NetworkManager inspector, set 'Network Transport' to SimpleSteamP2PTransport");
+            return false;
+        }
+
+        Debug.Log("[SteamLobby] ? Transport verified: SimpleSteamP2PTransport");
+        return true;
     }
 
     private CSteamID GetHostSteamId()
     {
         string hostIdStr = SteamMatchmaking.GetLobbyData(currentLobbyId, "host_id");
 
+        Debug.Log($"[SteamLobby] Host ID from lobby data: '{hostIdStr}'");
+
         if (string.IsNullOrEmpty(hostIdStr))
         {
             // Fallback to lobby owner
-            return SteamMatchmaking.GetLobbyOwner(currentLobbyId);
+            CSteamID owner = SteamMatchmaking.GetLobbyOwner(currentLobbyId);
+            Debug.Log($"[SteamLobby] Using lobby owner as host: {owner}");
+            return owner;
         }
 
         if (ulong.TryParse(hostIdStr, out ulong hostId))
@@ -463,33 +559,21 @@ public class SteamLobbyManager : MonoBehaviour
             return new CSteamID(hostId);
         }
 
+        Debug.LogWarning($"[SteamLobby] Failed to parse host ID: '{hostIdStr}', using lobby owner");
         return SteamMatchmaking.GetLobbyOwner(currentLobbyId);
     }
 
     private void SetTransportTargetHost(CSteamID hostId)
     {
-        // For SimpleSteamP2PTransport
         var transport = netManager.GetComponent<SimpleSteamP2PTransport>();
         if (transport != null)
         {
             transport.targetSteamId = hostId.m_SteamID;
-            Debug.Log($"[SteamLobby] Set SimpleSteamP2PTransport target: {hostId}");
+            Debug.Log($"[SteamLobby] ? Set SimpleSteamP2PTransport target: {hostId.m_SteamID}");
             return;
         }
 
-        // For Facepunch Transport (if you get it working):
-        /*
-        var facepunchTransport = netManager.GetComponent<FacepunchTransport>();
-        if (facepunchTransport != null)
-        {
-            facepunchTransport.targetSteamId = hostId.m_SteamID;
-            Debug.Log($"[SteamLobby] Set Facepunch transport target: {hostId}");
-            return;
-        }
-        */
-
-        Debug.LogError("[SteamLobby] No compatible Steam transport found on NetworkManager!");
-        Debug.LogError("[SteamLobby] Add SimpleSteamP2PTransport component to NetworkManager");
+        Debug.LogError("[SteamLobby] No SimpleSteamP2PTransport found on NetworkManager!");
     }
 
     #endregion

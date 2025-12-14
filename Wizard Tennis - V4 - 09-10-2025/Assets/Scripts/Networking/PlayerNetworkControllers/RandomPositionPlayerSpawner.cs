@@ -46,6 +46,11 @@ public class NetworkPlayerSpawner_Better : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        spawnedPlayers.Clear();
+        playerSpawnPoints.Clear();
+        nextSpawnIndex = 0;
+        afterBothStarted = false;
+
         if (player1Spawn == null || player2Spawn == null)
         {
             Debug.LogError("[Spawner] Spawn points not assigned!");

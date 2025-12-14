@@ -13,6 +13,7 @@ public class OptionsManager : MonoBehaviour
 
     public float Volume => volume;
     public bool LeftHandedMode => leftHandedMode;
+    public bool SpellTips => spellTips;
 
     // These are temporary references, assigned when menu opens
     private Slider volumeSlider;
@@ -25,7 +26,8 @@ public class OptionsManager : MonoBehaviour
     public AudioClip[] bgmOptions;
     public AudioClip bgm;
 
-    public bool SpellTips => spellTips;
+    // Track if UI is currently hooked to prevent errors
+    private bool isUIHooked = false;
 
     private void Awake()
     {
@@ -42,6 +44,16 @@ public class OptionsManager : MonoBehaviour
         LoadSettings();
     }
 
+    private void OnDestroy()
+    {
+        // Clean up when destroyed
+        if (Instance == this)
+        {
+            UnhookUI();
+            Instance = null;
+        }
+    }
+
     /// <summary>
     /// Call this whenever the options menu is opened in the scene.
     /// Pass the UI references from the scene.
@@ -50,9 +62,12 @@ public class OptionsManager : MonoBehaviour
         Slider slider,
         Toggle toggle,
         TextMeshProUGUI label,
-        TMP_Dropdown drop = null,  // Make optional
-        Toggle toggle2 = null)      // Make optional
+        TMP_Dropdown drop = null,
+        Toggle toggle2 = null)
     {
+        // Unhook previous UI first (in case menu was opened twice)
+        UnhookUI();
+
         volumeSlider = slider;
         leftHandedToggle = toggle;
         modeLabel = label;
@@ -60,6 +75,14 @@ public class OptionsManager : MonoBehaviour
         spellTipsToggle = toggle2;
 
         HookUI();
+    }
+
+    /// <summary>
+    /// Call this when the options menu is closed to clean up references
+    /// </summary>
+    public void OnOptionsMenuClosed()
+    {
+        UnhookUI();
     }
 
     private void HookUI()
@@ -82,7 +105,7 @@ public class OptionsManager : MonoBehaviour
         {
             dropdown.onValueChanged.RemoveAllListeners();
             dropdown.value = bgmValue;
-            dropdown.onValueChanged.AddListener(delegate { musicDropDownChange(); });
+            dropdown.onValueChanged.AddListener((int value) => MusicDropDownChange(value));
         }
 
         if (spellTipsToggle != null)
@@ -93,6 +116,42 @@ public class OptionsManager : MonoBehaviour
         }
 
         UpdateUILabel();
+        isUIHooked = true;
+    }
+
+    private void UnhookUI()
+    {
+        if (!isUIHooked) return;
+
+        // Remove listeners before clearing references to prevent memory leaks
+        if (volumeSlider != null)
+        {
+            volumeSlider.onValueChanged.RemoveListener(SetVolume);
+        }
+
+        if (leftHandedToggle != null)
+        {
+            leftHandedToggle.onValueChanged.RemoveListener(SetLeftHandedMode);
+        }
+
+        if (dropdown != null)
+        {
+            dropdown.onValueChanged.RemoveListener((int value) => MusicDropDownChange(value));
+        }
+
+        if (spellTipsToggle != null)
+        {
+            spellTipsToggle.onValueChanged.RemoveListener(SetSpellTips);
+        }
+
+        // Clear all UI references
+        volumeSlider = null;
+        leftHandedToggle = null;
+        modeLabel = null;
+        dropdown = null;
+        spellTipsToggle = null;
+
+        isUIHooked = false;
     }
 
     public void SetVolume(float value)
@@ -102,8 +161,11 @@ public class OptionsManager : MonoBehaviour
         PlayerPrefs.SetFloat("Volume", volume);
         PlayerPrefs.Save();
 
-        if (volumeSlider != null && volumeSlider.value != volume)
+        // Only update UI if it's currently hooked and valid
+        if (isUIHooked && volumeSlider != null && !Mathf.Approximately(volumeSlider.value, volume))
+        {
             volumeSlider.value = volume;
+        }
     }
 
     public void SetLeftHandedMode(bool enabled)
@@ -114,31 +176,11 @@ public class OptionsManager : MonoBehaviour
 
         UpdateUILabel();
 
-        if (leftHandedToggle != null && leftHandedToggle.isOn != leftHandedMode)
+        // Only update UI if it's currently hooked and valid
+        if (isUIHooked && leftHandedToggle != null && leftHandedToggle.isOn != leftHandedMode)
+        {
             leftHandedToggle.isOn = leftHandedMode;
-    }
-
-    private void UpdateUILabel()
-    {
-        if (modeLabel != null)
-            modeLabel.text = leftHandedMode ? "Left-Handed Mode: ON" : "Left-Handed Mode: OFF";
-    }
-
-    private void LoadSettings()
-    {
-        volume = PlayerPrefs.GetFloat("Volume", 0.75f);
-        leftHandedMode = PlayerPrefs.GetInt("LeftHandedMode", 0) == 1;
-        bgmValue = PlayerPrefs.GetInt("bgm", 0);
-        bgm = bgmOptions[bgmValue];
-        AudioListener.volume = volume;
-        spellTips = PlayerPrefs.GetInt("spellTips", 1) == 0;
-    }
-
-    public void musicDropDownChange() 
-    {
-        bgmValue = dropdown.value;
-        PlayerPrefs.SetInt("bgm", bgmValue);
-        bgm = bgmOptions[dropdown.value];
+        }
     }
 
     public void SetSpellTips(bool enabled)
@@ -147,9 +189,67 @@ public class OptionsManager : MonoBehaviour
         PlayerPrefs.SetInt("spellTips", spellTips ? 1 : 0);
         PlayerPrefs.Save();
 
-        //UpdateUILabel();
-
-        if (spellTipsToggle != null && spellTipsToggle.isOn != spellTips)
+        // Only update UI if it's currently hooked and valid
+        if (isUIHooked && spellTipsToggle != null && spellTipsToggle.isOn != spellTips)
+        {
             spellTipsToggle.isOn = spellTips;
+        }
+    }
+
+    private void UpdateUILabel()
+    {
+        if (isUIHooked && modeLabel != null)
+        {
+            modeLabel.text = leftHandedMode ? "Left-Handed Mode: ON" : "Left-Handed Mode: OFF";
+        }
+    }
+
+    private void LoadSettings()
+    {
+        volume = PlayerPrefs.GetFloat("Volume", 0.75f);
+        leftHandedMode = PlayerPrefs.GetInt("LeftHandedMode", 0) == 1;
+        bgmValue = PlayerPrefs.GetInt("bgm", 0);
+        spellTips = PlayerPrefs.GetInt("spellTips", 1) == 1; // Fixed: was inverted (1 should mean enabled)
+
+        // Safeguard: Make sure bgmValue is within array bounds
+        if (bgmOptions != null && bgmOptions.Length > 0)
+        {
+            bgmValue = Mathf.Clamp(bgmValue, 0, bgmOptions.Length - 1);
+            bgm = bgmOptions[bgmValue];
+        }
+        else
+        {
+            Debug.LogWarning("[OptionsManager] No BGM options available!");
+            bgm = null;
+        }
+
+        AudioListener.volume = volume;
+    }
+
+    private void MusicDropDownChange(int value)
+    {
+        bgmValue = value;
+        PlayerPrefs.SetInt("bgm", bgmValue);
+        PlayerPrefs.Save();
+
+        // Safeguard: Check array bounds
+        if (bgmOptions != null && bgmValue >= 0 && bgmValue < bgmOptions.Length)
+        {
+            bgm = bgmOptions[bgmValue];
+        }
+        else
+        {
+            Debug.LogWarning($"[OptionsManager] BGM value {bgmValue} is out of range!");
+        }
+    }
+
+    /// <summary>
+    /// Public method to get current settings without UI
+    /// Useful for systems that need to query settings from other scenes
+    /// </summary>
+    public void ApplyCurrentSettings()
+    {
+        AudioListener.volume = volume;
+        // Add other settings application here if needed
     }
 }
