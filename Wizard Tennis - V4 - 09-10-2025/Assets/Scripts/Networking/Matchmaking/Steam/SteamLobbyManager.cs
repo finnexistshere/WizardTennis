@@ -33,11 +33,6 @@ public class SteamLobbyManager : MonoBehaviour
     private bool isWaitingForGameStart = false;
     private bool hasStartedNetwork = false;
 
-    // Polling for game start
-    private bool isPollingForGameStart = false;
-    private float pollTimer = 0f;
-    private const float POLL_INTERVAL = 0.5f;
-
     private void Awake()
     {
         if (Instance == null)
@@ -81,32 +76,6 @@ public class SteamLobbyManager : MonoBehaviour
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    private void Update()
-    {
-        // Poll for game start (clients only)
-        if (isPollingForGameStart && currentLobby.HasValue && !IsHost())
-        {
-            pollTimer -= Time.deltaTime;
-
-            if (pollTimer <= 0f)
-            {
-                pollTimer = POLL_INTERVAL;
-
-                // Check if host started the game
-                string inGame = currentLobby.Value.GetData("in_game");
-
-                if (inGame == "true")
-                {
-                    Debug.Log("[SteamLobby] ?? POLLING DETECTED: Host started game!");
-                    isPollingForGameStart = false;
-                    isWaitingForGameStart = true;
-                    hasStartedNetwork = false;
-                    SceneManager.LoadScene(gameSceneName);
-                }
-            }
-        }
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -199,19 +168,11 @@ public class SteamLobbyManager : MonoBehaviour
             UpdateLobbyMembers();
             OnJoinedLobby?.Invoke();
 
-            // Start polling for game start
-            Debug.Log("[SteamLobby] ?? Starting to poll for game start...");
-            isPollingForGameStart = true;
-            pollTimer = POLL_INTERVAL;
-
             // Check if game already started
             string inGame = currentLobby.Value.GetData("in_game");
-            Debug.Log($"[SteamLobby] Initial in_game check: '{inGame}'");
-
             if (inGame == "true")
             {
                 Debug.Log("[SteamLobby] Game already in progress, loading scene...");
-                isPollingForGameStart = false;
                 isWaitingForGameStart = true;
                 hasStartedNetwork = false;
                 SceneManager.LoadScene(gameSceneName);
@@ -294,34 +255,16 @@ public class SteamLobbyManager : MonoBehaviour
             return;
         }
 
-        Debug.Log("[SteamLobby] ============================================");
-        Debug.Log("[SteamLobby] ?? HOST STARTING GAME!");
-        Debug.Log("[SteamLobby] ============================================");
+        Debug.Log("[SteamLobby] ?? Host starting game...");
 
-        if (!currentLobby.HasValue)
-        {
-            Debug.LogError("[SteamLobby] ? No lobby to start game in!");
-            return;
-        }
-
-        // Set lobby data to signal game start
         currentLobby.Value.SetData("in_game", "true");
         currentLobby.Value.SetData("host_id", SteamClient.SteamId.ToString());
 
-        Debug.Log($"[SteamLobby] ? Set lobby data: in_game = true");
-        Debug.Log($"[SteamLobby] ? Set lobby data: host_id = {SteamClient.SteamId}");
-        Debug.Log($"[SteamLobby] ?? Clients should detect this and load the game scene");
+        Debug.Log("[SteamLobby] Marked game as starting, loading scene...");
 
-        // Stop polling since we're loading
-        isPollingForGameStart = false;
-
-        Debug.Log($"[SteamLobby] ?? Loading game scene: {gameSceneName}");
-
-        // Flag that we're starting the game
         isWaitingForGameStart = true;
         hasStartedNetwork = false;
 
-        // Load the game scene
         SceneManager.LoadScene(gameSceneName);
     }
 
@@ -329,7 +272,6 @@ public class SteamLobbyManager : MonoBehaviour
     {
         isWaitingForGameStart = false;
         hasStartedNetwork = false;
-        isPollingForGameStart = false;
 
         if (currentLobby.HasValue)
         {
@@ -360,14 +302,6 @@ public class SteamLobbyManager : MonoBehaviour
     private void OnLobbyEntered(Lobby lobby)
     {
         Debug.Log($"[SteamLobby] OnLobbyEntered: {lobby.Id}");
-
-        // If we're not the host, start polling for game start
-        if (!IsHost())
-        {
-            Debug.Log("[SteamLobby] ?? Client entered lobby - starting poll for game start");
-            isPollingForGameStart = true;
-            pollTimer = POLL_INTERVAL;
-        }
     }
 
     private void OnLobbyMemberJoined(Lobby lobby, Friend friend)
@@ -423,7 +357,7 @@ public class SteamLobbyManager : MonoBehaviour
 
     #endregion
 
-    #region Networking Setup
+        #region Networking Setup
 
     private void SetupAndStartNetworking()
     {
@@ -566,83 +500,13 @@ public class SteamLobbyManager : MonoBehaviour
         Debug.Log($"[SteamLobby] ?? Host Steam ID: {hostId}");
         Debug.Log($"[SteamLobby] ?? My Steam ID: {SteamClient.SteamId}");
 
-        // CRITICAL: Check if we're trying to connect to ourselves
-        if (hostId == SteamClient.SteamId)
-        {
-            Debug.LogError("[SteamLobby] ? Cannot connect to ourselves! Host ID matches our Steam ID!");
-            Debug.LogError("[SteamLobby] This usually means the lobby owner data is wrong.");
-            return;
-        }
-
-        // Check if Steam is properly initialized
-        if (!SteamClient.IsValid)
-        {
-            Debug.LogError("[SteamLobby] ? Steam client not valid!");
-            return;
-        }
-
-        // Check if we can see the host in our friends list or lobby
-        bool canSeeHost = false;
-        foreach (var member in currentLobby.Value.Members)
-        {
-            if (member.Id == hostId)
-            {
-                canSeeHost = true;
-                Debug.Log($"[SteamLobby] ? Found host in lobby members: {member.Name}");
-                break;
-            }
-        }
-
-        if (!canSeeHost)
-        {
-            Debug.LogWarning("[SteamLobby] ?? Cannot see host in lobby members list!");
-        }
-
         // Configure transport
-        Debug.Log($"[SteamLobby] ?? Setting transport.targetSteamId = {hostId}");
         transport.targetSteamId = hostId;
-
-        // Small delay to ensure Steam networking is ready
-        Debug.Log("[SteamLobby] ? Waiting 500ms for Steam networking to be ready...");
-        StartCoroutine(StartClientWithDelay(netManager, hostId, hostName));
-    }
-
-    private System.Collections.IEnumerator StartClientWithDelay(NetworkManager netManager, SteamId hostId, string hostName)
-    {
-        yield return new WaitForSeconds(0.5f);
+        Debug.Log($"[SteamLobby] ? Set FacepunchTransport.targetSteamId = {hostId}");
 
         Debug.Log("[SteamLobby] ?? Calling NetworkManager.StartClient()...");
 
-        bool success = false;
-        try
-        {
-            success = netManager.StartClient();
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[SteamLobby] ? Exception when starting client: {e.Message}");
-            Debug.LogError($"[SteamLobby] Exception type: {e.GetType().Name}");
-            Debug.LogError($"[SteamLobby] Stack trace: {e.StackTrace}");
-
-            // Check if it's the "Invalid Connection" error
-            if (e.Message.Contains("Invalid Connection"))
-            {
-                Debug.LogError("[SteamLobby] ============================================");
-                Debug.LogError("[SteamLobby] STEAM P2P CONNECTION ERROR");
-                Debug.LogError("[SteamLobby] ============================================");
-                Debug.LogError("[SteamLobby] Possible causes:");
-                Debug.LogError("[SteamLobby]   1. Host hasn't fully started yet (try again in a few seconds)");
-                Debug.LogError("[SteamLobby]   2. Firewall blocking Steam P2P");
-                Debug.LogError("[SteamLobby]   3. Both players not using same App ID");
-                Debug.LogError("[SteamLobby]   4. Steam overlay not enabled");
-                Debug.LogError("[SteamLobby]   5. NAT/Router issues");
-                Debug.LogError("[SteamLobby] ============================================");
-                Debug.LogError($"[SteamLobby] Try: Host App ID = {FacepunchSteamManager.Instance?.appId ?? 0}");
-                Debug.LogError($"[SteamLobby] Connecting to: {hostName} ({hostId})");
-            }
-
-            success = false;
-        }
+        bool success = netManager.StartClient();
 
         if (success)
         {
@@ -659,6 +523,11 @@ public class SteamLobbyManager : MonoBehaviour
             Debug.LogError("[SteamLobby] ============================================");
             Debug.LogError("[SteamLobby] ??? FAILED TO START CLIENT ???");
             Debug.LogError("[SteamLobby] ============================================");
+            Debug.LogError("[SteamLobby] Check these:");
+            Debug.LogError("[SteamLobby]   1. FacepunchTransport attached to NetworkManager?");
+            Debug.LogError("[SteamLobby]   2. Host is actually running?");
+            Debug.LogError("[SteamLobby]   3. Both using same Steam App ID?");
+            Debug.LogError("[SteamLobby]   4. Check console for transport errors");
         }
     }
 
