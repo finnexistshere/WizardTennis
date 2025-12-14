@@ -9,7 +9,10 @@ public class FacepunchSteamManager : MonoBehaviour
 {
     public static FacepunchSteamManager Instance { get; private set; }
 
-    [SerializeField] private uint appId = 480; // Use 480 for testing, your App ID for production
+    [SerializeField] public uint appId = 480; // Use 480 for testing, your App ID for production
+
+    // Public accessor for the app ID
+    public uint AppId => appId;
 
     public static bool Initialized { get; private set; }
 
