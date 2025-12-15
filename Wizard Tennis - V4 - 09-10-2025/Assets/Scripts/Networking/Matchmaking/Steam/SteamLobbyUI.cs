@@ -4,7 +4,7 @@ using TMPro;
 using System.Collections.Generic;
 
 /// <summary>
-/// UI Controller for Steam Lobby - works identically to Unity Services LobbyUI
+/// UI Controller for Steam Lobby with proper event handling
 /// </summary>
 public class SteamLobbyUI : MonoBehaviour
 {
@@ -36,17 +36,14 @@ public class SteamLobbyUI : MonoBehaviour
 
     private void Start()
     {
-        // Initialize Steam Lobby Manager
-        if (SteamLobbyManager.Instance != null)
+        if (SteamLobbyManager.Instance == null)
         {
-            SteamLobbyManager.Instance.Initialize();
-        }
-        else
-        {
-            Debug.LogError("[SteamLobbyUI] SteamLobbyManager not found in scene!");
+            Debug.LogError("[SteamLobbyUI] SteamLobbyManager not found!");
             SetStatus("ERROR: SteamLobbyManager missing!");
             return;
         }
+
+        SteamLobbyManager.Instance.Initialize();
 
         // Setup button listeners
         createLobbyButton?.onClick.AddListener(OnCreateLobby);
@@ -56,14 +53,12 @@ public class SteamLobbyUI : MonoBehaviour
         inviteFriendsButton?.onClick.AddListener(OnInviteFriends);
         leaveLobbyButton?.onClick.AddListener(OnLeaveLobby);
 
-        // Add click-to-copy listener on lobby code
+        // Click-to-copy lobby code
         if (lobbyCodeText != null)
         {
             Button codeButton = lobbyCodeText.GetComponent<Button>();
             if (codeButton != null)
                 codeButton.onClick.AddListener(CopyLobbyCode);
-            else
-                Debug.LogWarning("LobbyCodeText has no Button component for copying.");
         }
 
         // Subscribe to events
@@ -72,7 +67,6 @@ public class SteamLobbyUI : MonoBehaviour
         SteamLobbyManager.Instance.OnPlayerListChanged += OnPlayerListChanged;
         SteamLobbyManager.Instance.OnConnectionFailed += OnConnectionFailed;
 
-        // Initial UI state
         ShowMainMenu();
         SetStatus("Ready to create or join lobby");
     }
@@ -113,8 +107,8 @@ public class SteamLobbyUI : MonoBehaviour
     private void OnFindLobbies()
     {
         SetStatus("Searching for lobbies...");
-        SteamLobbyManager.Instance.FindLobbies();
-        // Results will appear in console - you can extend this to show a list UI
+        // SteamLobbyManager.Instance.FindLobbies();
+        // Function that no longer exists, look here if we're looking for Public matchmaking
     }
 
     private void OnStartGame()
@@ -156,9 +150,8 @@ public class SteamLobbyUI : MonoBehaviour
         if (lobbyNameText != null)
             lobbyNameText.text = lobbyNameInput.text;
 
-        // Host can start game
-        if (startGameButton != null)
-            startGameButton.gameObject.SetActive(true);
+        // Update start button visibility
+        UpdateStartButton();
 
         SetStatus("Lobby created! Share the ID with friends or use Steam invite");
     }
@@ -172,9 +165,8 @@ public class SteamLobbyUI : MonoBehaviour
         if (lobbyCodeText != null)
             lobbyCodeText.text = $"Lobby ID: {lobbyId}";
 
-        // Only host can start game
-        if (startGameButton != null)
-            startGameButton.gameObject.SetActive(SteamLobbyManager.Instance.IsHost());
+        // Update start button visibility
+        UpdateStartButton();
 
         SetStatus("Joined lobby!");
     }
@@ -189,7 +181,12 @@ public class SteamLobbyUI : MonoBehaviour
                 playerListText.text += $"• {player}\n";
             }
         }
-        startGameButton.gameObject.SetActive(SteamLobbyManager.Instance.IsHost());
+
+        // Update start button whenever player list changes
+        UpdateStartButton();
+
+        // Update status
+        SetStatus($"{players.Count} player(s) in lobby");
     }
 
     private void OnConnectionFailed()
@@ -220,6 +217,18 @@ public class SteamLobbyUI : MonoBehaviour
             lobbyPanel.SetActive(true);
     }
 
+    private void UpdateStartButton()
+    {
+        if (startGameButton != null)
+        {
+            bool isHost = SteamLobbyManager.Instance.IsHost();
+            startGameButton.gameObject.SetActive(isHost);
+
+            // Optionally disable if not enough players
+            // startGameButton.interactable = SteamLobbyManager.Instance.GetPlayerNames().Count >= 2;
+        }
+    }
+
     private void SetStatus(string message)
     {
         if (statusText != null)
@@ -232,7 +241,6 @@ public class SteamLobbyUI : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Unsubscribe from events
         if (SteamLobbyManager.Instance != null)
         {
             SteamLobbyManager.Instance.OnLobbyCodeGenerated -= OnLobbyCreated;
@@ -251,6 +259,5 @@ public class SteamLobbyUI : MonoBehaviour
         GUIUtility.systemCopyBuffer = code;
 
         SetStatus("Lobby code copied to clipboard!");
-        Debug.Log("[SteamLobbyUI] Copied lobby code: " + code);
     }
 }
