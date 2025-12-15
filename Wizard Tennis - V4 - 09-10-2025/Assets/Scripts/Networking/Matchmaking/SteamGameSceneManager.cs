@@ -67,8 +67,10 @@ public class SteamGameSceneManager : MonoBehaviour
 
     private void OnClientConnectedCallback(ulong clientId)
     {
-        bool isLocalClient = clientId == netManager.LocalClientId;
-        Debug.Log($"[SteamGameScene] ?? CLIENT CONNECTED! ClientID: {clientId} {(isLocalClient ? "(This is us!)" : "(Remote player)")}");
+        if (clientId == netManager.LocalClientId)
+        {
+            Debug.Log("Local client connected - game ready");
+        }
     }
 
     private void OnClientDisconnectCallback(ulong clientId)

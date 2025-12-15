@@ -8,6 +8,12 @@ using Unity.Netcode;
 using UnityEngine;
 using Unity.Collections.LowLevel.Unsafe;
 
+// Should I be modifying someone else's code, written by someone smarter than me, for a system I don't fully understand?
+
+// Probably not.
+
+// But humanity never got anywhere by being afraid of change, so here we fucking go.
+
 namespace Netcode.Transports.Facepunch
 {
     using SocketConnection = Connection;
@@ -32,6 +38,17 @@ namespace Netcode.Transports.Facepunch
 
         private LogLevel LogLevel => NetworkManager.Singleton.LogLevel;
 
+        private readonly Queue<TransportEvent> eventQueue = new();
+
+        private struct TransportEvent
+        {
+            public NetworkEvent Type;
+            public ulong ClientId;
+            public ArraySegment<byte> Payload;
+            public float Time;
+        }
+
+
         private class Client
         {
             public SteamId steamId;
@@ -42,31 +59,9 @@ namespace Netcode.Transports.Facepunch
 
         private void Awake()
         {
-            try
-            {
-                SteamClient.Init(steamAppId, false);
-            }
-            catch (Exception e)
-            {
-                if (LogLevel <= LogLevel.Error)
-                    Debug.LogError($"[{nameof(FacepunchTransport)}] - Caught an exeption during initialization of Steam client: {e}");
-            }
-            finally
-            {
-                StartCoroutine(InitSteamworks());
-            }
+            // SteamClient is initialized elsewhere (FacepunchSteamManager)
+            StartCoroutine(InitSteamworks());
         }
-
-        private void Update()
-        {
-            SteamClient.RunCallbacks();
-        }
-
-        private void OnDestroy()
-        {
-            SteamClient.Shutdown();
-        }
-
         #endregion
 
         #region NetworkTransport Overrides
@@ -149,16 +144,29 @@ namespace Netcode.Transports.Facepunch
 		        Debug.LogWarning($"[{nameof(FacepunchTransport)}] - Failed to send packet to remote client with ID {clientId}, client not connected.");
         }
 
-        public override NetworkEvent PollEvent(out ulong clientId, out ArraySegment<byte> payload, out float receiveTime)
+        public override NetworkEvent PollEvent(
+            out ulong clientId,
+            out ArraySegment<byte> payload,
+            out float receiveTime)
         {
             connectionManager?.Receive();
             socketManager?.Receive();
 
+            if (eventQueue.Count > 0)
+            {
+                var ev = eventQueue.Dequeue();
+                clientId = ev.ClientId;
+                payload = ev.Payload;
+                receiveTime = ev.Time;
+                return ev.Type;
+            }
+
             clientId = 0;
-            receiveTime = Time.realtimeSinceStartup;
             payload = default;
+            receiveTime = Time.realtimeSinceStartup;
             return NetworkEvent.Nothing;
         }
+
 
         public override bool StartClient()
         {

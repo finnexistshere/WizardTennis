@@ -3,9 +3,6 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
-/// <summary>
-/// UI Controller for Steam Lobby with proper event handling
-/// </summary>
 public class SteamLobbyUI : MonoBehaviour
 {
     [Header("Main Menu Panels")]
@@ -15,7 +12,7 @@ public class SteamLobbyUI : MonoBehaviour
     [Header("Create Lobby")]
     public TMP_InputField lobbyNameInput;
     public TMP_InputField maxPlayersInput;
-    public Toggle privateToggle;
+    public Toggle privateToggle; // currently unused but kept for future
     public Button createLobbyButton;
 
     [Header("Join Lobby")]
@@ -34,18 +31,18 @@ public class SteamLobbyUI : MonoBehaviour
     [Header("Status")]
     public TextMeshProUGUI statusText;
 
+    private SteamLobbyManager Lobby => SteamLobbyManager.Instance;
+
     private void Start()
     {
-        if (SteamLobbyManager.Instance == null)
+        if (Lobby == null)
         {
             Debug.LogError("[SteamLobbyUI] SteamLobbyManager not found!");
             SetStatus("ERROR: SteamLobbyManager missing!");
             return;
         }
 
-        SteamLobbyManager.Instance.Initialize();
-
-        // Setup button listeners
+        // Button listeners
         createLobbyButton?.onClick.AddListener(OnCreateLobby);
         joinLobbyButton?.onClick.AddListener(OnJoinLobby);
         findLobbiesButton?.onClick.AddListener(OnFindLobbies);
@@ -56,38 +53,35 @@ public class SteamLobbyUI : MonoBehaviour
         // Click-to-copy lobby code
         if (lobbyCodeText != null)
         {
-            Button codeButton = lobbyCodeText.GetComponent<Button>();
-            if (codeButton != null)
-                codeButton.onClick.AddListener(CopyLobbyCode);
+            var btn = lobbyCodeText.GetComponent<Button>();
+            if (btn != null)
+                btn.onClick.AddListener(CopyLobbyCode);
         }
 
-        // Subscribe to events
-        SteamLobbyManager.Instance.OnLobbyCodeGenerated += OnLobbyCreated;
-        SteamLobbyManager.Instance.OnJoinedLobby += OnJoinedLobby;
-        SteamLobbyManager.Instance.OnPlayerListChanged += OnPlayerListChanged;
-        SteamLobbyManager.Instance.OnConnectionFailed += OnConnectionFailed;
+        // Subscribe to lobby events
+        Lobby.OnLobbyCodeGenerated += OnLobbyCreated;
+        Lobby.OnJoinedLobby += OnJoinedLobby;
+        Lobby.OnPlayerListChanged += OnPlayerListChanged;
+        Lobby.OnConnectionFailed += OnConnectionFailed;
 
         ShowMainMenu();
-        SetStatus("Ready to create or join lobby");
+        SetStatus("Ready");
     }
 
     #region Button Handlers
 
     private void OnCreateLobby()
     {
-        string lobbyName = string.IsNullOrEmpty(lobbyNameInput.text) ? "Game Lobby" : lobbyNameInput.text;
+        string lobbyName = string.IsNullOrEmpty(lobbyNameInput.text)
+            ? "Game Lobby"
+            : lobbyNameInput.text;
+
         int maxPlayers = 4;
-
         if (!string.IsNullOrEmpty(maxPlayersInput.text))
-        {
-            if (!int.TryParse(maxPlayersInput.text, out maxPlayers))
-                maxPlayers = 4;
-        }
-
-        bool isPrivate = privateToggle != null && privateToggle.isOn;
+            int.TryParse(maxPlayersInput.text, out maxPlayers);
 
         SetStatus("Creating lobby...");
-        SteamLobbyManager.Instance.CreateLobby(lobbyName, maxPlayers, isPrivate);
+        Lobby.CreateLobby(lobbyName, maxPlayers);
     }
 
     private void OnJoinLobby()
@@ -96,79 +90,67 @@ public class SteamLobbyUI : MonoBehaviour
 
         if (string.IsNullOrEmpty(lobbyCode))
         {
-            SetStatus("Please enter a lobby code");
+            SetStatus("Enter a lobby code");
             return;
         }
 
         SetStatus($"Joining lobby {lobbyCode}...");
-        SteamLobbyManager.Instance.JoinLobbyByString(lobbyCode);
+        Lobby.JoinLobbyByString(lobbyCode);
     }
 
     private void OnFindLobbies()
     {
-        SetStatus("Searching for lobbies...");
-        // SteamLobbyManager.Instance.FindLobbies();
-        // Function that no longer exists, look here if we're looking for Public matchmaking
+        SetStatus("Public matchmaking not implemented");
     }
 
     private void OnStartGame()
     {
-        if (!SteamLobbyManager.Instance.IsHost())
+        if (!Lobby.IsHost())
         {
-            SetStatus("Only host can start the game!");
+            SetStatus("Only the host can start the game");
             return;
         }
 
         SetStatus("Starting game...");
-        SteamLobbyManager.Instance.StartGame();
+        Lobby.StartGame();
     }
 
     private void OnInviteFriends()
     {
-        SteamLobbyManager.Instance.OpenSteamInviteDialog();
-        SetStatus("Steam invite dialog opened (Shift+Tab)");
+        Lobby.OpenSteamInviteDialog();
+        SetStatus("Steam invite opened (Shift+Tab)");
     }
 
     private void OnLeaveLobby()
     {
-        SteamLobbyManager.Instance.LeaveLobby();
+        Lobby.LeaveLobby();
         ShowMainMenu();
         SetStatus("Left lobby");
     }
 
     #endregion
 
-    #region Event Handlers
+    #region Lobby Events
 
     private void OnLobbyCreated(string lobbyId)
     {
         ShowLobbyPanel();
 
-        if (lobbyCodeText != null)
-            lobbyCodeText.text = $"Lobby ID: {lobbyId}";
+        lobbyCodeText.text = $"Lobby ID: {lobbyId}";
+        lobbyNameText.text = lobbyNameInput.text;
 
-        if (lobbyNameText != null)
-            lobbyNameText.text = lobbyNameInput.text;
-
-        // Update start button visibility
         UpdateStartButton();
-
-        SetStatus("Lobby created! Share the ID with friends or use Steam invite");
+        SetStatus("Lobby created");
     }
 
     private void OnJoinedLobby()
     {
         ShowLobbyPanel();
 
-        string lobbyId = SteamLobbyManager.Instance.GetLobbyId();
-
-        if (lobbyCodeText != null)
-            lobbyCodeText.text = $"Lobby ID: {lobbyId}";
-
-        // Update start button visibility
+        lobbyCodeText.text = $"Lobby ID: {Lobby.GetLobbyId()}";
         UpdateStartButton();
 
-        SetStatus("Joined lobby!");
+        SetStatus("Joined lobby");
     }
 
     private void OnPlayerListChanged(List<string> players)
@@ -176,16 +158,11 @@ public class SteamLobbyUI : MonoBehaviour
         if (playerListText != null)
         {
             playerListText.text = $"Players ({players.Count}):\n";
-            foreach (string player in players)
-            {
-                playerListText.text += $"• {player}\n";
-            }
+            foreach (var p in players)
+                playerListText.text += $"• {p}\n";
         }
 
-        // Update start button whenever player list changes
         UpdateStartButton();
-
-        // Update status
         SetStatus($"{players.Count} player(s) in lobby");
     }
 
@@ -197,36 +174,24 @@ public class SteamLobbyUI : MonoBehaviour
 
     #endregion
 
-    #region UI State Management
+    #region UI Helpers
 
     private void ShowMainMenu()
     {
-        if (mainMenuPanel != null)
-            mainMenuPanel.SetActive(true);
-
-        if (lobbyPanel != null)
-            lobbyPanel.SetActive(false);
+        mainMenuPanel?.SetActive(true);
+        lobbyPanel?.SetActive(false);
     }
 
     private void ShowLobbyPanel()
     {
-        if (mainMenuPanel != null)
-            mainMenuPanel.SetActive(false);
-
-        if (lobbyPanel != null)
-            lobbyPanel.SetActive(true);
+        mainMenuPanel?.SetActive(false);
+        lobbyPanel?.SetActive(true);
     }
 
     private void UpdateStartButton()
     {
         if (startGameButton != null)
-        {
-            bool isHost = SteamLobbyManager.Instance.IsHost();
-            startGameButton.gameObject.SetActive(isHost);
-
-            // Optionally disable if not enough players
-            // startGameButton.interactable = SteamLobbyManager.Instance.GetPlayerNames().Count >= 2;
-        }
+            startGameButton.gameObject.SetActive(Lobby.IsHost());
     }
 
     private void SetStatus(string message)
@@ -234,30 +199,30 @@ public class SteamLobbyUI : MonoBehaviour
         if (statusText != null)
             statusText.text = message;
 
-        Debug.Log($"[SteamLobbyUI] {message}");
+        Debug.Log("[SteamLobbyUI] " + message);
     }
 
     #endregion
-
-    private void OnDestroy()
-    {
-        if (SteamLobbyManager.Instance != null)
-        {
-            SteamLobbyManager.Instance.OnLobbyCodeGenerated -= OnLobbyCreated;
-            SteamLobbyManager.Instance.OnJoinedLobby -= OnJoinedLobby;
-            SteamLobbyManager.Instance.OnPlayerListChanged -= OnPlayerListChanged;
-            SteamLobbyManager.Instance.OnConnectionFailed -= OnConnectionFailed;
-        }
-    }
 
     private void CopyLobbyCode()
     {
         if (lobbyCodeText == null)
             return;
 
-        string code = lobbyCodeText.text.Replace("Lobby ID: ", "").Trim();
+        string code = lobbyCodeText.text.Replace("Lobby ID:", "").Trim();
         GUIUtility.systemCopyBuffer = code;
 
-        SetStatus("Lobby code copied to clipboard!");
+        SetStatus("Lobby code copied");
+    }
+
+    private void OnDestroy()
+    {
+        if (Lobby == null)
+            return;
+
+        Lobby.OnLobbyCodeGenerated -= OnLobbyCreated;
+        Lobby.OnJoinedLobby -= OnJoinedLobby;
+        Lobby.OnPlayerListChanged -= OnPlayerListChanged;
+        Lobby.OnConnectionFailed -= OnConnectionFailed;
     }
 }
