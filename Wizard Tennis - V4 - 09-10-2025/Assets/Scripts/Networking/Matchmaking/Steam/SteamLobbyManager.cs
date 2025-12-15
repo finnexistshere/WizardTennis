@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using UnityEngine.SceneManagement;
 using Steamworks;
 using Steamworks.Data;
@@ -95,20 +96,42 @@ public class SteamLobbyManager : MonoBehaviour
                 CheckForGameStart();
             }
         }
+        else if (isPollingLobby && verboseLogging)
+        {
+            // Debug why polling stopped
+            if (!currentLobby.HasValue)
+                Debug.LogWarning("[SteamLobby] ?? Polling but no lobby!");
+            if (IsHost())
+                Debug.LogWarning("[SteamLobby] ?? Polling but we are host!");
+        }
     }
 
     private void CheckForGameStart()
     {
-        if (!currentLobby.HasValue) return;
+        if (!currentLobby.HasValue)
+        {
+            Log("?? CheckForGameStart: No lobby!");
+            return;
+        }
+
+        // Refresh lobby data first
+        currentLobby.Value.Refresh();
 
         string inGame = currentLobby.Value.GetData("in_game");
 
+        if (verboseLogging)
+        {
+            Log($"?? Polling check - in_game: '{inGame}'");
+        }
+
         if (inGame == "true")
         {
-            Log("? DETECTED: Host started game!");
+            Log("??? DETECTED: Host started game! ???");
             isPollingLobby = false;
             isWaitingForGameStart = true;
             hasStartedNetwork = false;
+
+            Log($"?? Loading scene: {gameSceneName}");
             SceneManager.LoadScene(gameSceneName);
         }
     }
@@ -203,20 +226,28 @@ public class SteamLobbyManager : MonoBehaviour
             RefreshLobbyMembers();
             OnJoinedLobby?.Invoke();
 
-            // Start polling for game start
-            isPollingLobby = true;
-            pollTimer = POLL_INTERVAL;
-            Log("?? Started polling for game start");
-
             // Check if game already started
             string inGame = currentLobby.Value.GetData("in_game");
+            Log($"?? Initial in_game check: '{inGame}'");
+
             if (inGame == "true")
             {
-                Log("Game already in progress, joining...");
+                Log("? Game already in progress, joining immediately!");
                 isPollingLobby = false;
                 isWaitingForGameStart = true;
                 hasStartedNetwork = false;
                 SceneManager.LoadScene(gameSceneName);
+            }
+            else
+            {
+                // Start polling for game start
+                isPollingLobby = true;
+                pollTimer = POLL_INTERVAL;
+                Log("============================================");
+                Log("?????? STARTED POLLING FOR GAME START ??????");
+                Log("============================================");
+                Log($"Will check every {POLL_INTERVAL} seconds");
+                Log($"Current in_game value: '{inGame}'");
             }
         }
         catch (Exception e)
@@ -264,8 +295,13 @@ public class SteamLobbyManager : MonoBehaviour
 
     public bool IsHost()
     {
+        // For local testing with same Steam account, use the flag we set
+        // For real Steam testing with different accounts, verify with lobby owner
         if (!currentLobby.HasValue) return false;
-        return currentLobby.Value.Owner.Id == SteamClient.SteamId;
+
+        // Use the isHost flag we set when creating/joining
+        // This works correctly even with same Steam account
+        return isHost;
     }
 
     public List<string> GetPlayerNames()
@@ -295,21 +331,33 @@ public class SteamLobbyManager : MonoBehaviour
             return;
         }
 
-        Log("?? HOST STARTING GAME");
+        Log("============================================");
+        Log("?????? HOST STARTING GAME ??????");
+        Log("============================================");
 
         // Make lobby unjoinable
         currentLobby.Value.SetJoinable(false);
+        Log("? Set lobby unjoinable");
 
         // Set game as in progress
         currentLobby.Value.SetData("in_game", "true");
         currentLobby.Value.SetData("host_id", SteamClient.SteamId.ToString());
 
-        Log("?? Set in_game=true, clients should detect this");
+        Log("? Set in_game = 'true'");
+        Log("? Set host_id = " + SteamClient.SteamId);
+
+        // Verify it was set
+        string verification = currentLobby.Value.GetData("in_game");
+        Log($"?? Verification check - in_game is now: '{verification}'");
+
+        Log("?? Clients should detect this via polling or callbacks");
 
         // Stop polling since we're loading
         isPollingLobby = false;
         isWaitingForGameStart = true;
         hasStartedNetwork = false;
+
+        Log($"?? Host loading scene: {gameSceneName}");
 
         // Load game scene
         SceneManager.LoadScene(gameSceneName);
@@ -527,38 +575,53 @@ public class SteamLobbyManager : MonoBehaviour
             yield break;
         }
 
-        var transport = netManager.GetComponent<FacepunchTransport>();
-        if (transport == null)
+        // Check if we're using UnityTransport (LocalTestHelper active)
+        var unityTransport = netManager.GetComponent<UnityTransport>();
+        var facepunchTransport = netManager.GetComponent<FacepunchTransport>();
+
+        bool usingLocalTest = (netManager.NetworkConfig.NetworkTransport == unityTransport);
+
+        if (usingLocalTest)
         {
-            Debug.LogError("[SteamLobby] ? FacepunchTransport not found!");
-            yield break;
+            Log("?? LOCAL TEST MODE - Using Unity Transport");
+            Log("? Unity Transport configured for localhost (127.0.0.1:7777)");
+        }
+        else
+        {
+            // Use FacepunchTransport for real Steam P2P
+            if (facepunchTransport == null)
+            {
+                Debug.LogError("[SteamLobby] ? FacepunchTransport not found!");
+                yield break;
+            }
+
+            if (netManager.NetworkConfig.NetworkTransport != facepunchTransport)
+            {
+                netManager.NetworkConfig.NetworkTransport = facepunchTransport;
+            }
+
+            // Get host ID
+            SteamId hostId = currentLobby.Value.Owner.Id;
+            string hostName = currentLobby.Value.Owner.Name;
+
+            Log($"?? Target Host: {hostName} ({hostId})");
+            Log($"?? My Steam ID: {SteamClient.SteamId}");
+
+            // CRITICAL: Check if trying to connect to self
+            if (hostId == SteamClient.SteamId)
+            {
+                Debug.LogError("[SteamLobby] ? Cannot connect to ourselves!");
+                Debug.LogError("[SteamLobby] You need TWO DIFFERENT Steam accounts for testing!");
+                Debug.LogError("[SteamLobby] OR enable LocalTestHelper for same-account testing");
+                yield break;
+            }
+
+            // Configure transport
+            facepunchTransport.targetSteamId = hostId;
+            Log($"? Set targetSteamId = {hostId}");
         }
 
-        if (netManager.NetworkConfig.NetworkTransport != transport)
-        {
-            netManager.NetworkConfig.NetworkTransport = transport;
-        }
-
-        // Get host ID
-        SteamId hostId = currentLobby.Value.Owner.Id;
-        string hostName = currentLobby.Value.Owner.Name;
-
-        Log($"?? Target Host: {hostName} ({hostId})");
-        Log($"?? My Steam ID: {SteamClient.SteamId}");
-
-        // CRITICAL: Check if trying to connect to self
-        if (hostId == SteamClient.SteamId)
-        {
-            Debug.LogError("[SteamLobby] ? Cannot connect to ourselves!");
-            Debug.LogError("[SteamLobby] You need TWO DIFFERENT Steam accounts for testing!");
-            yield break;
-        }
-
-        // Configure transport
-        transport.targetSteamId = hostId;
-        Log($"? Set targetSteamId = {hostId}");
-
-        // Small delay for Steam networking to be ready
+        // Small delay for networking to be ready
         yield return new WaitForSeconds(0.5f);
 
         Log("?? Calling NetworkManager.StartClient()");
@@ -579,6 +642,7 @@ public class SteamLobbyManager : MonoBehaviour
                 Debug.LogError("[SteamLobby]   - Using same Steam account on both instances");
                 Debug.LogError("[SteamLobby]   - Firewall blocking Steam P2P");
                 Debug.LogError("[SteamLobby]   - Different App IDs");
+                Debug.LogError("[SteamLobby] TIP: Enable LocalTestHelper.useLocalTestingMode for same-account testing");
             }
         }
 
@@ -589,7 +653,16 @@ public class SteamLobbyManager : MonoBehaviour
             Log("??? CLIENT STARTED SUCCESSFULLY ???");
             Log("============================================");
             Log($"IsClient: {netManager.IsClient}");
-            Log($"Connecting to: {hostName} ({hostId})");
+
+            if (usingLocalTest)
+            {
+                Log("Connecting to: 127.0.0.1:7777 (localhost)");
+            }
+            else
+            {
+                Log($"Connecting to: {currentLobby.Value.Owner.Name} via Steam P2P");
+            }
+
             Log("? Waiting for connection approval...");
         }
         else

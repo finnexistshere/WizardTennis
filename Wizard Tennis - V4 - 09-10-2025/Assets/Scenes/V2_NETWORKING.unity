@@ -24291,8 +24291,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b859b887f858cb43ae8f1cc32e5c431, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  useLocalTestingMode: 0
-  networkManager: {fileID: 494459688}
+  useLocalTesting: 1
+  ipAddress: 127.0.0.1
+  port: 7777
 --- !u!114 &494459694
 MonoBehaviour:
   m_ObjectHideFlags: 0
