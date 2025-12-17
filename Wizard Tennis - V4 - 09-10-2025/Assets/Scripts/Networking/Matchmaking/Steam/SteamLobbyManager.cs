@@ -21,6 +21,7 @@ public class SteamLobbyManager : MonoBehaviour
     [SerializeField] private bool verboseLogging = true;
 
     public event Action<List<string>> OnPlayerListChanged;
+    public event Action<List<LobbyMember>> OnPlayerListChangedWithData; // NEW: includes Steam IDs
     public event Action OnJoinedLobby;
     public event Action OnConnectionFailed;
     public event Action<string> OnLobbyCodeGenerated;
@@ -473,16 +474,34 @@ public class SteamLobbyManager : MonoBehaviour
 
     #region Helpers
 
+    public struct LobbyMember
+    {
+        public string name;
+        public ulong steamId;
+        public bool isHost;
+    }
+
     private void RefreshLobbyMembers()
     {
         if (!currentLobby.HasValue)
             return;
 
         List<string> names = new();
+        List<LobbyMember> members = new();
+
         foreach (var m in currentLobby.Value.Members)
+        {
             names.Add(m.Name);
+            members.Add(new LobbyMember
+            {
+                name = m.Name,
+                steamId = m.Id,
+                isHost = m.Id == currentLobby.Value.Owner.Id
+            });
+        }
 
         OnPlayerListChanged?.Invoke(names);
+        OnPlayerListChangedWithData?.Invoke(members); // NEW: send detailed data
     }
 
     public bool IsHost()

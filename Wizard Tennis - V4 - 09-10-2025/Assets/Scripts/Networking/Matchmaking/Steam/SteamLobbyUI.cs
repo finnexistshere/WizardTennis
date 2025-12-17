@@ -12,7 +12,7 @@ public class SteamLobbyUI : MonoBehaviour
     [Header("Create Lobby")]
     public TMP_InputField lobbyNameInput;
     public TMP_InputField maxPlayersInput;
-    public Toggle privateToggle; // currently unused but kept for future
+    public Toggle privateToggle;
     public Button createLobbyButton;
 
     [Header("Join Lobby")]
@@ -23,15 +23,22 @@ public class SteamLobbyUI : MonoBehaviour
     [Header("Lobby Panel")]
     public TextMeshProUGUI lobbyCodeText;
     public TextMeshProUGUI lobbyNameText;
-    public TextMeshProUGUI playerListText;
+    public TextMeshProUGUI playerListText; // Keep for fallback
     public Button startGameButton;
     public Button inviteFriendsButton;
     public Button leaveLobbyButton;
+
+    [Header("Player List with Avatars")]
+    [Tooltip("Container for player entries (uses prefab)")]
+    public Transform playerListContainer;
+    [Tooltip("Prefab with Image (avatar) and TextMeshProUGUI (name)")]
+    public GameObject playerEntryPrefab;
 
     [Header("Status")]
     public TextMeshProUGUI statusText;
 
     private SteamLobbyManager Lobby => SteamLobbyManager.Instance;
+    private List<GameObject> playerEntries = new List<GameObject>();
 
     private void Start()
     {
@@ -62,6 +69,7 @@ public class SteamLobbyUI : MonoBehaviour
         Lobby.OnLobbyCodeGenerated += OnLobbyCreated;
         Lobby.OnJoinedLobby += OnJoinedLobby;
         Lobby.OnPlayerListChanged += OnPlayerListChanged;
+        Lobby.OnPlayerListChangedWithData += OnPlayerListChangedWithAvatars; // NEW
         Lobby.OnConnectionFailed += OnConnectionFailed;
 
         ShowMainMenu();
@@ -124,6 +132,11 @@ public class SteamLobbyUI : MonoBehaviour
     private void OnLeaveLobby()
     {
         Lobby.LeaveLobby();
+
+        // Clear avatar cache when leaving
+        if (SteamAvatarManager.Instance != null)
+            SteamAvatarManager.Instance.ClearCache();
+
         ShowMainMenu();
         SetStatus("Left lobby");
     }
@@ -155,7 +168,8 @@ public class SteamLobbyUI : MonoBehaviour
 
     private void OnPlayerListChanged(List<string> players)
     {
-        if (playerListText != null)
+        // Fallback if not using avatar system
+        if (playerListText != null && (playerListContainer == null || playerEntryPrefab == null))
         {
             playerListText.text = $"Players ({players.Count}):\n";
             foreach (var p in players)
@@ -164,6 +178,48 @@ public class SteamLobbyUI : MonoBehaviour
 
         UpdateStartButton();
         SetStatus($"{players.Count} player(s) in lobby");
+    }
+
+    private void OnPlayerListChangedWithAvatars(List<SteamLobbyManager.LobbyMember> members)
+    {
+        // Only use avatar system if components are set up
+        if (playerListContainer == null || playerEntryPrefab == null)
+            return;
+
+        // Clear existing entries
+        foreach (var entry in playerEntries)
+            Destroy(entry);
+        playerEntries.Clear();
+
+        // Create new entries with avatars
+        foreach (var member in members)
+        {
+            GameObject entry = Instantiate(playerEntryPrefab, playerListContainer);
+            playerEntries.Add(entry);
+
+            // Find components in prefab
+            Image avatarImage = entry.GetComponentInChildren<Image>();
+            TextMeshProUGUI nameText = entry.GetComponentInChildren<TextMeshProUGUI>();
+
+            // Set name
+            if (nameText != null)
+            {
+                string suffix = member.isHost ? " (Host)" : "";
+                nameText.text = member.name + suffix;
+            }
+
+            // Fetch and set avatar
+            if (avatarImage != null && SteamAvatarManager.Instance != null)
+            {
+                SteamAvatarManager.Instance.GetAvatar(member.steamId, (sprite) =>
+                {
+                    if (avatarImage != null && sprite != null)
+                        avatarImage.sprite = sprite;
+                });
+            }
+        }
+
+        SetStatus($"{members.Count} player(s) in lobby");
     }
 
     private void OnConnectionFailed()
@@ -223,6 +279,7 @@ public class SteamLobbyUI : MonoBehaviour
         Lobby.OnLobbyCodeGenerated -= OnLobbyCreated;
         Lobby.OnJoinedLobby -= OnJoinedLobby;
         Lobby.OnPlayerListChanged -= OnPlayerListChanged;
+        Lobby.OnPlayerListChangedWithData -= OnPlayerListChangedWithAvatars;
         Lobby.OnConnectionFailed -= OnConnectionFailed;
     }
 }
