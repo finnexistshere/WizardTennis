@@ -349,6 +349,7 @@ public class NetworkedGameManager : NetworkBehaviour
             if (Input.GetKeyDown(KeyCode.E))
             {
                 tutorialPanel.SetActive(false);
+                UnlockPickupSpawning();
             }
         }
 
@@ -439,11 +440,11 @@ public class NetworkedGameManager : NetworkBehaviour
     }
 
     private void SpawnPickupForPlayer
-    (
-        Transform spawnCenter,
-        List<GameObject> activePickups,
-        NetworkedSpellcasting spellcasting
-    )
+        (
+            Transform spawnCenter,
+            List<GameObject> activePickups,
+            NetworkedSpellcasting spellcasting
+        )
     {
         if (!IsServer) return;
 
@@ -460,7 +461,7 @@ public class NetworkedGameManager : NetworkBehaviour
         }
 
         // -------------------------------------------------------
-        // STEP 1 � Find valid spawn position
+        // STEP 1 – Find valid spawn position
         // -------------------------------------------------------
         Vector3 spawnPos = Vector3.zero;
         bool validPos = false;
@@ -489,10 +490,14 @@ public class NetworkedGameManager : NetworkBehaviour
                 validPos = true;
         }
 
-        if (!validPos) return;
+        if (!validPos)
+        {
+            Debug.LogWarning("[NetworkedGameManager] Could not find valid spawn position after 20 attempts.");
+            return;
+        }
 
         // -------------------------------------------------------
-        // STEP 2 � Choose a pickup *that is allowed*
+        // STEP 2 – Choose a pickup *that is allowed*
         // -------------------------------------------------------
         GameObject prefab = GetWeightedPickupFiltered(spellcasting, activePickups);
         if (prefab == null)
@@ -501,25 +506,72 @@ public class NetworkedGameManager : NetworkBehaviour
             return;
         }
 
+        Debug.Log($"[NetworkedGameManager] Selected prefab: {prefab.name}");
+
         // -------------------------------------------------------
-        // STEP 3 � Instantiate & network spawn
+        // CRITICAL: Check if prefab is registered in NetworkManager
+        // -------------------------------------------------------
+        var networkManager = NetworkManager.Singleton;
+        if (networkManager == null)
+        {
+            Debug.LogError("[NetworkedGameManager] NetworkManager.Singleton is null!");
+            return;
+        }
+
+        var networkPrefab = prefab.GetComponent<NetworkObject>();
+        if (networkPrefab == null)
+        {
+            Debug.LogError($"[NetworkedGameManager] Prefab '{prefab.name}' has no NetworkObject component!");
+            return;
+        }
+
+        // Check if prefab is registered
+        bool isRegistered = false;
+        foreach (var registeredPrefab in networkManager.NetworkConfig.Prefabs.Prefabs)
+        {
+            if (registeredPrefab.Prefab == prefab)
+            {
+                isRegistered = true;
+                break;
+            }
+        }
+
+        if (!isRegistered)
+        {
+            Debug.LogError($"[NetworkedGameManager] ⚠️ PREFAB NOT REGISTERED: '{prefab.name}' is not in NetworkManager's Network Prefabs List!");
+            Debug.LogError("[NetworkedGameManager] Add this prefab to NetworkManager -> NetworkConfig -> Network Prefabs List");
+            return;
+        }
+
+        Debug.Log($"[NetworkedGameManager] ✓ Prefab '{prefab.name}' is registered. Attempting spawn...");
+
+        // -------------------------------------------------------
+        // STEP 3 – Instantiate & network spawn
         // -------------------------------------------------------
         GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
 
         var netObj = newPickup.GetComponent<NetworkObject>();
         if (netObj == null)
         {
-            Debug.LogError("[NetworkedGameManager] Pickup prefab missing NetworkObject!");
+            Debug.LogError("[NetworkedGameManager] Instantiated pickup missing NetworkObject!");
             Destroy(newPickup);
             return;
         }
 
-        netObj.Spawn();
-        activePickups.Add(newPickup);
-
-        Debug.Log($"[NetworkedGameManager] Spawned pickup '{prefab.name}' for player {spellcasting.OwnerClientId}");
+        try
+        {
+            Debug.Log($"[NetworkedGameManager] Calling Spawn() on '{prefab.name}' at {spawnPos}");
+            netObj.Spawn();
+            activePickups.Add(newPickup);
+            Debug.Log($"[NetworkedGameManager] ✓ Successfully spawned pickup '{prefab.name}' for player {spellcasting.OwnerClientId}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[NetworkedGameManager] ❌ Exception spawning pickup: {e.Message}");
+            Debug.LogError($"[NetworkedGameManager] Stack trace: {e.StackTrace}");
+            Destroy(newPickup);
+        }
     }
-
 
     private GameObject GetWeightedPickupFiltered(
         NetworkedSpellcasting spellcasting,

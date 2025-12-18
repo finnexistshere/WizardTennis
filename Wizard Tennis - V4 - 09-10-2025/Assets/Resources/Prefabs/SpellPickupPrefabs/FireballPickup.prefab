@@ -13,8 +13,8 @@ GameObject:
   - component: {fileID: 1085787360507637341}
   - component: {fileID: 8823940392488962118}
   - component: {fileID: 2278737016579851069}
-  - component: {fileID: 2449358422025720997}
   - component: {fileID: -8899602769067718894}
+  - component: {fileID: 2449358422025720997}
   m_Layer: 0
   m_Name: FireballPickup
   m_TagString: Untagged
@@ -131,33 +131,6 @@ MonoBehaviour:
   rotationSpeed: 60
   bobHeight: 0.25
   bobSpeed: 2
---- !u!114 &2449358422025720997
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7109859178366572936}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a25789e3791a6d4c8fbbe2c94c3c220, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  type: 1
-  value: -0.2
-  spellName: Fireball
-  spellAddress: aAB
-  onHitBool: 1
-  Color1: {r: 1, g: 0.5882353, b: 0.11764706, a: 1}
-  Color2: {r: 1, g: 0.2, b: 0.1764706, a: 1}
-  spellCastAudio: {fileID: 8300000, guid: c1ca27f0948b8b84daa73557fde54ece, type: 3}
-  wizardSpellSound: {fileID: 8300000, guid: 1cba6a67d151f5343ac29a819ed23327, type: 3}
-  duration: 5
-  spawnWeight: 1
-  spellVisualPrefab: {fileID: 4549237697235292045, guid: de8332094fc41bd4480762e02c4946c4, type: 3}
-  pickupAudio: {fileID: 0}
-  fadeInDuration: 3
-  destroyAfterFadeIn: 0
 --- !u!114 &-8899602769067718894
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,6 +156,34 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!114 &2449358422025720997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7109859178366572936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a25789e3791a6d4c8fbbe2c94c3c220, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
+  type: 1
+  value: -0.2
+  spellName: Fireball
+  spellAddress: aAB
+  onHitBool: 1
+  Color1: {r: 1, g: 0.5882353, b: 0.11764706, a: 1}
+  Color2: {r: 1, g: 0.2, b: 0.1764706, a: 1}
+  spellCastAudio: {fileID: 8300000, guid: c1ca27f0948b8b84daa73557fde54ece, type: 3}
+  wizardSpellSound: {fileID: 8300000, guid: 1cba6a67d151f5343ac29a819ed23327, type: 3}
+  duration: 5
+  spawnWeight: 0.4
+  spellVisualPrefab: {fileID: 4549237697235292045, guid: de8332094fc41bd4480762e02c4946c4, type: 3}
+  pickupAudio: {fileID: 0}
+  fadeInDuration: 3
+  destroyAfterFadeIn: 0
 --- !u!1001 &3100400291037213270
 PrefabInstance:
   m_ObjectHideFlags: 0
