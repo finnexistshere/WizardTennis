@@ -18501,12 +18501,12 @@ MonoBehaviour:
     EnableTimeResync: 0
     TimeResyncInterval: 30
     EnsureNetworkVariableLengthSafety: 0
-    EnableSceneManagement: 0
+    EnableSceneManagement: 1
     ForceSamePrefabs: 1
     RecycleNetworkIds: 1
     NetworkIdRecycleDelay: 120
     RpcHashSize: 0
-    LoadSceneTimeOut: 120
+    LoadSceneTimeOut: 240
     SpawnTimeout: 10
     EnableNetworkLogs: 1
     NetworkTopology: 0
