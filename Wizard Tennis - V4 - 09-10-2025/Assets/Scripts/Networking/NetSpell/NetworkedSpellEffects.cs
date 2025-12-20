@@ -118,6 +118,13 @@ public class NetworkedSpellEffects : NetworkBehaviour
     // Track active networked effects for cleanup
     private Dictionary<string, ulong> activeNetworkEffects = new Dictionary<string, ulong>();
 
+    public NetworkVariable<bool> IsAnySpellActive =
+        new NetworkVariable<bool>(
+            false,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -126,6 +133,20 @@ public class NetworkedSpellEffects : NetworkBehaviour
             return;
         }
         Instance = this;
+    }
+
+    // Global Spell Lock
+    [ServerRpc(RequireOwnership = false)]
+    public void BeginGlobalSpellLockServerRpc()
+    {
+        if (IsAnySpellActive.Value) return;
+        IsAnySpellActive.Value = true;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void EndGlobalSpellLockServerRpc()
+    {
+        IsAnySpellActive.Value = false;
     }
 
     /// <summary>

@@ -68,6 +68,11 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     public bool green;
 
+    // Queue state
+    private bool queuedCast = false;
+    private string queuedSpellAddress = "";
+    private string queuedSpellName = "";
+
     private void Awake()
     {
         AutoSetupReferences();
@@ -160,6 +165,13 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     {
         // Only owner needs ball for visuals and input
         if (!IsOwner) return;
+
+        // Check for the Global Spell lock
+        if (NetworkedSpellEffects.Instance != null &&
+    NetworkedSpellEffects.Instance.IsAnySpellActive.Value)
+        {
+            return;
+        }
 
         // Periodic ball check for owner only
         if (Time.time >= nextBallCheckTime)
@@ -284,28 +296,86 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private void CheckSpell()
     {
-        if (!spellBook.ContainsKey(inputSpellAddress) || isCasting) return;
+        if (!spellBook.ContainsKey(inputSpellAddress))
+            return;
 
-        string spellName = spellBook[inputSpellAddress];
+        // Prevent re-entry
+        if (isCasting)
+            return;
+
+        // If another spell is active globally, queue this one
+        if (NetworkedSpellEffects.Instance != null &&
+            NetworkedSpellEffects.Instance.IsAnySpellActive.Value)
+        {
+            if (!queuedCast)
+            {
+                queuedCast = true;
+                queuedSpellAddress = inputSpellAddress;
+                queuedSpellName = spellBook[inputSpellAddress];
+
+                Debug.Log($"[NetworkedSpellcasting] Queued spell '{queuedSpellName}'");
+            }
+
+            inputSpellAddress = "";
+            UpdateSpellBook();
+            return;
+        }
+
+        // Cast immediately
+        ExecuteSpell(inputSpellAddress, spellBook[inputSpellAddress]);
+    }
+
+    private void ExecuteSpell(string spellAddress, string spellName)
+    {
         isCasting = true;
         currentActiveSpell = spellName;
 
         audioSource?.PlayOneShot(spellRegisterSound);
 
-        // Get opponent NetworkObjectId for reliable network lookup
+        // Get opponent NetworkObjectId for reliable lookup
         GameObject opponent = FindOpponent();
         ulong opponentNetId = opponent != null && opponent.TryGetComponent<NetworkObject>(out var netObj)
             ? netObj.NetworkObjectId
             : ulong.MaxValue;
 
-        // Request server to cast spell (server-authoritative)
-        CastSpellServerRpc(inputSpellAddress, spellName, opponentNetId);
+        // Request server to cast spell
+        CastSpellServerRpc(spellAddress, spellName, opponentNetId);
 
-        float duration = spellDurations.ContainsKey(inputSpellAddress) ? spellDurations[inputSpellAddress] : spellDuration;
+        float duration = spellDurations.ContainsKey(spellAddress)
+            ? spellDurations[spellAddress]
+            : spellDuration;
 
-        StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, inputSpellAddress));
+        StartCoroutine(ResetVisualAfterDelay(duration, baseEffectObject, spellAddress));
+
         inputSpellAddress = "";
         UpdateSpellBook();
+    }
+
+    private void OnEnable()
+    {
+        if (NetworkedSpellEffects.Instance != null)
+            NetworkedSpellEffects.Instance.IsAnySpellActive.OnValueChanged += OnSpellLockChanged;
+    }
+
+    private void OnDisable()
+    {
+        if (NetworkedSpellEffects.Instance != null)
+            NetworkedSpellEffects.Instance.IsAnySpellActive.OnValueChanged -= OnSpellLockChanged;
+    }
+
+    private void OnSpellLockChanged(bool oldValue, bool newValue)
+    {
+        // Spell just finished
+        if (!newValue && queuedCast && !isCasting)
+        {
+            Debug.Log($"[NetworkedSpellcasting] Casting queued spell '{queuedSpellName}'");
+
+            queuedCast = false;
+            ExecuteSpell(queuedSpellAddress, queuedSpellName);
+
+            queuedSpellAddress = "";
+            queuedSpellName = "";
+        }
     }
 
     // ---------- Helper: lookup spawned object by NetworkObjectId ----------
@@ -360,6 +430,17 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     [ServerRpc(RequireOwnership = false)]
     private void CastSpellServerRpc(string spellAddress, string spellName, ulong opponentNetId, ServerRpcParams rpcParams = default)
     {
+        // Check for the spell lock
+        if (NetworkedSpellEffects.Instance != null &&
+    NetworkedSpellEffects.Instance.IsAnySpellActive.Value)
+        {
+            Debug.Log($"[NSC-Server] Spell rejected — another spell is active");
+            return;
+        }
+
+        // if it passes the spell lock, we can now set it to block other spells
+        NetworkedSpellEffects.Instance.BeginGlobalSpellLockServerRpc();
+
         // Who requested the cast?
         ulong casterClientId = rpcParams.Receive.SenderClientId;
 
@@ -878,6 +959,12 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 }
             }
             currentVisualInstance = null;
+
+            // Release the spell lock
+            if (IsServer && NetworkedSpellEffects.Instance != null)
+            {
+                NetworkedSpellEffects.Instance.EndGlobalSpellLockServerRpc();
+            }
         }
 
         // Re-enable base effect on THIS client
