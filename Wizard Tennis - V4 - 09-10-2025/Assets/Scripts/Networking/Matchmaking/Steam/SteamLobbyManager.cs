@@ -258,7 +258,18 @@ public class SteamLobbyManager : MonoBehaviour
         hasStartedNetwork = true;
 
         Log("Host started — loading scene via Netcode");
-        netManager.SceneManager.LoadScene(gameSceneName, LoadSceneMode.Single);
+
+        // CRITICAL: Use Single mode to unload all other scenes
+        var status = netManager.SceneManager.LoadScene(gameSceneName, LoadSceneMode.Single);
+
+        if (status != SceneEventProgressStatus.Started)
+        {
+            Debug.LogError($"[SteamLobby] Failed to start scene load! Status: {status}");
+        }
+        else
+        {
+            Log("Scene load initiated successfully");
+        }
     }
 
     /// <summary>

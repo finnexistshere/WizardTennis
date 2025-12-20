@@ -1,11 +1,10 @@
 using UnityEngine;
 using Unity.Netcode;
-using Steamworks; // Facepunch.Steamworks
+using Steamworks;
 
 /// <summary>
 /// Place this script in your game scene (the scene that loads when game starts)
-/// It automatically starts NetworkManager as host or client based on Steam lobby state
-/// Includes fallback for Unity Editor testing without Steam/Lobby
+/// It handles post-connection setup and ensures players are properly initialized
 /// </summary>
 public class SteamGameSceneManager : MonoBehaviour
 {
@@ -19,8 +18,11 @@ public class SteamGameSceneManager : MonoBehaviour
     [Tooltip("Delay before starting fallback (gives time for lobby manager to initialize)")]
     [SerializeField] private float fallbackDelay = 0.5f;
 
+    [Header("Debug")]
+    [SerializeField] private bool verboseLogging = true;
+
     private NetworkManager netManager;
-    private bool hasStarted = false;
+    private bool hasInitialized = false;
 
     public enum FallbackMode
     {
@@ -38,16 +40,20 @@ public class SteamGameSceneManager : MonoBehaviour
             return;
         }
 
+        Log("SteamGameSceneManager initialized");
+        Log($"Transport: {netManager.NetworkConfig.NetworkTransport?.GetType().Name ?? "None"}");
+        Log($"IsListening: {netManager.IsListening}");
+        Log($"IsHost: {netManager.IsHost}");
+        Log($"IsClient: {netManager.IsClient}");
+        Log($"IsServer: {netManager.IsServer}");
+
         // Subscribe to network events for debugging
         netManager.OnClientConnectedCallback += OnClientConnectedCallback;
         netManager.OnClientDisconnectCallback += OnClientDisconnectCallback;
         netManager.OnServerStarted += OnServerStartedCallback;
 
-        Debug.Log("[SteamGameScene] ?? SteamGameSceneManager initialized");
-        Debug.Log($"[SteamGameScene] Transport: {netManager.NetworkConfig.NetworkTransport?.GetType().Name ?? "None"}");
-
-        // Give lobby manager time to initialize if it exists
-        Invoke(nameof(CheckAndStartNetwork), fallbackDelay);
+        // Give a moment for everything to settle, then check network state
+        Invoke(nameof(CheckNetworkState), fallbackDelay);
     }
 
     private void OnDestroy()
@@ -62,51 +68,151 @@ public class SteamGameSceneManager : MonoBehaviour
 
     private void OnServerStartedCallback()
     {
-        Debug.Log("[SteamGameScene] ?? SERVER STARTED!");
+        Log("SERVER STARTED!");
     }
 
     private void OnClientConnectedCallback(ulong clientId)
     {
         if (clientId == netManager.LocalClientId)
         {
-            Debug.Log("Local client connected - game ready");
+            Log("Local client connected - initializing game");
+            OnLocalClientReady();
+        }
+        else
+        {
+            Log($"Remote client {clientId} connected");
         }
     }
 
     private void OnClientDisconnectCallback(ulong clientId)
     {
         bool isLocalClient = clientId == netManager.LocalClientId;
-        Debug.Log($"[SteamGameScene] ?? CLIENT DISCONNECTED! ClientID: {clientId} {(isLocalClient ? "(This is us!)" : "(Remote player)")}");
+        Log($"CLIENT DISCONNECTED! ClientID: {clientId} {(isLocalClient ? "(This is us!)" : "(Remote player)")}");
     }
 
-    private void CheckAndStartNetwork()
+    private void CheckNetworkState()
     {
-        if (hasStarted)
+        if (hasInitialized)
         {
-            Debug.Log("[SteamGameScene] Already started network, skipping");
+            Log("Already initialized, skipping");
             return;
         }
 
-        Debug.Log("[SteamGameScene] ?? Checking lobby state...");
+        Log("Checking network state...");
 
-        // With Facepunch, SteamLobbyManager handles all networking startup
-        // This script just marks that we've initialized
-        if (SteamLobbyManager.Instance != null)
+        // Check if we're already connected (normal case when using SteamLobbyManager)
+        if (netManager.IsListening)
         {
-            Debug.Log("[SteamGameScene] ? SteamLobbyManager found");
-            Debug.Log("[SteamGameScene] ? SteamLobbyManager will handle network startup");
+            Log($"NetworkManager already listening - IsHost: {netManager.IsHost}, IsClient: {netManager.IsClient}");
 
-            bool isHost = SteamLobbyManager.Instance.IsHost();
-            Debug.Log($"[SteamGameScene] IsHost: {isHost}");
-
-            hasStarted = true;
-            OnGameStarted(isHost);
+            if (SteamLobbyManager.Instance != null)
+            {
+                bool isHost = SteamLobbyManager.Instance.IsHost();
+                Log($"SteamLobbyManager found - IsHost: {isHost}");
+                hasInitialized = true;
+                OnGameReady(isHost);
+            }
+            else
+            {
+                Log("No SteamLobbyManager but network is active (editor mode?)");
+                hasInitialized = true;
+                OnGameReady(netManager.IsHost);
+            }
         }
         else
         {
-            Debug.LogWarning("[SteamGameScene] ? SteamLobbyManager not found");
-            HandleFallback("SteamLobbyManager not found");
+            // Not connected - try fallback for editor testing
+            Log("NetworkManager NOT listening");
+
+            if (SteamLobbyManager.Instance != null)
+            {
+                Debug.LogWarning("[SteamGameScene] SteamLobbyManager exists but network isn't started - this shouldn't happen!");
+            }
+
+            HandleFallback("Network not started");
         }
+    }
+
+    private void OnLocalClientReady()
+    {
+        if (hasInitialized) return;
+
+        Log("Local client ready - performing post-connection setup");
+        hasInitialized = true;
+
+        bool isHost = netManager.IsHost;
+        OnGameReady(isHost);
+    }
+
+    private void OnGameReady(bool isHost)
+    {
+        Log($"Game ready! IsHost: {isHost}");
+
+        // Unlock pickup spawning (server only)
+        if (NetworkedGameManager.Instance != null)
+        {
+            NetworkedGameManager.Instance.UnlockPickupSpawning();
+            Log("Pickup spawning unlocked");
+        }
+
+        // Additional client-specific setup
+        if (!isHost)
+        {
+            SetupLocalClient();
+        }
+    }
+
+    /// <summary>
+    /// Perform any client-specific setup needed after scene loads
+    /// </summary>
+    private void SetupLocalClient()
+    {
+        Log("Setting up local client...");
+
+        // Wait a frame for player spawning to complete
+        StartCoroutine(WaitForLocalPlayerSetup());
+    }
+
+    private System.Collections.IEnumerator WaitForLocalPlayerSetup()
+    {
+        // Wait for player object to be assigned
+        int attempts = 0;
+        while (netManager.LocalClient?.PlayerObject == null && attempts < 100)
+        {
+            attempts++;
+            yield return null;
+        }
+
+        if (netManager.LocalClient?.PlayerObject == null)
+        {
+            Debug.LogError("[SteamGameScene] Local player object never spawned!");
+            yield break;
+        }
+
+        GameObject localPlayer = netManager.LocalClient.PlayerObject.gameObject;
+        Log($"Local player found: {localPlayer.name}");
+
+        // Ensure camera is properly assigned
+        Camera mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            // Check if player has a camera follower or similar component
+            var cameraFollow = localPlayer.GetComponentInChildren<Camera>();
+            if (cameraFollow == null)
+            {
+                // If player doesn't have its own camera, make sure main camera follows it
+                Log("No camera on player - main camera should be set up separately");
+            }
+            else
+            {
+                Log("Player has camera component");
+            }
+        }
+
+        // Disable any components that should only be active on this client's player
+        // (This depends on your player setup - you may need to add more here)
+
+        Log("Client setup complete");
     }
 
     private void HandleFallback(string reason)
@@ -118,22 +224,22 @@ public class SteamGameSceneManager : MonoBehaviour
         }
 
 #if UNITY_EDITOR
-        Debug.Log($"[SteamGameScene] {reason} - Using editor fallback mode: {fallbackMode}");
+        Log($"{reason} - Using editor fallback mode: {fallbackMode}");
         
         switch (fallbackMode)
         {
             case FallbackMode.Host:
-                Debug.Log("[SteamGameScene] ?? EDITOR MODE: Starting as Host for testing");
+                Log("EDITOR MODE: Starting as Host for testing");
                 StartHost();
                 break;
                 
             case FallbackMode.Client:
-                Debug.Log("[SteamGameScene] ?? EDITOR MODE: Starting as Client for testing");
-                StartClient();
+                Log("EDITOR MODE: Starting as Client for testing");
+                Debug.LogWarning("[SteamGameScene] Client mode in editor without lobby is not recommended");
                 break;
                 
             case FallbackMode.None:
-                Debug.Log("[SteamGameScene] ?? EDITOR MODE: Fallback set to None, not auto-starting");
+                Log("EDITOR MODE: Fallback set to None, not auto-starting");
                 break;
         }
 #else
@@ -143,76 +249,39 @@ public class SteamGameSceneManager : MonoBehaviour
 
     private void StartHost()
     {
-        if (hasStarted)
+        if (hasInitialized)
         {
-            Debug.LogWarning("[SteamGameScene] Already started network!");
+            Debug.LogWarning("[SteamGameScene] Already initialized!");
             return;
         }
 
-        Debug.Log("[SteamGameScene] ?? Starting as Host...");
+        Log("Starting as Host (editor fallback)...");
 
         if (netManager.StartHost())
         {
-            hasStarted = true;
-            Debug.Log("[SteamGameScene] ? Successfully started as Host");
-            OnGameStarted(true);
+            hasInitialized = true;
+            Log("Successfully started as Host");
+            OnGameReady(true);
         }
         else
         {
-            Debug.LogError("[SteamGameScene] ? Failed to start as Host");
+            Debug.LogError("[SteamGameScene] Failed to start as Host");
         }
     }
 
-    private void StartClient()
+    private void Log(string msg)
     {
-        if (hasStarted)
-        {
-            Debug.LogWarning("[SteamGameScene] Already started network!");
-            return;
-        }
-
-        Debug.Log("[SteamGameScene] ?? Starting as Client...");
-
-        // Note: With the new Facepunch setup, SteamLobbyManager handles
-        // all the transport configuration internally
-        Debug.Log("[SteamGameScene] Transport configuration handled by SteamLobbyManager");
-
-        Debug.Log("[SteamGameScene] ?? Client will connect via SteamLobbyManager...");
-
-        // Mark as started - the actual connection happens in SteamLobbyManager
-        hasStarted = true;
-        Debug.Log("[SteamGameScene] ? Client startup initiated");
-        OnGameStarted(false);
+        if (verboseLogging)
+            Debug.Log($"[SteamGameScene] {msg}");
     }
 
-    private void OnGameStarted(bool isHost)
-    {
-        Debug.Log($"[SteamGameScene] ?? Game started! IsHost: {isHost}");
-
-        // Optional: Any additional setup after network starts
-        if (NetworkedGameManager.Instance != null)
-        {
-            NetworkedGameManager.Instance.UnlockPickupSpawning();
-        }
-    }
-
-    // Public method to manually start as host (useful for UI buttons in editor)
+    // Public methods for manual control (useful for UI buttons in editor)
     public void ForceStartAsHost()
     {
-        if (!hasStarted)
+        if (!hasInitialized)
         {
-            Debug.Log("[SteamGameScene] ?? Forced start as Host");
+            Log("Forced start as Host");
             StartHost();
-        }
-    }
-
-    // Public method to manually start as client (useful for UI buttons in editor)
-    public void ForceStartAsClient()
-    {
-        if (!hasStarted)
-        {
-            Debug.Log("[SteamGameScene] ?? Forced start as Client");
-            StartClient();
         }
     }
 }

@@ -30658,7 +30658,6 @@ GameObject:
   - component: {fileID: 1294964902}
   - component: {fileID: 1294964903}
   - component: {fileID: 1294964904}
-  - component: {fileID: 1294964905}
   m_Layer: 0
   m_Name: PlayerSpawner
   m_TagString: Untagged
@@ -30725,21 +30724,8 @@ MonoBehaviour:
   verboseLogging: 1
   spawnPositionLockDuration: 1
   delayBeforeFiring: 2
-  fireCount: 0
-  repeatDelay: 1
---- !u!114 &1294964905
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1294964900}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 11d0f87be7bf259418bf10666e06536c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  verboseLogging: 1
+  fireCount: 1
+  repeatDelay: 2
 --- !u!1 &1299915522
 GameObject:
   m_ObjectHideFlags: 0
