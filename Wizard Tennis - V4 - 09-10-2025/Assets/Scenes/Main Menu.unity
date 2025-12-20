@@ -18438,7 +18438,6 @@ GameObject:
   - component: {fileID: 1479144570}
   - component: {fileID: 1479144569}
   - component: {fileID: 1479144568}
-  - component: {fileID: 1479144567}
   - component: {fileID: 1479144566}
   - component: {fileID: 1479144571}
   m_Layer: 0
@@ -18463,21 +18462,6 @@ MonoBehaviour:
   steamAppId: 480
   targetSteamId: 0
   userSteamId: 0
---- !u!114 &1479144567
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1479144565}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b859b887f858cb43ae8f1cc32e5c431, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  useLocalTesting: 0
-  ipAddress: 127.0.0.1
-  port: 7777
 --- !u!114 &1479144568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18485,7 +18469,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1479144565}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e1fa8c64528da5245ab288899befa594, type: 3}
   m_Name: 

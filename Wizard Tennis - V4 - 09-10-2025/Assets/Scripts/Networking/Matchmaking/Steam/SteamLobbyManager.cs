@@ -175,6 +175,10 @@ public class SteamLobbyManager : MonoBehaviour
         }
         netManager.NetworkConfig.NetworkTransport = facepunch;
 
+        // CRITICAL: Disable auto player spawning - let the game scene spawner handle it
+        netManager.NetworkConfig.PlayerPrefab = null;
+        Log("Disabled auto player spawning - game scene will handle spawning");
+
         if (netManager.IsListening)
         {
             Log("NetworkManager already listening");
@@ -223,6 +227,9 @@ public class SteamLobbyManager : MonoBehaviour
             yield break;
         }
         netManager.NetworkConfig.NetworkTransport = facepunch;
+
+        // CRITICAL: Ensure auto player spawning stays disabled
+        netManager.NetworkConfig.PlayerPrefab = null;
 
         // If we're already listening (started in lobby), don't restart — just load scene.
         if (!netManager.IsListening)
