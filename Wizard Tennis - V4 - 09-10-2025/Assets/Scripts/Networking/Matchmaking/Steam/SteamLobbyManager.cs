@@ -33,6 +33,15 @@ public class SteamLobbyManager : MonoBehaviour
     private float pollTimer = 0f;
     private const float POLL_INTERVAL = 0.5f;
 
+    public struct LobbyMember
+    {
+        public SteamId steamId;
+        public string name;
+        public bool isHost;
+    }
+
+    public event Action<List<LobbyMember>> OnPlayerListChangedWithData;
+
     private void Awake()
     {
         if (Instance != null)
@@ -283,11 +292,19 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void OnLobbyMemberJoined(Lobby lobby, Friend friend)
     {
+        if (!currentLobby.HasValue || lobby.Id != currentLobby.Value.Id)
+            return;
+
+        Log($"Member joined: {friend.Name}");
         RefreshLobbyMembers();
     }
 
     private void OnLobbyMemberLeave(Lobby lobby, Friend friend)
     {
+        if (!currentLobby.HasValue || lobby.Id != currentLobby.Value.Id)
+            return;
+
+        Log($"Member left: {friend.Name}");
         RefreshLobbyMembers();
     }
 
@@ -342,10 +359,27 @@ public class SteamLobbyManager : MonoBehaviour
             return;
 
         List<string> names = new();
+        List<LobbyMember> members = new();
+
+        SteamId hostId = currentLobby.Value.Owner.Id;
+
         foreach (var m in currentLobby.Value.Members)
+        {
             names.Add(m.Name);
 
+            members.Add(new LobbyMember
+            {
+                steamId = m.Id,
+                name = m.Name,
+                isHost = (m.Id == hostId)
+            });
+        }
+
+        // Legacy support
         OnPlayerListChanged?.Invoke(names);
+
+        // New rich data (avatars, host badge, etc)
+        OnPlayerListChangedWithData?.Invoke(members);
     }
 
     public bool IsHost()
