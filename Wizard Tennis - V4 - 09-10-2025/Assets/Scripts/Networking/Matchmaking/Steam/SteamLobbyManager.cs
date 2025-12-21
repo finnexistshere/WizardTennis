@@ -34,6 +34,13 @@ public class SteamLobbyManager : MonoBehaviour
     private float pollTimer = 0f;
     private const float POLL_INTERVAL = 0.5f;
 
+    public struct LobbyMember
+    {
+        public string name;
+        public ulong steamId;
+        public bool isHost;
+    }
+
     private void Awake()
     {
         if (Instance != null)
@@ -72,7 +79,7 @@ public class SteamLobbyManager : MonoBehaviour
         string inGame = currentLobby.Value.GetData("in_game");
         if (inGame == "true")
         {
-            Log("Detected game start — Netcode will sync scene automatically");
+            Log("Detected game start — host will load scene via Netcode");
             isPollingLobby = false;
         }
     }
@@ -101,10 +108,7 @@ public class SteamLobbyManager : MonoBehaviour
         OnJoinedLobby?.Invoke();
         RefreshLobbyMembers();
 
-        Log("Lobby created - starting host server immediately");
-
-        // KEY: Start host server NOW so clients can connect when they join
-        StartHostServerImmediately();
+        Log("Lobby created - waiting for Start Game");
     }
 
     public async void JoinLobby(SteamId lobbyId)
@@ -125,16 +129,13 @@ public class SteamLobbyManager : MonoBehaviour
 
         Log("Successfully joined lobby");
 
-        // KEY: Start client NOW so connection is established before host loads scene
-        StartClientForLobby();
-
         // Start polling to detect when host starts game
         string inGame = currentLobby.Value.GetData("in_game");
         if (inGame != "true")
         {
             isPollingLobby = true;
             pollTimer = POLL_INTERVAL;
-            Log("Polling for game start");
+            Log("Waiting for host to start game");
         }
     }
 
@@ -148,70 +149,69 @@ public class SteamLobbyManager : MonoBehaviour
         currentLobby.Value.SetJoinable(false);
         currentLobby.Value.SetData("in_game", "true");
 
-        // Host is already running - just load the scene
-        StartCoroutine(LoadGameScene());
+        // Start host and load scene via Netcode
+        StartCoroutine(StartHostIfNeeded());
     }
 
     #endregion
 
-    #region Networking Helpers
+    #region Networking helpers
 
-    /// <summary>
-    /// Start host server immediately when lobby is created
-    /// This allows clients to connect as soon as they join the lobby
-    /// </summary>
-    private void StartHostServerImmediately()
+    private IEnumerator StartHostIfNeeded()
     {
         var netManager = NetworkManager.Singleton;
         if (netManager == null)
         {
-            Debug.LogError("[SteamLobby] NetworkManager missing!");
-            return;
+            Debug.LogError("[SteamLobby] NetworkManager missing! Put a persistent NetworkManager in the Lobby scene.");
+            yield break;
         }
 
+        // Configure transport
         var facepunch = netManager.GetComponent<FacepunchTransport>();
         if (facepunch == null)
         {
-            Debug.LogError("[SteamLobby] FacepunchTransport missing!");
-            return;
+            Debug.LogError("[SteamLobby] FacepunchTransport missing on NetworkManager!");
+            yield break;
         }
-
         netManager.NetworkConfig.NetworkTransport = facepunch;
 
-        // CRITICAL: Disable auto player spawning
-        // The game scene spawner will handle player spawning
+        // CRITICAL: Disable auto player spawning - game scene will handle it
         netManager.NetworkConfig.PlayerPrefab = null;
 
-        if (netManager.IsListening)
+        // If already listening, just load scene
+        if (!netManager.IsListening)
         {
-            Log("NetworkManager already listening");
-            return;
-        }
+            Log("Starting Host...");
+            bool started = false;
+            try
+            {
+                started = netManager.StartHost();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SteamLobby] Exception starting host: {e.Message}");
+            }
 
-        Log("Starting Host server in lobby...");
-
-        try
-        {
-            if (!netManager.StartHost())
+            if (!started)
             {
                 Debug.LogError("[SteamLobby] Failed to start host!");
-                return;
+                yield break;
             }
+
+            // Give transport a frame to initialize
+            yield return null;
         }
-        catch (Exception e)
+        else
         {
-            Debug.LogError($"[SteamLobby] Exception starting host: {e.Message}");
-            return;
+            Log("NetworkManager already listening. Proceeding to scene load.");
         }
 
         hasStartedNetwork = true;
-        Log("? Host server started - clients can now connect");
+
+        Log("Host started — loading scene via Netcode");
+        netManager.SceneManager.LoadScene(gameSceneName, LoadSceneMode.Single);
     }
 
-    /// <summary>
-    /// Start client and connect to host immediately when joining lobby
-    /// This establishes the connection BEFORE host loads the game scene
-    /// </summary>
     private void StartClientForLobby()
     {
         if (!currentLobby.HasValue)
@@ -224,9 +224,9 @@ public class SteamLobbyManager : MonoBehaviour
             return;
         }
 
+        // Already listening? don't restart
         if (netManager.IsListening)
         {
-            Log("NetworkManager already listening");
             hasStartedNetwork = true;
             return;
         }
@@ -234,72 +234,52 @@ public class SteamLobbyManager : MonoBehaviour
         var transport = netManager.GetComponent<FacepunchTransport>();
         if (transport == null)
         {
-            Debug.LogError("[SteamLobby] FacepunchTransport missing!");
+            Debug.LogError("[SteamLobby] FacepunchTransport missing on NetworkManager!");
             return;
         }
 
-        // Get host Steam ID from lobby
+        // Set target to the host's SteamID
         SteamId hostId = currentLobby.Value.Owner.Id;
         if (hostId == SteamClient.SteamId)
         {
-            Log("Joined own lobby as host — skipping client start");
+            Log("Joined own lobby as host — skipping client start.");
             hasStartedNetwork = true;
             return;
         }
 
-        // Configure transport to connect to host
         transport.targetSteamId = hostId;
         netManager.NetworkConfig.NetworkTransport = transport;
 
         // CRITICAL: Disable auto player spawning
         netManager.NetworkConfig.PlayerPrefab = null;
 
-        Log($"Starting Client, connecting to host {hostId}...");
-
-        try
+        Log($"Starting Netcode client -> host {hostId}");
+        if (!netManager.StartClient())
         {
-            if (!netManager.StartClient())
-            {
-                Debug.LogError("[SteamLobby] Failed to start client!");
-                return;
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[SteamLobby] Exception starting client: {e.Message}");
+            Debug.LogError("[SteamLobby] Failed to start client!");
             return;
         }
 
         hasStartedNetwork = true;
-        Log("? Client started - connected and ready");
+        Log("Client started - will auto-sync to host's scene");
     }
 
-    /// <summary>
-    /// Load game scene when host clicks Start Game
-    /// Network is already running, so this just triggers scene load
-    /// </summary>
-    private IEnumerator LoadGameScene()
+    private IEnumerator SetupNetworkingCoroutine()
     {
         var netManager = NetworkManager.Singleton;
-        if (netManager == null || !netManager.IsListening)
+        if (netManager == null)
         {
-            Debug.LogError("[SteamLobby] NetworkManager not ready!");
+            Debug.LogError("[SteamLobby] NetworkManager missing!");
             yield break;
         }
 
-        Log($"Loading game scene: {gameSceneName}");
+        // Don't restart if already listening
+        yield return null;
 
-        // Load scene via Netcode - this will auto-sync all connected clients
-        var status = netManager.SceneManager.LoadScene(gameSceneName, LoadSceneMode.Single);
-
-        if (status != SceneEventProgressStatus.Started)
-        {
-            Debug.LogError($"[SteamLobby] Failed to start scene load! Status: {status}");
-        }
+        if (IsHost())
+            yield return StartCoroutine(StartHostIfNeeded());
         else
-        {
-            Log("? Scene load started - clients will auto-sync");
-        }
+            StartClientForLobby();
     }
 
     #endregion
@@ -308,13 +288,13 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void OnLobbyMemberJoined(Lobby lobby, Friend friend)
     {
-        Log($"Player joined: {friend.Name}");
+        Log($"Member joined: {friend.Name}");
         RefreshLobbyMembers();
     }
 
     private void OnLobbyMemberLeave(Lobby lobby, Friend friend)
     {
-        Log($"Player left: {friend.Name}");
+        Log($"Member left: {friend.Name}");
         RefreshLobbyMembers();
     }
 
@@ -323,8 +303,12 @@ public class SteamLobbyManager : MonoBehaviour
         if (!currentLobby.HasValue || lobby.Id != currentLobby.Value.Id)
             return;
 
-        // Lobby data changed - client's polling will detect game start
-        Log("Lobby data updated");
+        string inGame = lobby.GetData("in_game");
+        if (inGame == "true" && !IsHost() && !hasStartedNetwork)
+        {
+            Log("Lobby marked in-game — starting client to join host");
+            StartCoroutine(SetupNetworkingCoroutine());
+        }
     }
 
     private void OnGameLobbyJoinRequested(Lobby lobby, SteamId steamId)
@@ -335,13 +319,6 @@ public class SteamLobbyManager : MonoBehaviour
     #endregion
 
     #region Helpers
-
-    public struct LobbyMember
-    {
-        public string name;
-        public ulong steamId;
-        public bool isHost;
-    }
 
     private void RefreshLobbyMembers()
     {
