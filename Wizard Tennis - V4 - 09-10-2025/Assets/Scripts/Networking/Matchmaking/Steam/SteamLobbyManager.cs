@@ -106,12 +106,39 @@ public class SteamLobbyManager : MonoBehaviour
         currentLobby.Value.SetData("in_game", "false");
         currentLobby.Value.SetData("host_id", SteamClient.SteamId.ToString());
 
+        StartHostImmediately();
+
         OnLobbyCodeGenerated?.Invoke(currentLobby.Value.Id.ToString());
         OnJoinedLobby?.Invoke();
         RefreshLobbyMembers();
 
         // Hosts typically should start as host only when starting the game.
         // If you want the host to start networking immediately upon creation, call StartHostIfNeeded() here.
+    }
+
+    private void StartHostImmediately()
+    {
+        var netManager = NetworkManager.Singleton;
+        if (netManager == null)
+        {
+            Debug.LogError("[SteamLobby] NetworkManager missing!");
+            return;
+        }
+
+        if (netManager.IsListening)
+            return;
+
+        var transport = netManager.GetComponent<FacepunchTransport>();
+        netManager.NetworkConfig.NetworkTransport = transport;
+
+        Log("Starting Netcode Host (Lobby Phase)");
+        if (!netManager.StartHost())
+        {
+            Debug.LogError("[SteamLobby] Failed to start host!");
+            return;
+        }
+
+        hasStartedNetwork = true;
     }
 
     public async void JoinLobby(SteamId lobbyId)
@@ -154,8 +181,10 @@ public class SteamLobbyManager : MonoBehaviour
         currentLobby.Value.SetJoinable(false);
         currentLobby.Value.SetData("in_game", "true");
 
-        // Start host if not already listening, then load scene via Netcode.
-        StartCoroutine(StartHostIfNeeded());
+        NetworkManager.Singleton.SceneManager.LoadScene(
+            gameSceneName,
+            LoadSceneMode.Single
+        );
     }
 
     #endregion
