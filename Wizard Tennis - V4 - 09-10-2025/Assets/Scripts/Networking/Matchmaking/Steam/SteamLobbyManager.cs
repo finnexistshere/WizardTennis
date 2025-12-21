@@ -130,11 +130,10 @@ public class SteamLobbyManager : MonoBehaviour
         RefreshLobbyMembers();
         OnJoinedLobby?.Invoke();
 
-        Log("Successfully joined lobby");
+        Log("Successfully joined lobby, starting client...");
 
-        // Start polling until host starts game
-        isPollingLobby = true;
-        pollTimer = POLL_INTERVAL;
+        // Start client networking immediately so it is ready before the host loads the scene
+        StartClientForLobby();
 
         // Start polling as a fallback in case host sets in_game later
         string inGame = currentLobby.Value.GetData("in_game");
