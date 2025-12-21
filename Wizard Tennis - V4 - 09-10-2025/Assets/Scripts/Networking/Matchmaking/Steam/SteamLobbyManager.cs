@@ -178,37 +178,44 @@ public class SteamLobbyManager : MonoBehaviour
 
     private IEnumerator HostStartSequence()
     {
-        if (NetworkManager.Singleton.IsListening)
+        var netManager = NetworkManager.Singleton;
+        if (netManager == null)
         {
-            Log("Host already listening — skipping StartHost()");
+            Debug.LogError("[SteamLobby] NetworkManager missing!");
+            yield break;
         }
-        else
+
+        // If host is already running, do NOT restart it
+        if (!netManager.IsListening)
         {
+            var transport = netManager.GetComponent<FacepunchTransport>();
+            if (transport == null)
+            {
+                Debug.LogError("[SteamLobby] FacepunchTransport missing!");
+                yield break;
+            }
+
+            netManager.NetworkConfig.NetworkTransport = transport;
+
             Log("Starting host netcode...");
-            if (!NetworkManager.Singleton.StartHost())
+            if (!netManager.StartHost())
             {
                 Debug.LogError("[SteamLobby] Failed to start host!");
                 yield break;
             }
+
+            hasStartedNetwork = true;
         }
-
-        var netManager = NetworkManager.Singleton;
-        var transport = netManager.GetComponent<FacepunchTransport>();
-
-        netManager.NetworkConfig.NetworkTransport = transport;
-
-        Log("Starting host netcode...");
-        if (!netManager.StartHost())
+        else
         {
-            Debug.LogError("[SteamLobby] Failed to start host!");
-            yield break;
+            Log("Host already listening — reusing existing host");
         }
 
-        // Give Facepunch + NLAPI time to bind sockets
+        // Give Facepunch + Steam time to settle
         yield return null;
         yield return null;
 
-        // SIGNAL CLIENTS
+        // SIGNAL CLIENTS (nonce-based, unmissable)
         currentLobby.Value.SetData(
             "netcode_ready",
             DateTime.UtcNow.Ticks.ToString()
@@ -216,7 +223,7 @@ public class SteamLobbyManager : MonoBehaviour
 
         Log("Netcode ready signal sent");
 
-        // Lag safety buffer
+        // Safety delay for slow clients
         yield return new WaitForSeconds(0.5f);
 
         netManager.SceneManager.LoadScene(gameSceneName, LoadSceneMode.Single);
