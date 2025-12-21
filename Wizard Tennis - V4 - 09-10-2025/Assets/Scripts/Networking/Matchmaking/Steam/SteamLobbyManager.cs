@@ -157,10 +157,7 @@ public class SteamLobbyManager : MonoBehaviour
         RefreshLobbyMembers();
         OnJoinedLobby?.Invoke();
 
-        Log("Successfully joined lobby, starting client...");
-
-        // Start client networking immediately so it is ready before the host loads the scene
-        StartClientForLobby();
+        Log("Joined lobby, waiting for host netcode signal...");
 
         // Start polling as a fallback in case host sets in_game later
         string inGame = currentLobby.Value.GetData("in_game");
@@ -178,13 +175,36 @@ public class SteamLobbyManager : MonoBehaviour
 
         Log("HOST STARTING GAME");
 
-        currentLobby.Value.SetJoinable(false);
-        currentLobby.Value.SetData("in_game", "true");
+        StartCoroutine(HostStartSequence());
+    }
 
-        NetworkManager.Singleton.SceneManager.LoadScene(
-            gameSceneName,
-            LoadSceneMode.Single
-        );
+    private IEnumerator HostStartSequence()
+    {
+        var netManager = NetworkManager.Singleton;
+        var transport = netManager.GetComponent<FacepunchTransport>();
+
+        netManager.NetworkConfig.NetworkTransport = transport;
+
+        Log("Starting host netcode...");
+        if (!netManager.StartHost())
+        {
+            Debug.LogError("[SteamLobby] Failed to start host!");
+            yield break;
+        }
+
+        // Give Facepunch + NLAPI time to bind sockets
+        yield return null;
+        yield return null;
+
+        // ?? SIGNAL CLIENTS
+        currentLobby.Value.SetData("netcode_ready", "true");
+
+        Log("Netcode ready signal sent");
+
+        // Lag safety buffer
+        yield return new WaitForSeconds(0.5f);
+
+        netManager.SceneManager.LoadScene(gameSceneName, LoadSceneMode.Single);
     }
 
     #endregion
@@ -342,11 +362,15 @@ public class SteamLobbyManager : MonoBehaviour
         if (!currentLobby.HasValue || lobby.Id != currentLobby.Value.Id)
             return;
 
-        string inGame = lobby.GetData("in_game");
-        if (inGame == "true" && !IsHost() && !hasStartedNetwork)
+        if (IsHost())
+            return;
+
+        string ready = lobby.GetData("netcode_ready");
+
+        if (ready == "true" && !hasStartedNetwork)
         {
-            Log("Lobby marked in-game — starting client to join host");
-            StartCoroutine(SetupNetworkingCoroutine());
+            Log("Host netcode ready — starting client");
+            StartClientForLobby();
         }
     }
 
