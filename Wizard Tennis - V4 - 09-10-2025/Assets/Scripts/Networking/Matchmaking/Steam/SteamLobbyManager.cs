@@ -106,8 +106,6 @@ public class SteamLobbyManager : MonoBehaviour
         currentLobby.Value.SetData("in_game", "false");
         currentLobby.Value.SetData("host_id", SteamClient.SteamId.ToString());
 
-        StartHostImmediately();
-
         OnLobbyCodeGenerated?.Invoke(currentLobby.Value.Id.ToString());
         OnJoinedLobby?.Invoke();
         RefreshLobbyMembers();
