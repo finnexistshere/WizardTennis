@@ -763,6 +763,16 @@ public class NetworkedGameManager : NetworkBehaviour
         // Remove all balls
         RemoveAllBalls();
 
+        // NEW: Lock pickup spawning for new round
+        LockPickupSpawning();
+        Debug.Log("[NetworkedGameManager] Pickup spawning locked for new round");
+
+        // NEW: Remove all existing pickups
+        RemoveAllPickups();
+
+        // NEW: Clear all spells from all players' spellbooks
+        ClearAllSpellbooksClientRpc();
+
         // Reset rally count for new round
         if (NetworkedScoreManager.Instance != null)
         {
@@ -785,6 +795,127 @@ public class NetworkedGameManager : NetworkBehaviour
         SetPlayersToServingStateClientRpc();
 
         Debug.Log("[NetworkedGameManager] Next round started.");
+    }
+
+    /// <summary>
+    /// Removes all pickup objects from the scene (server only)
+    /// </summary>
+    private void RemoveAllPickups()
+    {
+        if (!IsServer) return;
+
+        int pickupCount = 0;
+
+        // Method 1: Remove from tracked lists
+        foreach (GameObject pickup in hostActivePickups)
+        {
+            if (pickup != null)
+            {
+                NetworkObject netObj = pickup.GetComponent<NetworkObject>();
+                if (netObj != null && netObj.IsSpawned)
+                {
+                    netObj.Despawn(true);
+                    pickupCount++;
+                }
+                else
+                {
+                    Destroy(pickup);
+                    pickupCount++;
+                }
+            }
+        }
+        hostActivePickups.Clear();
+
+        foreach (GameObject pickup in clientActivePickups)
+        {
+            if (pickup != null)
+            {
+                NetworkObject netObj = pickup.GetComponent<NetworkObject>();
+                if (netObj != null && netObj.IsSpawned)
+                {
+                    netObj.Despawn(true);
+                    pickupCount++;
+                }
+                else
+                {
+                    Destroy(pickup);
+                    pickupCount++;
+                }
+            }
+        }
+        clientActivePickups.Clear();
+
+        // Method 2: Find any remaining pickups by tag (safety net)
+        GameObject[] remainingPickups = GameObject.FindGameObjectsWithTag("Pickup");
+        foreach (GameObject pickup in remainingPickups)
+        {
+            NetworkObject netObj = pickup.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned)
+            {
+                netObj.Despawn(true);
+                pickupCount++;
+            }
+            else
+            {
+                Destroy(pickup);
+                pickupCount++;
+            }
+        }
+
+        // Method 3: Find by PickupEffect component (final safety net)
+        PickupEffect[] pickupEffects = FindObjectsOfType<PickupEffect>();
+        foreach (PickupEffect effect in pickupEffects)
+        {
+            if (effect != null && effect.gameObject != null)
+            {
+                NetworkObject netObj = effect.GetComponent<NetworkObject>();
+                if (netObj != null && netObj.IsSpawned)
+                {
+                    netObj.Despawn(true);
+                    pickupCount++;
+                }
+                else
+                {
+                    Destroy(effect.gameObject);
+                    pickupCount++;
+                }
+            }
+        }
+
+        Debug.Log($"[NetworkedGameManager] Removed {pickupCount} pickups from scene.");
+    }
+
+    /// <summary>
+    /// Clears all spells from all players' spellbooks across all clients
+    /// </summary>
+    [ClientRpc]
+    private void ClearAllSpellbooksClientRpc()
+    {
+        Debug.Log("[NetworkedGameManager-Client] Clearing all spellbooks");
+
+        // Find all NetworkedSpellcasting components
+        NetworkedSpellcasting[] allSpellcasters = FindObjectsOfType<NetworkedSpellcasting>();
+
+        foreach (NetworkedSpellcasting spellcaster in allSpellcasters)
+        {
+            if (spellcaster != null && spellcaster.spellBook != null)
+            {
+                // Clear all dictionaries
+                spellcaster.spellBook.Clear();
+                spellcaster.debuffBook.Clear();
+                spellcaster.spellVisuals.Clear();
+                spellcaster.boolBook.Clear();
+                spellcaster.spellColors.Clear();
+                spellcaster.spellColors2.Clear();
+                spellcaster.spellAudio.Clear();
+                spellcaster.wizardAudio.Clear();
+                spellcaster.spellDurations.Clear();
+
+                Debug.Log($"[NetworkedGameManager-Client] Cleared spellbook for player {spellcaster.OwnerClientId}");
+            }
+        }
+
+        Debug.Log("[NetworkedGameManager-Client] All spellbooks cleared");
     }
 
     [ClientRpc]
