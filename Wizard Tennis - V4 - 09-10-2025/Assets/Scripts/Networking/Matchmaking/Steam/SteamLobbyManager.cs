@@ -40,6 +40,8 @@ public class SteamLobbyManager : MonoBehaviour
         public bool isHost;
     }
 
+    private string lastNetcodeSignal = "";
+
     public event Action<List<LobbyMember>> OnPlayerListChangedWithData;
 
     private void Awake()
@@ -81,10 +83,11 @@ public class SteamLobbyManager : MonoBehaviour
         string ready = currentLobby.Value.GetData("netcode_ready");
 
         Log("Polling lobby: netcode_ready = " + ready);
-
-        if (ready == "true")
+        if (!string.IsNullOrEmpty(ready) && ready != lastNetcodeSignal)
         {
-            Log("Detected host netcode readiness — starting client");
+            lastNetcodeSignal = ready;
+
+            Log("Detected NEW host netcode signal — starting client");
             isPollingLobby = false;
             StartClientForLobby();
         }
