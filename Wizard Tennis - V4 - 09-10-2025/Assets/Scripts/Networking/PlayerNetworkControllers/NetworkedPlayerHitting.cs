@@ -13,7 +13,7 @@ public class NetworkedBall : NetworkBehaviour
     private NetworkedUIManager uiManager;
 
     [Header("Green Spell State")]
-    public bool green = false; // Local state only - rally tracking handled by ScoreManager
+    public bool green = false;
 
     [Header("Ball Spawn")]
     public Transform ballSpawnPoint;
@@ -48,10 +48,15 @@ public class NetworkedBall : NetworkBehaviour
     private static float lastGlobalServerHitTime = -999f;
     private static float serverHitDebounce = 0.2f;
 
-    // Pause ball state (for testing)
+    // Pause ball state
     private static Vector3 savedVelocity;
     private static RigidbodyConstraints savedConstraints;
     private static bool ballPaused = false;
+
+    // IK Reference - each player tracks their own IK controller
+    // IK references (local-only, per client)
+    private TwoHandIKController localPlayerIK;
+    private TwoHandIKController_Opponent localOpponentIK;
 
     private void Awake()
     {
@@ -84,12 +89,18 @@ public class NetworkedBall : NetworkBehaviour
             Debug.LogWarning("[NetworkedBall] PlayerReferenceRelay.Instance is null!");
         }
 
-        // Get this player's UI manager
+        // Get this player's UI manager and IK controller
         if (IsOwner)
         {
             uiManager = GetComponent<NetworkedUIManager>();
             if (uiManager == null)
                 Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} has no NetworkedUIManager component!");
+
+            localPlayerIK = GetComponent<TwoHandIKController>();
+            if (localPlayerIK == null)
+                Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} has no TwoHandIKController component!");
+            else
+                Debug.Log($"[NetworkedBall] Player {OwnerClientId} IK controller found and cached.");
         }
 
         if (IsOwner)
@@ -106,6 +117,8 @@ public class NetworkedBall : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.E) && currentBallInstance == null && ballPrefab != null && ballSpawnPoint != null)
         {
             SpawnBallServerRpc(ballSpawnPoint.position, ballSpawnPoint.rotation);
+            // Second call to help with Client Spawn Timing
+            ServeBallServerRpc();
         }
 
         // Pause/Resume for testing
@@ -120,10 +133,12 @@ public class NetworkedBall : NetworkBehaviour
         // Serve ball with E when near it
         if (Input.GetKeyDown(KeyCode.E) && nearBall && localServing)
         {
-            ServeBallServerRpc();
             localServing = false;
             lastServeTime = Time.time;
-            if (servingBarriers != null) servingBarriers.SetActive(false);
+
+            // Request server to handle serve and barrier deactivation
+            ServeBallServerRpc();
+            DeactivateBarriersServerRpc();
         }
     }
 
@@ -176,16 +191,24 @@ public class NetworkedBall : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void DisableServingBarriersServerRpc()
+    private void DeactivateBarriersServerRpc(ServerRpcParams rpcParams = default)
     {
-        DisableServingBarriersClientRpc();
+        if (!IsServer) return;
+
+        Debug.Log($"[Server] Deactivating serving barriers requested by client {rpcParams.Receive.SenderClientId}");
+
+        // Server deactivates barriers and notifies all clients
+        DeactivateBarriersClientRpc();
     }
 
     [ClientRpc]
-    private void DisableServingBarriersClientRpc()
+    private void DeactivateBarriersClientRpc()
     {
-        if (servingBarriers != null)
+        if (servingBarriers != null && servingBarriers.activeSelf)
+        {
             servingBarriers.SetActive(false);
+            Debug.Log($"[NetworkedBall] Client {OwnerClientId} - Serving barriers deactivated via ClientRpc.");
+        }
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -216,51 +239,102 @@ public class NetworkedBall : NetworkBehaviour
         }
     }
 
+    // ASSIGNING THE IK RIG ============================================
     [ClientRpc]
     private void NotifyBallSpawnedClientRpc()
     {
         currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
+
         if (currentBallInstance != null)
         {
-            nearBall = true;
+            // Local IK assignment
+            if (localPlayerIK != null)
+                localPlayerIK.AssignBall(currentBallInstance.transform);
 
-            // Assign to IK rigs
-            TwoHandIKController ikController = FindObjectOfType<TwoHandIKController>();
-            if (ikController != null && IsOwner)
-            {
-                ikController.AssignBall(currentBallInstance.transform);
-            }
-            if (OppIKRig != null)
-            {
-                OppIKRig.AssignBall(currentBallInstance.transform);
-            }
+            // Opponent IK assignment
+                Debug.Log("[NotifyBallSpawnedClientRpc] Trying to Assign IK Rig for Opponent...");
+                OppIKRig.StartAssignBallCoroutine();
         }
     }
+
+    private IEnumerator AssignBallToIKAfterSpawn()
+    {
+        yield return new WaitForEndOfFrame();
+
+        currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
+
+        if (currentBallInstance == null)
+        {
+            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} could not find ball!");
+            yield break;
+        }
+
+        nearBall = true;
+        Transform ballTransform = currentBallInstance.transform;
+
+        // --- LOCAL PLAYER IK ---
+        if (localPlayerIK == null)
+            localPlayerIK = GetComponent<TwoHandIKController>();
+
+        if (localPlayerIK != null)
+        {
+            localPlayerIK.AssignBall(ballTransform);
+            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to LOCAL player IK");
+        }
+
+        // --- OPPONENT IK ---
+        if (localOpponentIK == null)
+            localOpponentIK = FindOpponentIK();
+
+        if (localOpponentIK != null)
+        {
+            localOpponentIK.AssignBall(ballTransform);
+            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to OPPONENT IK");
+        }
+    }
+
+    private TwoHandIKController_Opponent FindOpponentIK()
+    {
+        TwoHandIKController_Opponent[] allOppIKs =
+            FindObjectsOfType<TwoHandIKController_Opponent>(true);
+
+        foreach (var ik in allOppIKs)
+        {
+            NetworkObject netObj = ik.GetComponentInParent<NetworkObject>();
+
+            if (netObj == null)
+                continue;
+
+            // Opponent = NOT owned by this client
+            if (!netObj.IsOwner)
+            {
+                Debug.Log($"[NetworkedBall] Found opponent IK on client {netObj.OwnerClientId}");
+                return ik;
+            }
+        }
+
+        Debug.LogWarning("[NetworkedBall] Could not find opponent IK");
+        return null;
+    }
+    // ===============================================================
 
     [ServerRpc(RequireOwnership = false)]
     private void ServeBallServerRpc(ServerRpcParams rpcParams = default)
     {
-        if (!IsServer || currentBallInstance == null)
-            return;
+        if (!IsServer || currentBallInstance == null) return;
 
         Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.useGravity = true;
 
+            // Fixed: Apply upForce directly as the Y component
             Vector3 serveVelocity = new Vector3(0, ogUpForce, 0);
             rb.linearVelocity = serveVelocity;
 
-            Debug.Log(
-                $"[Server] Ball served by client {rpcParams.Receive.SenderClientId} " +
-                $"- velocity: {rb.linearVelocity}"
-            );
+            Debug.Log($"[Server] Ball served by client {rpcParams.Receive.SenderClientId} - velocity: {rb.linearVelocity}");
         }
 
-        // SERVER-AUTHORITATIVE: disable barriers for everyone
-        DisableServingBarriersClientRpc();
-
-        // Inform clients that serving is complete
         NotifyServeCompleteClientRpc();
     }
 
@@ -270,7 +344,6 @@ public class NetworkedBall : NetworkBehaviour
         localServing = false;
         hitting = true;
         lastServeTime = Time.time;
-        if (servingBarriers != null) servingBarriers.SetActive(false);
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -384,7 +457,7 @@ public class NetworkedBall : NetworkBehaviour
         Vector3 direction = targetPos - transform.position;
         HitBallServerRpc(direction, strength, upForce);
 
-        // *** Update rally count via NetworkedScoreManager (handles green points automatically) ***
+        // Update rally count via NetworkedScoreManager
         if (NetworkedScoreManager.Instance != null)
         {
             NetworkedScoreManager.Instance.IncrementRallyCountServerRpc();

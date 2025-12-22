@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
+using System.Collections;
 
 public class TwoHandIKController_Opponent : MonoBehaviour
 {
@@ -8,7 +9,6 @@ public class TwoHandIKController_Opponent : MonoBehaviour
     [SerializeField] private Transform opponentRoot;
 
     [Header("Extras")]
-    [SerializeField] private Transform ball;
     [SerializeField] private RigBuilder rig;
 
     [Header("Settings")]
@@ -24,77 +24,99 @@ public class TwoHandIKController_Opponent : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private bool debugLogs = false;
 
+    private Transform ball;
+    private bool rigInitialized = false;
+
     private float swingTimer;
     private const float swingDuration = 0.25f;
     private int swingDirection = 0;
     private bool hasSwung = false;
 
+    private Coroutine assignBallRoutine;
+
+    public void StartAssignBallCoroutine()
+    {
+        if (assignBallRoutine != null)
+            StopCoroutine(assignBallRoutine);
+        assignBallRoutine = StartCoroutine(AssignBallRepeatedly());
+    }
+
     public void AssignBall(Transform newBall)
     {
+        if (ball == newBall || newBall == null)
+            return;
+
         ball = newBall;
+        rigInitialized = false;
+
+        if (debugLogs)
+            Debug.Log($"{name}: Ball assigned -> {ball.name}");
+    }
+
+    private IEnumerator AssignBallRepeatedly()
+    {
+        while (ball == null)
+        {
+            GameObject found = GameObject.FindGameObjectWithTag("Ball");
+            if (found)
+            {
+                AssignBall(found.transform);
+                Debug.Log($"[IK Controller] found {found}");
+                break;
+            }
+            yield return new WaitForSeconds(0.1f);
+        }
     }
 
     private void LateUpdate()
     {
-        if (!twoHandController || !opponentRoot || !ball) return;
+        if (!twoHandController || !opponentRoot || ball == null)
+            return;
 
-        // Ball position relative to opponent root
+        if (!rigInitialized && rig != null)
+        {
+            rig.Build();
+            rigInitialized = true;
+        }
+
         Vector3 localBallPos = opponentRoot.InverseTransformPoint(ball.position);
 
-        // Forward along opponent's negative Z (since opponent is mirrored)
         float forwardZ = -localBallPos.z;
         float horizontalDir = Mathf.Clamp(localBallPos.x, -1f, 1f);
 
-        // Trigger swing if ball is close and hasn't swung yet
         if (forwardZ < swingTriggerDistance && !hasSwung)
         {
             swingDirection = Mathf.RoundToInt(Mathf.Sign(horizontalDir));
             swingTimer = swingDuration;
             hasSwung = true;
-
-            if (debugLogs)
-                Debug.Log($"{name}: Opponent swing triggered! dir={swingDirection}, forwardZ={forwardZ}");
         }
 
-        // Reset swing if ball moves back past swing distance
         if (forwardZ > swingDistance)
             hasSwung = false;
 
-        // Side offset calculation
         float sideOffset;
         if (swingTimer > 0f)
         {
             float t = 1f - (swingTimer / swingDuration);
-            sideOffset = Mathf.Lerp(horizontalDir * sideOffsetMax,
-                                    -swingDirection * sideOffsetMax * followThroughAmount, t);
+            sideOffset = Mathf.Lerp(
+                horizontalDir * sideOffsetMax,
+                -swingDirection * sideOffsetMax * followThroughAmount,
+                t
+            );
             swingTimer -= Time.deltaTime;
         }
         else
         {
             float distanceFactor = Mathf.Clamp01(forwardZ / swingDistance);
-            float swingFactor = Mathf.Pow(distanceFactor, swingSharpness);
-            sideOffset = horizontalDir * sideOffsetMax * swingFactor;
+            sideOffset = horizontalDir * sideOffsetMax * Mathf.Pow(distanceFactor, swingSharpness);
         }
 
-        // Final target position
-        Vector3 targetPos = opponentRoot.position
-                            + opponentRoot.right * sideOffset
-                            - opponentRoot.forward * forwardOffset
-                            + Vector3.up * heightOffset;
+        Vector3 targetPos =
+            opponentRoot.position
+            + opponentRoot.right * sideOffset
+            - opponentRoot.forward * forwardOffset
+            + Vector3.up * heightOffset;
 
         twoHandController.position = Vector3.Lerp(twoHandController.position, targetPos, Time.deltaTime * followSpeed);
-
-        if (rig) rig.Build();
-
-        if (debugLogs)
-            Debug.Log($"{name}: Hand target={targetPos}, ball={ball.position}, forwardZ={forwardZ}");
-    }
-
-    private void OnDrawGizmos()
-    {
-        if (!opponentRoot) return;
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(opponentRoot.position, swingDistance);
-        Gizmos.DrawLine(opponentRoot.position, opponentRoot.position - opponentRoot.forward * swingDistance);
     }
 }
