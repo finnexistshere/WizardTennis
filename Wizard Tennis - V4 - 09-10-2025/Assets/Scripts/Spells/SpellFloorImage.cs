@@ -25,6 +25,10 @@ public class SpellFloorImage : MonoBehaviour
     private ulong assignedClientId = ulong.MaxValue; // Track which client this belongs to
     private bool isInitialized = false;
 
+    [Header("Auto-Assignment Timing")]
+    public float assignmentTimeout = 5f;     // Max time to wait
+    public float assignmentPollInterval = 0.1f;
+
     void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -41,44 +45,54 @@ public class SpellFloorImage : MonoBehaviour
 
     private IEnumerator AutoAssignToPlayer()
     {
-        // Wait a frame to ensure all NetworkObjects are spawned
-        yield return new WaitForEndOfFrame();
+        spriteRenderer.enabled = false;
 
-        // Check if we're in a networked game
-        bool isNetworked = NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening;
+        // Wait until NetworkManager exists (or confirm singleplayer)
+        float timer = 0f;
 
-        if (isNetworked)
+        while (timer < assignmentTimeout)
         {
-            // Multiplayer mode - find the local player
-            NetworkedSpellcasting[] allNetworkedPlayers = FindObjectsOfType<NetworkedSpellcasting>();
+            bool isNetworked =
+                NetworkManager.Singleton != null &&
+                NetworkManager.Singleton.IsListening;
 
-            foreach (var netPlayer in allNetworkedPlayers)
+            if (isNetworked)
             {
-                if (netPlayer.IsOwner)
+                // Try to find the LOCAL owned NetworkedSpellcasting
+                NetworkedSpellcasting[] allNetworkedPlayers =
+                    FindObjectsOfType<NetworkedSpellcasting>();
+
+                foreach (var netPlayer in allNetworkedPlayers)
                 {
-                    AssignToNetworkedPlayer(netPlayer);
-                    Debug.Log($"[SpellFloorImage] Auto-assigned to networked player (ClientId: {netPlayer.OwnerClientId})");
+                    if (netPlayer != null && netPlayer.IsOwner)
+                    {
+                        AssignToNetworkedPlayer(netPlayer);
+                        Debug.Log(
+                            $"[SpellFloorImage] Auto-assigned to networked player (ClientId: {netPlayer.OwnerClientId})"
+                        );
+                        yield break;
+                    }
+                }
+            }
+            else
+            {
+                // Singleplayer fallback
+                Spellcasting singlePlayer = FindObjectOfType<Spellcasting>();
+                if (singlePlayer != null)
+                {
+                    AssignToSinglePlayer(singlePlayer);
+                    Debug.Log("[SpellFloorImage] Auto-assigned to singleplayer player");
                     yield break;
                 }
             }
 
-            Debug.LogWarning("[SpellFloorImage] Could not find local networked player to assign to!");
+            timer += assignmentPollInterval;
+            yield return new WaitForSeconds(assignmentPollInterval);
         }
-        else
-        {
-            // Singleplayer mode - find any Spellcasting component
-            Spellcasting singlePlayer = FindObjectOfType<Spellcasting>();
 
-            if (singlePlayer != null)
-            {
-                AssignToSinglePlayer(singlePlayer);
-                Debug.Log("[SpellFloorImage] Auto-assigned to singleplayer player");
-            }
-            else
-            {
-                Debug.LogWarning("[SpellFloorImage] Could not find player to assign to!");
-            }
-        }
+        Debug.LogWarning(
+            $"[SpellFloorImage] Failed to auto-assign after {assignmentTimeout} seconds"
+        );
     }
 
     /// <summary>

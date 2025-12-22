@@ -2231,7 +2231,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
         Debug.Log($"[SpellEffects] Orbiter following {center.name} for {duration}s");
 
         float elapsed = 0f;
-        float spinSpeed = -360f; // degrees per second
+        float spinSpeed = -180f; // degrees per second
 
         while (elapsed < duration)
         {

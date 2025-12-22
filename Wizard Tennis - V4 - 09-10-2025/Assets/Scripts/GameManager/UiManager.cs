@@ -12,6 +12,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI greenPointsParent;
 
     private Coroutine rallyPopRoutine;
+    private Coroutine greenPointsPopRoutine;
 
     private void Awake()
     {
@@ -83,8 +84,12 @@ public class UIManager : MonoBehaviour
         rallyCountText.text = $"x{rallyCount}";
         rallyCountText.color = GetColorForValue(rallyCount);
 
+        // Stop existing routine and ensure scale is reset before starting new pop
         if (rallyPopRoutine != null)
+        {
             StopCoroutine(rallyPopRoutine);
+            rallyCountText.transform.localScale = Vector3.one; // Reset to normal size
+        }
 
         rallyPopRoutine = StartCoroutine(PopText(rallyCountText, 1.25f, 0.15f));
     }
@@ -106,10 +111,14 @@ public class UIManager : MonoBehaviour
         greenPointsText.text = $"{points}";
         greenPointsText.color = GetColorForValue(points);
 
-        if (rallyPopRoutine != null)
-            StopCoroutine(rallyPopRoutine);
+        // Stop existing routine and ensure scale is reset before starting new pop
+        if (greenPointsPopRoutine != null)
+        {
+            StopCoroutine(greenPointsPopRoutine);
+            greenPointsText.transform.localScale = Vector3.one; // Reset to normal size
+        }
 
-        rallyPopRoutine = StartCoroutine(PopText(greenPointsText, 1.25f, 0.15f));
+        greenPointsPopRoutine = StartCoroutine(PopText(greenPointsText, 1.25f, 0.15f));
     }
 
     private IEnumerator PopText(TMP_Text text, float popScale, float duration)
@@ -117,11 +126,12 @@ public class UIManager : MonoBehaviour
         if (text == null) yield break;
 
         Transform t = text.transform;
-        Vector3 originalScale = t.localScale;
+        Vector3 originalScale = Vector3.one; // Use consistent base scale
         Vector3 targetScale = originalScale * popScale;
         float halfDuration = duration / 2f;
         float timer = 0f;
 
+        // Scale up
         while (timer < halfDuration)
         {
             timer += Time.deltaTime;
@@ -131,6 +141,7 @@ public class UIManager : MonoBehaviour
 
         timer = 0f;
 
+        // Scale down
         while (timer < halfDuration)
         {
             timer += Time.deltaTime;
@@ -138,6 +149,7 @@ public class UIManager : MonoBehaviour
             yield return null;
         }
 
+        // Ensure final scale is exactly the original
         t.localScale = originalScale;
     }
 
@@ -145,23 +157,26 @@ public class UIManager : MonoBehaviour
     {
         Color startColor = Color.white;
         Color midColor = Color.yellow;
-        Color endColor = new Color(0.7f, 0f, 0f);
+        Color endColor = new Color(0.7f, 0f, 0f); // Dark red
         Color endColor2 = Color.magenta;
 
-        float t;
-        if (value < 10)
+        if (value <= 10)
         {
-            t = Mathf.InverseLerp(0, 20, value);
+            // 0-10: White to Yellow
+            float t = Mathf.InverseLerp(0, 10, value);
             return Color.Lerp(startColor, midColor, t);
         }
-        else if (value < 20)
+        else if (value <= 20)
         {
-            t = Mathf.InverseLerp(20, 50, value);
+            // 10-20: Yellow to Dark Red
+            float t = Mathf.InverseLerp(10, 20, value);
             return Color.Lerp(midColor, endColor, t);
         }
         else
         {
-            t = Mathf.InverseLerp(50, 80, value);
+            // 20+: Dark Red to Magenta
+            float t = Mathf.InverseLerp(20, 50, value);
+            t = Mathf.Clamp01(t); // Cap at 1.0 for values above 50
             return Color.Lerp(endColor, endColor2, t);
         }
     }

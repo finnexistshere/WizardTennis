@@ -176,6 +176,19 @@ public class NetworkedBall : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
+    private void DisableServingBarriersServerRpc()
+    {
+        DisableServingBarriersClientRpc();
+    }
+
+    [ClientRpc]
+    private void DisableServingBarriersClientRpc()
+    {
+        if (servingBarriers != null)
+            servingBarriers.SetActive(false);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
     private void SpawnBallServerRpc(Vector3 position, Quaternion rotation, ServerRpcParams rpcParams = default)
     {
         if (!IsServer) return;
@@ -227,18 +240,27 @@ public class NetworkedBall : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     private void ServeBallServerRpc(ServerRpcParams rpcParams = default)
     {
-        if (!IsServer || currentBallInstance == null) return;
+        if (!IsServer || currentBallInstance == null)
+            return;
 
         Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.useGravity = true;
-            Vector3 upVector = new Vector3(0, ogUpForce, 0);
-            rb.linearVelocity = upVector.normalized * (strength / 2f);
 
-            Debug.Log($"[Server] Ball served by client {rpcParams.Receive.SenderClientId} - velocity: {rb.linearVelocity}");
+            Vector3 serveVelocity = new Vector3(0, ogUpForce, 0);
+            rb.linearVelocity = serveVelocity;
+
+            Debug.Log(
+                $"[Server] Ball served by client {rpcParams.Receive.SenderClientId} " +
+                $"- velocity: {rb.linearVelocity}"
+            );
         }
 
+        // SERVER-AUTHORITATIVE: disable barriers for everyone
+        DisableServingBarriersClientRpc();
+
+        // Inform clients that serving is complete
         NotifyServeCompleteClientRpc();
     }
 
