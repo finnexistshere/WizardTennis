@@ -74,7 +74,7 @@ public class NetworkedBall : NetworkBehaviour
     // IK Reference - each player tracks their own IK controller
     // IK references (local-only, per client)
     private TwoHandIKController localPlayerIK;
-    private TwoHandIKController_Opponent localOpponentIK;
+    private TwoHandIKController remotePlayerIK;
 
     private void Awake()
     {
@@ -130,10 +130,11 @@ public class NetworkedBall : NetworkBehaviour
                 Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} has no NetworkedUIManager component!");
 
             localPlayerIK = GetComponent<TwoHandIKController>();
+
             if (localPlayerIK == null)
-                Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} has no TwoHandIKController component!");
+                Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} has no TwoHandIKController!");
             else
-                Debug.Log($"[NetworkedBall] Player {OwnerClientId} IK controller found and cached.");
+                Debug.Log($"[NetworkedBall] Local IK cached for client {OwnerClientId}");
         }
 
         // CRITICAL: Find barriers after network spawn (when we know our ClientId)
@@ -521,7 +522,7 @@ public class NetworkedBall : NetworkBehaviour
 
         Transform ballTransform = currentBallInstance.transform;
 
-        // Local player IK
+        // ---- LOCAL PLAYER IK ----
         if (localPlayerIK == null)
             localPlayerIK = GetComponent<TwoHandIKController>();
 
@@ -531,47 +532,48 @@ public class NetworkedBall : NetworkBehaviour
             Debug.Log("[NotifyBallSpawnedClientRpc] Assigned LOCAL IK");
         }
 
-        // Opponent IK – SAFE lookup
-        if (localOpponentIK == null)
-            localOpponentIK = FindOpponentIK();
+        // ---- REMOTE PLAYER IK ----
+        if (remotePlayerIK == null)
+            remotePlayerIK = FindRemotePlayerIK();
 
-        if (localOpponentIK != null)
+        if (remotePlayerIK != null)
         {
-            localOpponentIK.AssignBall(ballTransform);
-            Debug.Log("[NotifyBallSpawnedClientRpc] Assigned OPPONENT IK");
+            remotePlayerIK.AssignBall(ballTransform);
+            Debug.Log("[NotifyBallSpawnedClientRpc] Assigned REMOTE IK");
         }
         else
         {
-            Debug.LogWarning("[NotifyBallSpawnedClientRpc] Opponent IK not found yet (will retry)");
-            StartCoroutine(RetryAssignOpponentIK(ballTransform));
+            Debug.LogWarning("[NotifyBallSpawnedClientRpc] Remote IK not found yet — retrying");
+            StartCoroutine(RetryAssignRemoteIK(ballTransform));
         }
     }
 
-    private IEnumerator RetryAssignOpponentIK(Transform ball)
+    private IEnumerator RetryAssignRemoteIK(Transform ball)
     {
         float timeout = 2f;
         float timer = 0f;
 
-        while (localOpponentIK == null && timer < timeout)
+        while (remotePlayerIK == null && timer < timeout)
         {
-            localOpponentIK = FindOpponentIK();
+            remotePlayerIK = FindRemotePlayerIK();
             timer += Time.deltaTime;
             yield return null;
         }
 
-        if (localOpponentIK != null)
+        if (remotePlayerIK != null)
         {
-            localOpponentIK.AssignBall(ball);
-            Debug.Log("[RetryAssignOpponentIK] Opponent IK assigned successfully");
+            remotePlayerIK.AssignBall(ball);
+            Debug.Log("[RetryAssignRemoteIK] Remote IK assigned successfully");
         }
         else
         {
-            Debug.LogError("[RetryAssignOpponentIK] FAILED to find opponent IK");
+            Debug.LogError("[RetryAssignRemoteIK] FAILED to find remote IK");
         }
     }
 
     private IEnumerator AssignBallToIKAfterSpawn()
     {
+        // Wait one frame so the ball + player objects are guaranteed to exist
         yield return new WaitForEndOfFrame();
 
         currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
@@ -585,48 +587,56 @@ public class NetworkedBall : NetworkBehaviour
         nearBall = true;
         Transform ballTransform = currentBallInstance.transform;
 
-        // --- LOCAL PLAYER IK ---
+        // ---------- LOCAL PLAYER IK ----------
         if (localPlayerIK == null)
             localPlayerIK = GetComponent<TwoHandIKController>();
 
         if (localPlayerIK != null)
         {
             localPlayerIK.AssignBall(ballTransform);
-            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to LOCAL player IK");
+            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to LOCAL IK");
+        }
+        else
+        {
+            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} LOCAL IK not found");
         }
 
-        // --- OPPONENT IK ---
-        if (localOpponentIK == null)
-            localOpponentIK = FindOpponentIK();
+        // ---------- REMOTE PLAYER IK ----------
+        if (remotePlayerIK == null)
+            remotePlayerIK = FindRemotePlayerIK();
 
-        if (localOpponentIK != null)
+        if (remotePlayerIK != null)
         {
-            localOpponentIK.AssignBall(ballTransform);
-            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to OPPONENT IK");
+            remotePlayerIK.AssignBall(ballTransform);
+            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to REMOTE IK");
+        }
+        else
+        {
+            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} REMOTE IK not found yet, retrying");
+            StartCoroutine(RetryAssignRemoteIK(ballTransform));
         }
     }
 
-    private TwoHandIKController_Opponent FindOpponentIK()
+    private TwoHandIKController FindRemotePlayerIK()
     {
-        TwoHandIKController_Opponent[] allOppIKs =
-            FindObjectsOfType<TwoHandIKController_Opponent>(true);
+        TwoHandIKController[] allIKs =
+            FindObjectsOfType<TwoHandIKController>(true);
 
-        foreach (var ik in allOppIKs)
+        foreach (var ik in allIKs)
         {
             NetworkObject netObj = ik.GetComponentInParent<NetworkObject>();
-
             if (netObj == null)
                 continue;
 
-            // Opponent = NOT owned by this client
+            // Remote player = not owned by this client
             if (!netObj.IsOwner)
             {
-                Debug.Log($"[NetworkedBall] Found opponent IK on client {netObj.OwnerClientId}");
+                Debug.Log($"[NetworkedBall] Found REMOTE IK on client {netObj.OwnerClientId}");
                 return ik;
             }
         }
 
-        Debug.LogWarning("[NetworkedBall] Could not find opponent IK");
+        Debug.LogWarning("[NetworkedBall] Remote IK not found yet");
         return null;
     }
     // ===============================================================
