@@ -25132,6 +25132,18 @@ PrefabInstance:
       propertyPath: m_CastShadows
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -2386217752527397089, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: -876546973899608171, guid: ead4955047385b64f85122e99d637685, type: 3}
+    - target: {fileID: -1279185672688729364, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.5952045
+      objectReference: {fileID: 0}
+    - target: {fileID: -1279185672688729364, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.6259519
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
       propertyPath: m_Name
       value: sm_NetPost
@@ -25507,7 +25519,7 @@ GameObject:
   - component: {fileID: 584352481}
   m_Layer: 0
   m_Name: ServingBarriers
-  m_TagString: Untagged
+  m_TagString: ServingBarriers
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -25529,7 +25541,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 20, y: 10, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -36992,7 +37004,7 @@ GameObject:
   - component: {fileID: 1441700186}
   m_Layer: 0
   m_Name: OutOfBoundsBarrier (1)
-  m_TagString: Untagged
+  m_TagString: ServingBarriers
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -37029,7 +37041,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 30, y: 10, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -37150,7 +37162,7 @@ GameObject:
   - component: {fileID: 1507938213}
   m_Layer: 0
   m_Name: OutOfBoundsBarrier (3)
-  m_TagString: Untagged
+  m_TagString: ServingBarriers
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -37187,7 +37199,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 30, y: 10, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -48949,7 +48961,7 @@ GameObject:
   - component: {fileID: 1736871629}
   m_Layer: 0
   m_Name: OutOfBoundsBarrier (4)
-  m_TagString: Untagged
+  m_TagString: ServingBarriers
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -48986,7 +48998,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 30, y: 10, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -50753,6 +50765,18 @@ PrefabInstance:
     - target: {fileID: -2386217752527397089, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
       propertyPath: m_CastShadows
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -2386217752527397089, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: -876546973899608171, guid: ead4955047385b64f85122e99d637685, type: 3}
+    - target: {fileID: -1279185672688729364, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.5952045
+      objectReference: {fileID: 0}
+    - target: {fileID: -1279185672688729364, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.6259519
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: d37718ed479e14645928ab91dc9438f9, type: 3}
       propertyPath: m_Name
@@ -56142,7 +56166,7 @@ GameObject:
   - component: {fileID: 2115178752}
   m_Layer: 0
   m_Name: OutOfBoundsBarrier (2)
-  m_TagString: Untagged
+  m_TagString: ServingBarriers
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -56179,7 +56203,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 30, y: 10, z: 1}
   m_Center: {x: 0, y: 0, z: 0}

@@ -1,6 +1,8 @@
 using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
+using System.Linq;
+using System.Collections.Generic;
 
 public class NetworkedBall : NetworkBehaviour
 {
@@ -19,6 +21,22 @@ public class NetworkedBall : NetworkBehaviour
     public Transform ballSpawnPoint;
     public GameObject ballPrefab;
     public GameObject servingBarriers;
+
+    [Header("Barrier Settings")]
+    [Tooltip("If true, each player has their own barriers. If false, there's one shared set in the scene.")]
+    public bool usePerPlayerBarriers = true;
+
+    [Tooltip("Tag to use for finding serving barriers (default: 'ServingBarriers')")]
+    public string barriersTag = "ServingBarriers";
+
+    [Tooltip("Possible names for barrier GameObjects")]
+    public string[] barrierNames = new string[]
+    {
+    "ServingBarriers",
+    "Serving Barriers",
+    "Barriers",
+    "ServingWalls"
+    };
 
     [Header("Physics")]
     public float strength = 25f;
@@ -65,8 +83,23 @@ public class NetworkedBall : NetworkBehaviour
 
         if (opponent == null)
             opponent = GameObject.Find("Opponent");
+
+        // DON'T search for generic "ServingBarriers" - let it be assigned in inspector
+        // or find it by being a child of this player
         if (servingBarriers == null)
-            servingBarriers = GameObject.Find("ServingBarriers");
+        {
+            // Try to find barriers as a child of this player
+            Transform barriersChild = transform.Find("ServingBarriers");
+            if (barriersChild != null)
+            {
+                servingBarriers = barriersChild.gameObject;
+                Debug.Log($"[NetworkedBall] Player {OwnerClientId} found serving barriers as child");
+            }
+            else
+            {
+                Debug.LogWarning($"[NetworkedBall] Player has no ServingBarriers child - assign in inspector!");
+            }
+        }
     }
 
     public override void OnNetworkSpawn()
@@ -103,10 +136,219 @@ public class NetworkedBall : NetworkBehaviour
                 Debug.Log($"[NetworkedBall] Player {OwnerClientId} IK controller found and cached.");
         }
 
+        // CRITICAL: Find barriers after network spawn (when we know our ClientId)
+        FindServingBarriers();
+
         if (IsOwner)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} spawned and ready.");
+
+            // Ensure barriers start in correct state
+            if (servingBarriers != null)
+            {
+                servingBarriers.SetActive(true);
+                Debug.Log($"[NetworkedBall] Player {OwnerClientId} initialized barriers to ACTIVE");
+            }
         }
+    }
+
+    private void FindServingBarriers()
+    {
+        Debug.Log($"[NetworkedBall] Player {OwnerClientId} searching for serving barriers...");
+
+        if (usePerPlayerBarriers)
+        {
+            servingBarriers = FindPerPlayerBarriers();
+        }
+        else
+        {
+            servingBarriers = FindSharedBarriers();
+        }
+
+        if (servingBarriers != null)
+        {
+            Debug.Log($"[NetworkedBall] Player {OwnerClientId} ? Found barriers: {servingBarriers.name}");
+        }
+        else
+        {
+            Debug.LogError($"[NetworkedBall] Player {OwnerClientId} ? FAILED to find serving barriers!");
+        }
+    }
+
+    /// <summary>
+    /// Find barriers that are specific to this player (child or nearby)
+    /// </summary>
+    private GameObject FindPerPlayerBarriers()
+    {
+        Debug.Log($"[NetworkedBall] Looking for per-player barriers for client {OwnerClientId}");
+
+        // METHOD 1: Direct child of player
+        GameObject barriers = FindBarriersAsChild(transform);
+        if (barriers != null)
+        {
+            Debug.Log($"[NetworkedBall] Found barriers as direct child: {barriers.name}");
+            return barriers;
+        }
+
+        // METHOD 2: Child of player's parent (sibling)
+        if (transform.parent != null)
+        {
+            barriers = FindBarriersAsChild(transform.parent);
+            if (barriers != null)
+            {
+                Debug.Log($"[NetworkedBall] Found barriers as sibling: {barriers.name}");
+                return barriers;
+            }
+        }
+
+        // METHOD 3: Search by tag + ownership
+        GameObject[] taggedBarriers = GameObject.FindGameObjectsWithTag(barriersTag);
+        foreach (GameObject obj in taggedBarriers)
+        {
+            // Check if this barrier is associated with this player
+            NetworkObject netObj = obj.GetComponentInParent<NetworkObject>();
+            if (netObj != null && netObj.OwnerClientId == OwnerClientId)
+            {
+                Debug.Log($"[NetworkedBall] Found barriers by tag+ownership: {obj.name}");
+                return obj;
+            }
+        }
+
+        // METHOD 4: Find closest barriers to player
+        barriers = FindClosestBarriers();
+        if (barriers != null)
+        {
+            Debug.Log($"[NetworkedBall] Found barriers by proximity: {barriers.name}");
+            return barriers;
+        }
+
+        Debug.LogWarning($"[NetworkedBall] Could not find per-player barriers for client {OwnerClientId}");
+        return null;
+    }
+
+    /// <summary>
+    /// Find shared barriers that all players use
+    /// </summary>
+    private GameObject FindSharedBarriers()
+    {
+        Debug.Log($"[NetworkedBall] Looking for shared scene barriers");
+
+        // METHOD 1: Search by tag
+        GameObject barriers = GameObject.FindGameObjectWithTag(barriersTag);
+        if (barriers != null)
+        {
+            Debug.Log($"[NetworkedBall] Found shared barriers by tag: {barriers.name}");
+            return barriers;
+        }
+
+        // METHOD 2: Search by name
+        foreach (string name in barrierNames)
+        {
+            barriers = GameObject.Find(name);
+            if (barriers != null)
+            {
+                Debug.Log($"[NetworkedBall] Found shared barriers by name '{name}': {barriers.name}");
+                return barriers;
+            }
+        }
+
+        // METHOD 3: Search all GameObjects for matching name patterns
+        GameObject[] allObjects = FindObjectsOfType<GameObject>(true); // Include inactive
+        foreach (GameObject obj in allObjects)
+        {
+            foreach (string name in barrierNames)
+            {
+                if (obj.name.Contains(name))
+                {
+                    Debug.Log($"[NetworkedBall] Found shared barriers by pattern match: {obj.name}");
+                    return obj;
+                }
+            }
+        }
+
+        Debug.LogWarning($"[NetworkedBall] Could not find shared scene barriers");
+        return null;
+    }
+
+    /// <summary>
+    /// Helper: Search for barriers as a child of the given transform
+    /// </summary>
+    private GameObject FindBarriersAsChild(Transform parent)
+    {
+        if (parent == null) return null;
+
+        // Try exact name matches first
+        foreach (string name in barrierNames)
+        {
+            Transform child = parent.Find(name);
+            if (child != null)
+            {
+                return child.gameObject;
+            }
+        }
+
+        // Try partial matches (case-insensitive)
+        foreach (Transform child in parent.GetComponentsInChildren<Transform>(true))
+        {
+            string childName = child.name.ToLower();
+            foreach (string name in barrierNames)
+            {
+                if (childName.Contains(name.ToLower()))
+                {
+                    return child.gameObject;
+                }
+            }
+
+            // Check for "barrier" or "wall" keywords
+            if (childName.Contains("barrier") || childName.Contains("wall") || childName.Contains("serve"))
+            {
+                return child.gameObject;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Helper: Find the closest barriers to this player (fallback method)
+    /// </summary>
+    private GameObject FindClosestBarriers()
+    {
+        GameObject[] allBarriers = GameObject.FindGameObjectsWithTag(barriersTag);
+
+        if (allBarriers.Length == 0)
+        {
+            // Try finding by name if no tagged objects
+            List<GameObject> foundBarriers = new List<GameObject>();
+            foreach (string name in barrierNames)
+            {
+                GameObject[] named = GameObject.FindObjectsOfType<GameObject>()
+                    .Where(g => g.name.Contains(name))
+                    .ToArray();
+                foundBarriers.AddRange(named);
+            }
+            allBarriers = foundBarriers.ToArray();
+        }
+
+        if (allBarriers.Length == 0)
+        {
+            return null;
+        }
+
+        GameObject closest = null;
+        float closestDistance = float.MaxValue;
+
+        foreach (GameObject barrier in allBarriers)
+        {
+            float distance = Vector3.Distance(transform.position, barrier.transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closest = barrier;
+            }
+        }
+
+        return closest;
     }
 
     private void Update()
@@ -133,12 +375,21 @@ public class NetworkedBall : NetworkBehaviour
         // Serve ball with E when near it
         if (Input.GetKeyDown(KeyCode.E) && nearBall && localServing)
         {
+            Debug.Log($"[NetworkedBall] Player {OwnerClientId} attempting to serve - nearBall:{nearBall}, localServing:{localServing}");
+
             localServing = false;
             lastServeTime = Time.time;
 
+            // Immediately disable barriers locally for responsive feedback
+            if (servingBarriers != null)
+            {
+                servingBarriers.SetActive(false);
+                Debug.Log($"[NetworkedBall] Player {OwnerClientId} disabled barriers LOCALLY");
+            }
+
             // Request server to handle serve and barrier deactivation
             ServeBallServerRpc();
-            DeactivateBarriersServerRpc();
+            RequestDeactivateBarriersServerRpc(); // New method name for clarity
         }
     }
 
@@ -191,23 +442,34 @@ public class NetworkedBall : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void DeactivateBarriersServerRpc(ServerRpcParams rpcParams = default)
+    private void RequestDeactivateBarriersServerRpc(ServerRpcParams rpcParams = default)
     {
         if (!IsServer) return;
 
-        Debug.Log($"[Server] Deactivating serving barriers requested by client {rpcParams.Receive.SenderClientId}");
+        ulong requestingClientId = rpcParams.Receive.SenderClientId;
+        Debug.Log($"[Server] Barrier deactivation requested by client {requestingClientId}");
 
-        // Server deactivates barriers and notifies all clients
-        DeactivateBarriersClientRpc();
+        // Broadcast to ALL clients to deactivate barriers for THIS specific player
+        DeactivateBarriersForPlayerClientRpc(requestingClientId);
     }
 
     [ClientRpc]
-    private void DeactivateBarriersClientRpc()
+    private void DeactivateBarriersForPlayerClientRpc(ulong targetClientId)
     {
-        if (servingBarriers != null && servingBarriers.activeSelf)
+        // Find the NetworkedBall component for the target player
+        NetworkedBall[] allBalls = FindObjectsOfType<NetworkedBall>();
+
+        foreach (NetworkedBall ball in allBalls)
         {
-            servingBarriers.SetActive(false);
-            Debug.Log($"[NetworkedBall] Client {OwnerClientId} - Serving barriers deactivated via ClientRpc.");
+            if (ball.OwnerClientId == targetClientId)
+            {
+                if (ball.servingBarriers != null && ball.servingBarriers.activeSelf)
+                {
+                    ball.servingBarriers.SetActive(false);
+                    Debug.Log($"[NetworkedBall-Client] Deactivated barriers for player {targetClientId}");
+                }
+                break;
+            }
         }
     }
 
@@ -215,7 +477,13 @@ public class NetworkedBall : NetworkBehaviour
     private void SpawnBallServerRpc(Vector3 position, Quaternion rotation, ServerRpcParams rpcParams = default)
     {
         if (!IsServer) return;
-        if (currentBallInstance != null) return;
+        if (currentBallInstance != null)
+        {
+            Debug.LogWarning($"[Server] Ball already exists, ignoring spawn request from client {rpcParams.Receive.SenderClientId}");
+            return;
+        }
+
+        Debug.Log($"[Server] Spawning ball at {position} requested by client {rpcParams.Receive.SenderClientId}");
 
         GameObject ball = Instantiate(ballPrefab, position, rotation);
         ball.tag = "Ball";
@@ -234,8 +502,8 @@ public class NetworkedBall : NetworkBehaviour
             netObj.Spawn(true);
             currentBallInstance = ball;
 
+            Debug.Log($"[Server] Ball spawned successfully with NetworkObjectId: {netObj.NetworkObjectId}");
             NotifyBallSpawnedClientRpc();
-            Debug.Log("[Server] Ball spawned successfully.");
         }
     }
 
@@ -245,15 +513,60 @@ public class NetworkedBall : NetworkBehaviour
     {
         currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
 
-        if (currentBallInstance != null)
+        if (currentBallInstance == null)
         {
-            // Local IK assignment
-            if (localPlayerIK != null)
-                localPlayerIK.AssignBall(currentBallInstance.transform);
+            Debug.LogWarning("[NotifyBallSpawnedClientRpc] Ball not found yet");
+            return;
+        }
 
-            // Opponent IK assignment
-                Debug.Log("[NotifyBallSpawnedClientRpc] Trying to Assign IK Rig for Opponent...");
-                OppIKRig.StartAssignBallCoroutine();
+        Transform ballTransform = currentBallInstance.transform;
+
+        // Local player IK
+        if (localPlayerIK == null)
+            localPlayerIK = GetComponent<TwoHandIKController>();
+
+        if (localPlayerIK != null)
+        {
+            localPlayerIK.AssignBall(ballTransform);
+            Debug.Log("[NotifyBallSpawnedClientRpc] Assigned LOCAL IK");
+        }
+
+        // Opponent IK – SAFE lookup
+        if (localOpponentIK == null)
+            localOpponentIK = FindOpponentIK();
+
+        if (localOpponentIK != null)
+        {
+            localOpponentIK.AssignBall(ballTransform);
+            Debug.Log("[NotifyBallSpawnedClientRpc] Assigned OPPONENT IK");
+        }
+        else
+        {
+            Debug.LogWarning("[NotifyBallSpawnedClientRpc] Opponent IK not found yet (will retry)");
+            StartCoroutine(RetryAssignOpponentIK(ballTransform));
+        }
+    }
+
+    private IEnumerator RetryAssignOpponentIK(Transform ball)
+    {
+        float timeout = 2f;
+        float timer = 0f;
+
+        while (localOpponentIK == null && timer < timeout)
+        {
+            localOpponentIK = FindOpponentIK();
+            timer += Time.deltaTime;
+            yield return null;
+        }
+
+        if (localOpponentIK != null)
+        {
+            localOpponentIK.AssignBall(ball);
+            Debug.Log("[RetryAssignOpponentIK] Opponent IK assigned successfully");
+        }
+        else
+        {
+            Debug.LogError("[RetryAssignOpponentIK] FAILED to find opponent IK");
         }
     }
 
@@ -554,9 +867,56 @@ public class NetworkedBall : NetworkBehaviour
         hitting = false;
         localServing = true;
 
-        if (servingBarriers != null)
-            servingBarriers.SetActive(true);
+        // Try to find barriers if we don't have them
+        if (servingBarriers == null)
+        {
+            Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} barriers lost, attempting to re-find...");
+            FindServingBarriers();
+        }
 
-        Debug.Log($"[NetworkedBall] Player {OwnerClientId} set to SERVING state.");
+        // Validate and enable barriers
+        if (ValidateBarriers())
+        {
+            servingBarriers.SetActive(true);
+            Debug.Log($"[NetworkedBall] Player {OwnerClientId} serving barriers ENABLED");
+        }
+        else
+        {
+            Debug.LogError($"[NetworkedBall] Player {OwnerClientId} cannot enable barriers - reference invalid!");
+        }
+
+        Debug.Log($"[NetworkedBall] Player {OwnerClientId} set to SERVING state");
+    }
+
+    [ContextMenu("Force Find Barriers")]
+    public void ForceRefreshBarriers()
+    {
+        FindServingBarriers();
+
+        if (servingBarriers != null)
+        {
+            Debug.Log($"[NetworkedBall] ? Barriers refreshed: {servingBarriers.name} (active: {servingBarriers.activeSelf})");
+        }
+        else
+        {
+            Debug.LogError($"[NetworkedBall] ? Failed to refresh barriers!");
+        }
+    }
+
+    private bool ValidateBarriers()
+    {
+        if (servingBarriers == null)
+        {
+            Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} barriers reference is null!");
+            return false;
+        }
+
+        if (servingBarriers.scene.name == null)
+        {
+            Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} barriers are not in a scene (destroyed?)");
+            return false;
+        }
+
+        return true;
     }
 }

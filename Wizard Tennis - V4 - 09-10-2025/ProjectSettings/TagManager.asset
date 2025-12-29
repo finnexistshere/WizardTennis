@@ -20,6 +20,7 @@ TagManager:
   - Water
   - SpawnPoint
   - Pickup
+  - ServingBarriers
   layers:
   - Default
   - TransparentFX

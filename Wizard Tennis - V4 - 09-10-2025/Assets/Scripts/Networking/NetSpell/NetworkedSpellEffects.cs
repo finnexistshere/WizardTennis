@@ -118,6 +118,8 @@ public class NetworkedSpellEffects : NetworkBehaviour
     // Track active networked effects for cleanup
     private Dictionary<string, ulong> activeNetworkEffects = new Dictionary<string, ulong>();
 
+    private Dictionary<ulong, Coroutine> activeFreezeCoroutines = new Dictionary<ulong, Coroutine>();
+
     public NetworkVariable<bool> IsAnySpellActive =
         new NetworkVariable<bool>(
             false,
@@ -1074,8 +1076,6 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 Debug.Log($"[SpellEffects-castSpell] === FIREBALL CAST START ===");
                 Debug.Log($"[SpellEffects-castSpell] LocalClientId: {NetworkManager.Singleton.LocalClientId}");
                 Debug.Log($"[SpellEffects-castSpell] isLocalCaster: {isLocalCaster}");
-                Debug.Log($"[SpellEffects-castSpell] player: {player?.name}, clientId: {casterClientId}");
-                Debug.Log($"[SpellEffects-castSpell] opponent: {opponent?.name}, clientId: {targetClientId}");
 
                 if (isLocalCaster)
                 {
@@ -1083,17 +1083,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     resetOnOppHit = true;
                     resetOnPlrHit = false;
 
-                    // === NEW: Tell the server to arm Fireball too ===
-                    if (IsServer)
+                    // Tell server to arm Fireball
+                    if (!IsServer)
                     {
-                        // Already on server, flags are already set
-                        Debug.Log("[SpellEffects-castSpell] Already on server, Fireball armed locally");
+                        Debug.Log("[SpellEffects-castSpell] Client telling server to arm Fireball");
+                        SetSpellArmedServerRpc(true, false);
                     }
                     else
                     {
-                        // Client needs to tell server
-                        Debug.Log("[SpellEffects-castSpell] Client telling server to arm Fireball");
-                        SetSpellArmedServerRpc(true, false);
+                        Debug.Log("[SpellEffects-castSpell] Already on server, Fireball armed locally");
                     }
 
                     GameObject fireballBallObj = GameObject.FindWithTag("Ball");
@@ -1105,18 +1103,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
                             tracker.LastHitWizard = "Player";
                             Debug.Log("[SpellEffects-castSpell] Marked ball tracker LastHitWizard = Player");
                         }
-                        else
-                        {
-                            Debug.LogWarning("[SpellEffects-castSpell] Ball has no CollisionTrackerBall component!");
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[SpellEffects-castSpell] Ball not found with tag!");
                     }
 
                     Debug.Log($"[SpellEffects-castSpell] Fireball armed - resetOnOppHit: {resetOnOppHit}");
-                    Debug.Log($"[SpellEffects-castSpell] Current context - currentPlayer: {currentPlayer?.name}, currentOpponent: {currentOpponent?.name}");
                 }
                 Debug.Log($"[SpellEffects-castSpell] === FIREBALL CAST END ===");
                 break;
@@ -1450,16 +1439,27 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Ice":
+                // Clear freeze tracking
                 if (opponent != null)
                 {
-                    var oppMcm = opponent.GetComponent<MainCharacterMovement>();
-                    if (oppMcm != null && oppMcm.speed == 0f)
+                    ulong oppClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    if (oppClientId != ulong.MaxValue && activeFreezeCoroutines.ContainsKey(oppClientId))
                     {
-                        oppMcm.speed = 7;
-                        Debug.Log($"[SpellEffects] Ice Reset: Restored opponent speed");
+                        if (activeFreezeCoroutines[oppClientId] != null)
+                        {
+                            StopCoroutine(activeFreezeCoroutines[oppClientId]);
+                        }
+                        activeFreezeCoroutines.Remove(oppClientId);
+
+                        // Force restore movement
+                        var oppMcm = opponent.GetComponent<MainCharacterMovement>();
+                        if (oppMcm != null && oppMcm.speed == 0f)
+                        {
+                            oppMcm.speed = 7;
+                            Debug.Log($"[SpellEffects] Ice Reset: Force restored opponent speed");
+                        }
                     }
                 }
-                // Ice block despawn is handled by DespawnEffectAfterDelay
                 activeIceBlock = null;
                 break;
 
@@ -1693,28 +1693,44 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     // ========== EFFECT BEHAVIORS ==========
 
-    private IEnumerator FreezeOpponentMovement(GameObject target, float duration)
+    private IEnumerator FreezeOpponentMovement(GameObject target, float duration, ulong targetClientId)
     {
-        if (target == null) yield break;
+        if (target == null)
+        {
+            Debug.LogWarning($"[SpellEffects] FreezeOpponentMovement: target is null");
+            yield break;
+        }
 
         var mcm = target.GetComponent<MainCharacterMovement>();
-        float originalMcmSpeed = 7f;
-
-        if (mcm != null)
-            originalMcmSpeed = mcm.speed;
-
-        if (mcm != null)
+        if (mcm == null)
         {
-            mcm.speed = 0f;
-            Debug.Log($"[SpellEffects] Froze {target.name} movement");
+            Debug.LogWarning($"[SpellEffects] FreezeOpponentMovement: {target.name} has no MainCharacterMovement");
+            yield break;
         }
+
+        float originalMcmSpeed = mcm.speed;
+
+        Debug.Log($"[SpellEffects] Freezing {target.name} - original speed: {originalMcmSpeed}");
+        mcm.speed = 0f;
 
         yield return new WaitForSeconds(duration);
 
-        if (mcm != null)
+        // CRITICAL: Always restore movement, even if component became null
+        if (target != null && mcm != null)
         {
             mcm.speed = originalMcmSpeed;
-            Debug.Log($"[SpellEffects] Restored {target.name} movement to {originalMcmSpeed}");
+            Debug.Log($"[SpellEffects] RESTORED {target.name} movement to {originalMcmSpeed}");
+        }
+        else
+        {
+            Debug.LogWarning($"[SpellEffects] Could not restore {target?.name ?? "null"} movement - object or component destroyed");
+        }
+
+        // Remove from active dictionary
+        if (activeFreezeCoroutines.ContainsKey(targetClientId))
+        {
+            activeFreezeCoroutines.Remove(targetClientId);
+            Debug.Log($"[SpellEffects] Removed freeze tracking for client {targetClientId}");
         }
     }
 
@@ -2294,39 +2310,37 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             Debug.Log($"[SpellEffects-OnPlayerHitBall] FIREBALL CHECK:");
             Debug.Log($"  - resetOnOppHit: {resetOnOppHit}");
-            Debug.Log($"  - ballOwner != null: {ballOwner != null}");
+            Debug.Log($"  - ballOwner: {ballOwner?.name ?? "NULL"}");
+            Debug.Log($"  - hitter: {hitter?.name ?? "NULL"}");
             Debug.Log($"  - hitter != ballOwner: {hitter != ballOwner}");
+            Debug.Log($"  - currentPlayer (context): {currentPlayer?.name ?? "NULL"}");
+            Debug.Log($"  - currentOpponent (context): {currentOpponent?.name ?? "NULL"}");
 
-            if (resetOnOppHit)
+            if (resetOnOppHit && ballOwner != null && hitter != ballOwner)
             {
-                if (ballOwner != null && hitter != ballOwner)
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✓ FIREBALL TRIGGERED!");
+
+                ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] Victim ClientId: {victimClientId}");
+
+                if (victimClientId != ulong.MaxValue)
                 {
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? FIREBALL TRIGGERED! Applying knockback to {hitter.name}");
+                    // CRITICAL: Set context BEFORE calling ServerRpc
+                    // This ensures the server has the right caster/victim reference
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Setting context - caster:{ballOwner.name}, victim:{hitter.name}");
+                    SetContext(ballOwner, hitter, null);
 
-                    ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Victim ClientId: {victimClientId}");
-
-                    if (victimClientId != ulong.MaxValue)
-                    {
-                        Debug.Log($"[SpellEffects-OnPlayerHitBall] Setting context: caster={ballOwner.name}, victim={hitter.name}");
-                        SetContext(ballOwner, hitter, null);
-
-                        Debug.Log($"[SpellEffects-OnPlayerHitBall] Calling ApplyFireballKnockbackServerRpc({victimClientId})");
-                        ApplyFireballKnockbackServerRpc(victimClientId);
-                    }
-                    else
-                    {
-                        Debug.LogError("[SpellEffects-OnPlayerHitBall] ? FAILED - hitter has no NetworkObject or invalid ClientId");
-                    }
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Calling ApplyFireballKnockbackServerRpc({victimClientId})");
+                    ApplyFireballKnockbackServerRpc(victimClientId);
                 }
                 else
                 {
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Fireball not triggered - ballOwner={ballOwner?.name ?? "NULL"}, hitter={hitter?.name}, same={hitter == ballOwner}");
+                    Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - hitter has no NetworkObject");
                 }
             }
             else
             {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Fireball not armed (resetOnOppHit=false)");
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✗ Fireball not triggered - armed:{resetOnOppHit}");
             }
 
             Debug.Log($"[SpellEffects-OnPlayerHitBall] === END (Fireball) ===");
@@ -2347,53 +2361,53 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             Debug.Log($"[SpellEffects-OnPlayerHitBall] MUD CHECK:");
             Debug.Log($"  - resetOnOppHit: {resetOnOppHit}");
-            Debug.Log($"  - ballOwner != null: {ballOwner != null}");
-            Debug.Log($"  - hitter != ballOwner: {hitter != ballOwner}");
+            Debug.Log($"  - ballOwner: {ballOwner?.name ?? "NULL"}");
+            Debug.Log($"  - hitter: {hitter?.name ?? "NULL"}");
 
-            if (resetOnOppHit)
+            if (resetOnOppHit && ballOwner != null && hitter != ballOwner)
             {
-                if (ballOwner != null && hitter != ballOwner)
-                {
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? MUD TRIGGERED! Spawning pit under {hitter.name}");
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✓ MUD TRIGGERED! Will spawn pit under {hitter.name}");
 
-                    // Find ground position under the victim
-                    Vector3 rayOrigin = hitter.transform.position + Vector3.up * 1f;
+                // Get the victim's position
+                Vector3 victimPosition = hitter.transform.position;
+
+                ulong casterClientId = ballOwner.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+
+                if (casterClientId != ulong.MaxValue && victimClientId != ulong.MaxValue)
+                {
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Spawning mud pit at victim position: {victimPosition}");
+
+                    // Spawn the mud pit at victim's feet
+                    // Use raycast to find ground
+                    Vector3 rayOrigin = victimPosition + Vector3.up * 1f;
+                    Vector3 spawnPos = victimPosition; // Default to victim position
 
                     if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 5f))
                     {
-                        Vector3 spawnPos = hit.point;
-
-                        ulong casterClientId = ballOwner.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-
-                        if (casterClientId != ulong.MaxValue)
-                        {
-                            Debug.Log($"[SpellEffects-OnPlayerHitBall] Spawning mud pit at {spawnPos}");
-
-                            // Spawn the mud pit
-                            SpawnEffectServerRpc("Mud", casterClientId, ulong.MaxValue, spawnPos, Quaternion.identity);
-
-                            // Reset the spell after spawning
-                            resetSpellEffect();
-                        }
-                        else
-                        {
-                            Debug.LogError("[SpellEffects-OnPlayerHitBall] ? FAILED - ballOwner has no NetworkObject or invalid ClientId");
-                        }
+                        spawnPos = hit.point;
+                        Debug.Log($"[SpellEffects-OnPlayerHitBall] Found ground at {spawnPos}");
                     }
                     else
                     {
-                        Debug.LogWarning("[SpellEffects-OnPlayerHitBall] Mud spawn failed: Could not find ground under victim.");
-                        resetSpellEffect(); // Still reset even if spawn fails
+                        Debug.LogWarning("[SpellEffects-OnPlayerHitBall] No ground found, using victim position");
+                        spawnPos.y = 0f; // Fallback to ground level
                     }
+
+                    // Spawn the mud pit
+                    SpawnEffectServerRpc("Mud", casterClientId, victimClientId, spawnPos, Quaternion.identity);
+
+                    // Reset the spell after spawning
+                    resetSpellEffect();
                 }
                 else
                 {
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Mud not triggered - ballOwner={ballOwner?.name ?? "NULL"}, hitter={hitter?.name}, same={hitter == ballOwner}");
+                    Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - invalid client IDs");
                 }
             }
             else
             {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] ? Mud not armed (resetOnOppHit=false)");
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✗ Mud not triggered");
             }
 
             Debug.Log($"[SpellEffects-OnPlayerHitBall] === END (Mud) ===");
@@ -2452,6 +2466,13 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         Debug.Log($"[SpellEffects-Server] Freezing player {targetClientId} for {duration}s");
 
+        // Cancel any existing freeze for this player
+        if (activeFreezeCoroutines.ContainsKey(targetClientId))
+        {
+            Debug.Log($"[SpellEffects-Server] Canceling existing freeze for player {targetClientId}");
+            // ClientRpc will handle cleanup on each client
+        }
+
         // Tell ALL clients to freeze this player
         FreezePlayerClientRpc(targetClientId, duration);
     }
@@ -2469,8 +2490,42 @@ public class NetworkedSpellEffects : NetworkBehaviour
             return;
         }
 
-        Debug.Log($"[SpellEffects-Client] Freezing {target.name} locally");
-        StartCoroutine(FreezeOpponentMovement(target, duration));
+        // Cancel existing freeze coroutine for this player
+        if (activeFreezeCoroutines.ContainsKey(targetClientId) && activeFreezeCoroutines[targetClientId] != null)
+        {
+            StopCoroutine(activeFreezeCoroutines[targetClientId]);
+            Debug.Log($"[SpellEffects-Client] Stopped existing freeze for {target.name}");
+        }
+
+        Debug.Log($"[SpellEffects-Client] Freezing {target.name} locally for {duration}s");
+        Coroutine freezeRoutine = StartCoroutine(FreezeOpponentMovement(target, duration, targetClientId));
+        activeFreezeCoroutines[targetClientId] = freezeRoutine;
+    }
+
+    public void ForceUnfreezeAllPlayers()
+    {
+        Debug.Log($"[SpellEffects] Force unfreezing all players - {activeFreezeCoroutines.Count} active freezes");
+
+        foreach (var kvp in activeFreezeCoroutines)
+        {
+            if (kvp.Value != null)
+            {
+                StopCoroutine(kvp.Value);
+            }
+
+            GameObject player = GetPlayerByClientId(kvp.Key);
+            if (player != null)
+            {
+                var mcm = player.GetComponent<MainCharacterMovement>();
+                if (mcm != null && mcm.speed == 0f)
+                {
+                    mcm.speed = 7f;
+                    Debug.Log($"[SpellEffects] Force restored {player.name} movement");
+                }
+            }
+        }
+
+        activeFreezeCoroutines.Clear();
     }
 
     /// <summary>

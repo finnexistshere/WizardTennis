@@ -214,6 +214,13 @@ MonoBehaviour:
   ballSpawnPoint: {fileID: 7169873694817178116}
   ballPrefab: {fileID: 4511917398390109774, guid: ebe59bb00924081439419d13c5c74b33, type: 3}
   servingBarriers: {fileID: 0}
+  usePerPlayerBarriers: 0
+  barriersTag: ServingBarriers
+  barrierNames:
+  - ServingBarriers
+  - Serving Barriers
+  - Barriers
+  - ServingWalls
   strength: 11
   ogUpForce: 5
   audioSource: {fileID: 0}

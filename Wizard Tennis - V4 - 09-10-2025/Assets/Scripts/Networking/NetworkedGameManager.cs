@@ -763,15 +763,19 @@ public class NetworkedGameManager : NetworkBehaviour
         // Remove all balls
         RemoveAllBalls();
 
-        // NEW: Lock pickup spawning for new round
+        // Lock pickup spawning for new round
         LockPickupSpawning();
         Debug.Log("[NetworkedGameManager] Pickup spawning locked for new round");
 
-        // NEW: Remove all existing pickups
+        // Remove all existing pickups
         RemoveAllPickups();
 
-        // NEW: Clear all spells from all players' spellbooks
+        // Clear all spells from all players' spellbooks
         ClearAllSpellbooksClientRpc();
+
+        // Force-Unfreeze Players frozen by Ice
+        if (NetworkedSpellEffects.Instance != null)
+            NetworkedSpellEffects.Instance.ForceUnfreezeAllPlayers();
 
         // Reset rally count for new round
         if (NetworkedScoreManager.Instance != null)
@@ -788,13 +792,25 @@ public class NetworkedGameManager : NetworkBehaviour
             Debug.Log("[NetworkedGameManager] Collision tracker reset");
         }
 
+        // IMPORTANT: Reset barriers BEFORE setting serving state
+        ResetBarriersForServingClientRpc();
+
+        // Small delay to ensure barriers are reset before setting serving state
+        StartCoroutine(SetServingStateAfterBarrierReset());
+
         // Reset players after short delay
         StartCoroutine(ResetPlayersAfterDelay(0.1f));
 
-        // Set all players' balls back to serving
-        SetPlayersToServingStateClientRpc();
-
         Debug.Log("[NetworkedGameManager] Next round started.");
+    }
+
+    private IEnumerator SetServingStateAfterBarrierReset()
+    {
+        // Wait a frame for barriers to be reset
+        yield return new WaitForSeconds(0.1f);
+
+        // Now set players to serving state
+        SetPlayersToServingStateClientRpc();
     }
 
     /// <summary>
@@ -928,6 +944,25 @@ public class NetworkedGameManager : NetworkBehaviour
             playerInput.SwitchCurrentActionMap("Player");
 
         Debug.Log("[NetworkedGameManager-Client] Time resumed");
+    }
+
+    [ClientRpc]
+    private void ResetBarriersForServingClientRpc()
+    {
+        Debug.Log($"[NetworkedGameManager-Client {NetworkManager.Singleton.LocalClientId}] Resetting barriers for serving");
+
+        // Find all NetworkedBall components
+        NetworkedBall[] allBalls = FindObjectsOfType<NetworkedBall>();
+
+        foreach (NetworkedBall ball in allBalls)
+        {
+            // Each client handles their own barriers
+            if (ball.IsOwner && ball.servingBarriers != null)
+            {
+                ball.servingBarriers.SetActive(true);
+                Debug.Log($"[NetworkedGameManager-Client] Enabled barriers for owned ball");
+            }
+        }
     }
 
     /// <summary>
@@ -1082,7 +1117,7 @@ public class NetworkedGameManager : NetworkBehaviour
     [ClientRpc]
     private void SetPlayersToServingStateClientRpc()
     {
-        Debug.Log($"[NetworkedGameManager-Client {NetworkManager.Singleton.LocalClientId}] Setting local balls to serving");
+        Debug.Log($"[NetworkedGameManager-Client {NetworkManager.Singleton.LocalClientId}] Setting local players to serving");
 
         // Each client finds THEIR OWN NetworkedBall components
         NetworkedBall[] localBalls = FindObjectsOfType<NetworkedBall>();
@@ -1094,7 +1129,34 @@ public class NetworkedGameManager : NetworkBehaviour
             {
                 ball.SetToServingState();
                 Debug.Log($"[NetworkedGameManager-Client] Set ball to SERVING state");
+
+                // CRITICAL: Explicitly enable barriers here too
+                if (ball.servingBarriers != null)
+                {
+                    ball.servingBarriers.SetActive(true);
+                    Debug.Log($"[NetworkedGameManager-Client] Explicitly enabled barriers for owned ball");
+                }
             }
         }
+    }
+
+    // Need to call this Via a button, can't be arsed so it's just here for now until I can be bothered to add more devtools
+    [ContextMenu("Debug Barrier State")]
+    public void DebugBarrierState()
+    {
+        NetworkedBall[] allBalls = FindObjectsOfType<NetworkedBall>();
+
+        Debug.Log($"=== BARRIER STATE DEBUG (Client {NetworkManager.Singleton.LocalClientId}) ===");
+
+        foreach (NetworkedBall ball in allBalls)
+        {
+            Debug.Log($"Ball Owner: {ball.OwnerClientId}");
+            Debug.Log($"  - IsOwner: {ball.IsOwner}");
+            Debug.Log($"  - servingBarriers: {(ball.servingBarriers != null ? ball.servingBarriers.name : "NULL")}");
+            Debug.Log($"  - barriers active: {(ball.servingBarriers != null ? ball.servingBarriers.activeSelf.ToString() : "N/A")}");
+            Debug.Log($"  - barriers enabled: {(ball.servingBarriers != null ? ball.servingBarriers.activeInHierarchy.ToString() : "N/A")}");
+        }
+
+        Debug.Log($"=== END BARRIER STATE DEBUG ===");
     }
 }

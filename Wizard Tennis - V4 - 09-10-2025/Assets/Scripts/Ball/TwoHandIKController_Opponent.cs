@@ -79,6 +79,16 @@ public class TwoHandIKController_Opponent : MonoBehaviour
             rigInitialized = true;
         }
 
+        if (ball == null)
+        {
+            GameObject foundBall = GameObject.FindGameObjectWithTag("Ball");
+            if (foundBall != null)
+            {
+                AssignBall(foundBall.transform);
+            }
+            return;
+        }
+
         Vector3 localBallPos = opponentRoot.InverseTransformPoint(ball.position);
 
         float forwardZ = -localBallPos.z;

@@ -33,6 +33,11 @@ public class SteamLobbyManager : MonoBehaviour
     private float pollTimer = 0f;
     private const float POLL_INTERVAL = 0.5f;
 
+    // Host also needs to poll for member updates
+    private bool isHostPollingMembers = false;
+    private float hostMemberPollTimer = 0f;
+    private const float HOST_MEMBER_POLL_INTERVAL = 1f;
+
     public struct LobbyMember
     {
         public SteamId steamId;
@@ -68,28 +73,43 @@ public class SteamLobbyManager : MonoBehaviour
 
     private void Update()
     {
-        if (!isPollingLobby || IsHost() || !currentLobby.HasValue || hasStartedNetwork)
-            return;
-
-        pollTimer -= Time.deltaTime;
-        if (pollTimer > 0f)
-            return;
-
-        pollTimer = POLL_INTERVAL;
-
-        // ?? Force Steam to pull latest lobby data
-        currentLobby.Value.Refresh();
-
-        string ready = currentLobby.Value.GetData("netcode_ready");
-
-        Log("Polling lobby: netcode_ready = " + ready);
-        if (!string.IsNullOrEmpty(ready) && ready != lastNetcodeSignal)
+        // Client polling for netcode signal
+        if (isPollingLobby && !IsHost() && currentLobby.HasValue && !hasStartedNetwork)
         {
-            lastNetcodeSignal = ready;
+            pollTimer -= Time.deltaTime;
+            if (pollTimer <= 0f)
+            {
+                pollTimer = POLL_INTERVAL;
 
-            Log("Detected NEW host netcode signal — starting client");
-            isPollingLobby = false;
-            StartClientForLobby();
+                // Force Steam to pull latest lobby data
+                currentLobby.Value.Refresh();
+
+                string ready = currentLobby.Value.GetData("netcode_ready");
+
+                Log("Polling lobby: netcode_ready = " + ready);
+                if (!string.IsNullOrEmpty(ready) && ready != lastNetcodeSignal)
+                {
+                    lastNetcodeSignal = ready;
+
+                    Log("Detected NEW host netcode signal — starting client");
+                    isPollingLobby = false;
+                    StartClientForLobby();
+                }
+            }
+        }
+
+        // Host polling for member list updates
+        if (isHostPollingMembers && IsHost() && currentLobby.HasValue && !hasStartedNetwork)
+        {
+            hostMemberPollTimer -= Time.deltaTime;
+            if (hostMemberPollTimer <= 0f)
+            {
+                hostMemberPollTimer = HOST_MEMBER_POLL_INTERVAL;
+
+                // Refresh lobby data and update member list
+                currentLobby.Value.Refresh();
+                RefreshLobbyMembers();
+            }
         }
     }
 
@@ -117,8 +137,11 @@ public class SteamLobbyManager : MonoBehaviour
         OnJoinedLobby?.Invoke();
         RefreshLobbyMembers();
 
-        // Hosts typically should start as host only when starting the game.
-        // If you want the host to start networking immediately upon creation, call StartHostIfNeeded() here.
+        // Start polling for member updates as host
+        isHostPollingMembers = true;
+        hostMemberPollTimer = HOST_MEMBER_POLL_INTERVAL;
+
+        Log("Host lobby created, starting member polling");
     }
 
     private void StartHostImmediately()
@@ -175,6 +198,9 @@ public class SteamLobbyManager : MonoBehaviour
             return;
 
         Log("HOST STARTING GAME");
+
+        // Stop polling when starting game
+        isHostPollingMembers = false;
 
         StartCoroutine(HostStartSequence());
     }
@@ -370,6 +396,9 @@ public class SteamLobbyManager : MonoBehaviour
             return;
 
         Log($"Member joined: {friend.Name}");
+
+        // Force refresh lobby data before updating members
+        currentLobby.Value.Refresh();
         RefreshLobbyMembers();
     }
 
@@ -379,6 +408,9 @@ public class SteamLobbyManager : MonoBehaviour
             return;
 
         Log($"Member left: {friend.Name}");
+
+        // Force refresh lobby data before updating members
+        currentLobby.Value.Refresh();
         RefreshLobbyMembers();
     }
 
@@ -436,6 +468,8 @@ public class SteamLobbyManager : MonoBehaviour
             });
         }
 
+        Log($"Refreshed lobby members: {members.Count} total");
+
         // Legacy support
         OnPlayerListChanged?.Invoke(names);
 
@@ -481,6 +515,7 @@ public class SteamLobbyManager : MonoBehaviour
     public void LeaveLobby()
     {
         isPollingLobby = false;
+        isHostPollingMembers = false;
         hasStartedNetwork = false;
         isHost = false;
 
