@@ -1754,9 +1754,18 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
 
         float originalSpeed = mcm.speed;
-        float boostedSpeed = 17f;
+        float boostedSpeed;
 
-        Debug.Log($"[SpellEffects] Lightning: Setting speed from {originalSpeed} to {boostedSpeed}");
+        if (spellName == "Chronos")
+        {
+            boostedSpeed = 70f;
+        }
+        else
+        {
+            boostedSpeed = 17f;
+        }
+
+            Debug.Log($"[SpellEffects] Lightning: Setting speed from {originalSpeed} to {boostedSpeed}");
         mcm.speed = boostedSpeed;
 
         float elapsed = 0f;
@@ -2112,6 +2121,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
             Debug.LogError("[SpellEffects] Chronos failed - no player found");
             yield break;
         }
+        var mcm = player.GetComponent<MainCharacterMovement>();
 
         // Wait for any existing slowdown to finish
         yield return new WaitUntil(() => !SpellEffects.isSpellSlowdownActive);
@@ -2124,13 +2134,11 @@ public class NetworkedSpellEffects : NetworkBehaviour
         Time.timeScale = 0.1f;
         Debug.Log($"[SpellEffects] Chronos applied - timeScale: {Time.timeScale}");
 
-        var mcm = player.GetComponent<MainCharacterMovement>();
-        if (mcm != null)
-        {
-            mcm.speed = 4f;
-            mcm.gravity = 5f;
-            Debug.Log($"[SpellEffects] Chronos movement adjusted - speed: {mcm.speed}, gravity: {mcm.gravity}");
-        }
+        // Stealing the Lightning Coroutine to Alter the Caster's speed
+        if (activeLightningCoroutine != null)
+            StopCoroutine(activeLightningCoroutine);
+
+        activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(mcm, 0.4f));
 
         // Show explanation if enabled
         if (OptionsManager.Instance != null && OptionsManager.Instance.spellTips && !string.IsNullOrEmpty(spellName))
