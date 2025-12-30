@@ -743,13 +743,19 @@ public class NetworkedGameManager : NetworkBehaviour
 
     public void StartNextRound()
     {
-        Debug.Log("[NetworkedGameManager] StartNextRound called");
-
         if (!IsServer)
         {
             Debug.LogWarning("[NetworkedGameManager] StartNextRound called on client - ignoring");
             return;
         }
+
+        // Start the coroutine version
+        StartCoroutine(StartNextRoundCoroutine());
+    }
+
+    private IEnumerator StartNextRoundCoroutine()
+    {
+        Debug.Log("[NetworkedGameManager] StartNextRound called");
 
         // Resume time FIRST
         Time.timeScale = 1f;
@@ -760,7 +766,13 @@ public class NetworkedGameManager : NetworkBehaviour
         // Tell all clients to resume their time
         ResumeTimeClientRpc();
 
-        // Remove all balls
+        // *** CRITICAL: Reset IK references BEFORE destroying ball ***
+        ResetAllIKReferencesClientRpc();
+
+        // Wait for IK reset to complete on all clients
+        yield return new WaitForSeconds(0.15f);
+
+        // Remove all balls (now IKs are ready to find the new one)
         RemoveAllBalls();
 
         // Lock pickup spawning for new round
@@ -796,12 +808,51 @@ public class NetworkedGameManager : NetworkBehaviour
         ResetBarriersForServingClientRpc();
 
         // Small delay to ensure barriers are reset before setting serving state
-        StartCoroutine(SetServingStateAfterBarrierReset());
+        yield return new WaitForSeconds(0.1f);
+
+        // Set players to serving state
+        SetPlayersToServingStateClientRpc();
 
         // Reset players after short delay
         StartCoroutine(ResetPlayersAfterDelay(0.1f));
 
         Debug.Log("[NetworkedGameManager] Next round started.");
+    }
+
+    /// <summary>
+    /// Resets all IK controller ball references so they're ready to find the new ball
+    /// </summary>
+    [ClientRpc]
+    private void ResetAllIKReferencesClientRpc()
+    {
+        Debug.Log($"[NetworkedGameManager-Client {NetworkManager.Singleton.LocalClientId}] Resetting all IK references");
+
+        // Find all TwoHandIKController components (player IKs)
+        TwoHandIKController[] allPlayerIKs = FindObjectsOfType<TwoHandIKController>();
+
+        foreach (TwoHandIKController ik in allPlayerIKs)
+        {
+            if (ik != null)
+            {
+                ik.ResetBallReference();
+                Debug.Log($"[NetworkedGameManager-Client] Reset IK reference for {ik.name}");
+            }
+        }
+
+        // Find all TwoHandIKController_Opponent components (opponent IKs - if any)
+        TwoHandIKController_Opponent[] allOpponentIKs = FindObjectsOfType<TwoHandIKController_Opponent>();
+
+        foreach (TwoHandIKController_Opponent ik in allOpponentIKs)
+        {
+            if (ik != null)
+            {
+                // Opponent IK uses a different method name
+                ik.StartAssignBallCoroutine();
+                Debug.Log($"[NetworkedGameManager-Client] Reset opponent IK reference for {ik.name}");
+            }
+        }
+
+        Debug.Log($"[NetworkedGameManager-Client] All IK references reset and ready to find new ball");
     }
 
     private IEnumerator SetServingStateAfterBarrierReset()

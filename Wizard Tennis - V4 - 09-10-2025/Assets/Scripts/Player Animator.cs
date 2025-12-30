@@ -77,6 +77,20 @@ public class TwoHandIKController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called when the ball is destroyed/reset. Clears reference and starts searching.
+    /// </summary>
+    public void ResetBallReference()
+    {
+        ball = null;
+        rigInitialized = false;
+
+        if (debugLogs)
+            Debug.Log($"{name}: Ball reference reset, starting search...");
+
+        StartFindingBall();
+    }
+
     /* -------------------- IK UPDATE -------------------- */
 
     private void LateUpdate()

@@ -21,10 +21,10 @@ public class NetworkedBall : NetworkBehaviour
     public Transform ballSpawnPoint;
     public GameObject ballPrefab;
     public GameObject servingBarriers;
-
+    
     [Header("Barrier Settings")]
     [Tooltip("If true, each player has their own barriers. If false, there's one shared set in the scene.")]
-    public bool usePerPlayerBarriers = true;
+    public bool usePerPlayerBarriers = false;
 
     [Tooltip("Tag to use for finding serving barriers (default: 'ServingBarriers')")]
     public string barriersTag = "ServingBarriers";
@@ -75,6 +75,13 @@ public class NetworkedBall : NetworkBehaviour
     // IK references (local-only, per client)
     private TwoHandIKController localPlayerIK;
     private TwoHandIKController remotePlayerIK;
+
+    public ServingBarrierController barrierController;
+
+    private void Start()
+    {
+        barrierController = FindObjectOfType<ServingBarrierController>();
+    }
 
     private void Awake()
     {
@@ -362,6 +369,8 @@ public class NetworkedBall : NetworkBehaviour
             SpawnBallServerRpc(ballSpawnPoint.position, ballSpawnPoint.rotation);
             // Second call to help with Client Spawn Timing
             ServeBallServerRpc();
+
+            barrierController?.RequestDisableBarriers();
         }
 
         // Pause/Resume for testing
@@ -373,24 +382,14 @@ public class NetworkedBall : NetworkBehaviour
                 ResumeBallServerRpc();
         }
 
-        // Serve ball with E when near it
         if (Input.GetKeyDown(KeyCode.E) && nearBall && localServing)
         {
-            Debug.Log($"[NetworkedBall] Player {OwnerClientId} attempting to serve - nearBall:{nearBall}, localServing:{localServing}");
-
             localServing = false;
             lastServeTime = Time.time;
 
-            // Immediately disable barriers locally for responsive feedback
-            if (servingBarriers != null)
-            {
-                servingBarriers.SetActive(false);
-                Debug.Log($"[NetworkedBall] Player {OwnerClientId} disabled barriers LOCALLY");
-            }
+            barrierController?.RequestDisableBarriers();
 
-            // Request server to handle serve and barrier deactivation
             ServeBallServerRpc();
-            RequestDeactivateBarriersServerRpc(); // New method name for clarity
         }
     }
 
@@ -443,35 +442,23 @@ public class NetworkedBall : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void RequestDeactivateBarriersServerRpc(ServerRpcParams rpcParams = default)
+    private void RequestDeactivateServingBarriersServerRpc()
     {
-        if (!IsServer) return;
-
-        ulong requestingClientId = rpcParams.Receive.SenderClientId;
-        Debug.Log($"[Server] Barrier deactivation requested by client {requestingClientId}");
-
-        // Broadcast to ALL clients to deactivate barriers for THIS specific player
-        DeactivateBarriersForPlayerClientRpc(requestingClientId);
+        Debug.Log("[Server] Deactivating serving barriers");
+        DeactivateServingBarriersClientRpc();
     }
 
     [ClientRpc]
-    private void DeactivateBarriersForPlayerClientRpc(ulong targetClientId)
+    private void DeactivateServingBarriersClientRpc()
     {
-        // Find the NetworkedBall component for the target player
-        NetworkedBall[] allBalls = FindObjectsOfType<NetworkedBall>();
-
-        foreach (NetworkedBall ball in allBalls)
+        if (servingBarriers == null)
         {
-            if (ball.OwnerClientId == targetClientId)
-            {
-                if (ball.servingBarriers != null && ball.servingBarriers.activeSelf)
-                {
-                    ball.servingBarriers.SetActive(false);
-                    Debug.Log($"[NetworkedBall-Client] Deactivated barriers for player {targetClientId}");
-                }
-                break;
-            }
+            Debug.LogError("[Client] servingBarriers NULL during deactivation");
+            return;
         }
+
+        servingBarriers.SetActive(false);
+        Debug.Log("[Client] Serving barriers deactivated");
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -512,15 +499,31 @@ public class NetworkedBall : NetworkBehaviour
     [ClientRpc]
     private void NotifyBallSpawnedClientRpc()
     {
-        currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
+        // Start coroutine to handle assignment with retry
+        StartCoroutine(AssignBallToAllIKs());
+    }
+
+    private IEnumerator AssignBallToAllIKs()
+    {
+        // Wait for ball to be findable
+        int attempts = 0;
+        while (currentBallInstance == null && attempts < 20)
+        {
+            currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
+            if (currentBallInstance != null) break;
+
+            attempts++;
+            yield return new WaitForSeconds(0.05f);
+        }
 
         if (currentBallInstance == null)
         {
-            Debug.LogWarning("[NotifyBallSpawnedClientRpc] Ball not found yet");
-            return;
+            Debug.LogError("[NetworkedBall] Failed to find ball after 20 attempts!");
+            yield break;
         }
 
         Transform ballTransform = currentBallInstance.transform;
+        Debug.Log($"[NetworkedBall] Ball found at {ballTransform.position}, assigning to IKs...");
 
         // ---- LOCAL PLAYER IK ----
         if (localPlayerIK == null)
@@ -529,21 +532,28 @@ public class NetworkedBall : NetworkBehaviour
         if (localPlayerIK != null)
         {
             localPlayerIK.AssignBall(ballTransform);
-            Debug.Log("[NotifyBallSpawnedClientRpc] Assigned LOCAL IK");
+            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to LOCAL IK");
+        }
+        else
+        {
+            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} LOCAL IK not found");
         }
 
         // ---- REMOTE PLAYER IK ----
+        // Wait a bit longer for remote player to be ready
+        yield return new WaitForSeconds(0.2f);
+
         if (remotePlayerIK == null)
             remotePlayerIK = FindRemotePlayerIK();
 
         if (remotePlayerIK != null)
         {
             remotePlayerIK.AssignBall(ballTransform);
-            Debug.Log("[NotifyBallSpawnedClientRpc] Assigned REMOTE IK");
+            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to REMOTE IK");
         }
         else
         {
-            Debug.LogWarning("[NotifyBallSpawnedClientRpc] Remote IK not found yet — retrying");
+            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} REMOTE IK not found, starting retry...");
             StartCoroutine(RetryAssignRemoteIK(ballTransform));
         }
     }
@@ -874,6 +884,7 @@ public class NetworkedBall : NetworkBehaviour
 
     public void SetToServingState()
     {
+        Debug.Log($"[Barrier RESET] Re-enabled by {gameObject.name} at frame {Time.frameCount}");
         hitting = false;
         localServing = true;
 
@@ -888,6 +899,7 @@ public class NetworkedBall : NetworkBehaviour
         if (ValidateBarriers())
         {
             servingBarriers.SetActive(true);
+            barrierController?.RequestEnableBarriers();
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} serving barriers ENABLED");
         }
         else
@@ -928,5 +940,19 @@ public class NetworkedBall : NetworkBehaviour
         }
 
         return true;
+    }
+
+    [ContextMenu("Debug Barrier State")]
+    public void DebugBarrierState()
+    {
+        Debug.Log($"=== BARRIER DEBUG FOR PLAYER {OwnerClientId} ===");
+        Debug.Log($"  IsOwner: {IsOwner}");
+        Debug.Log($"  IsServer: {IsServer}");
+        Debug.Log($"  servingBarriers: {(servingBarriers != null ? servingBarriers.name : "NULL")}");
+        Debug.Log($"  barriers active: {(servingBarriers != null ? servingBarriers.activeSelf.ToString() : "N/A")}");
+        Debug.Log($"  barriers in scene: {(servingBarriers != null && servingBarriers.scene.name != null ? "YES" : "NO")}");
+        Debug.Log($"  localServing: {localServing}");
+        Debug.Log($"  nearBall: {nearBall}");
+        Debug.Log($"=== END BARRIER DEBUG ===");
     }
 }
