@@ -371,6 +371,8 @@ public class NetworkedBall : NetworkBehaviour
             ServeBallServerRpc();
 
             barrierController?.RequestDisableBarriers();
+
+            NetworkedGameManager.Instance?.RequestUnlockPickupSpawning();
         }
 
         // Pause/Resume for testing
@@ -677,6 +679,7 @@ public class NetworkedBall : NetworkBehaviour
         localServing = false;
         hitting = true;
         lastServeTime = Time.time;
+        NetworkedGameManager.Instance?.RequestUnlockPickupSpawning();
     }
 
     [ServerRpc(RequireOwnership = false)]

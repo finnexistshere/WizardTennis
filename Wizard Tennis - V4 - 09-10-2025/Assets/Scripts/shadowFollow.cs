@@ -4,28 +4,28 @@ using UnityEngine;
 public class shadowFollow : MonoBehaviour
 {
     [Header("Follow Mode")]
-    [Tooltip("Determines what this shadow should follow")]
     public FollowMode followMode = FollowMode.Ball;
 
     [Header("Manual Assignment")]
-    [Tooltip("Manually assign a target (optional). If set, this overrides automatic assignment.")]
     public GameObject manualTarget;
 
     [Tooltip("The object this shadow is currently following.")]
     public GameObject follow;
 
+    [Header("Storage")]
+    [Tooltip("Where the shadow moves when it has no valid target")]
+    public Vector3 storagePosition = new Vector3(0f, -50f, 0f);
+
     private SpriteRenderer spriteRenderer;
     private float groundY = 0.941f;
 
-    // Height-based scale control
     private const float minScale = 1.0f;
     private const float maxScale = 3.0f;
     private const float maxHeight = 5f;
 
     private float nextSearchTime = 0f;
-    private const float searchInterval = 1.0f;
+    private const float searchInterval = 0.5f;
 
-    // Global registry of claimed players
     private static HashSet<GameObject> claimedPlayers = new HashSet<GameObject>();
 
     private bool isAssigned = false;
@@ -33,9 +33,9 @@ public class shadowFollow : MonoBehaviour
 
     public enum FollowMode
     {
-        Ball,           // Follow the tennis ball
-        Player,         // Follow a player (one shadow per player)
-        SpellPickup     // Follow the parent spell pickup
+        Ball,
+        Player,
+        SpellPickup
     }
 
     void Awake()
@@ -44,62 +44,64 @@ public class shadowFollow : MonoBehaviour
         if (spriteRenderer != null)
             spriteRenderer.enabled = false;
 
-        // Check if this shadow is a child of a spell pickup
         CheckIfChildOfPickup();
 
-        // Try manual assignment first
         if (manualTarget != null)
         {
             follow = manualTarget;
             isAssigned = true;
-            Debug.Log($"[shadowFollow] Manually assigned to '{manualTarget.name}'");
         }
         else
         {
-            TryFindFollowTarget();
+            MoveToStorage();
         }
     }
 
     void Update()
     {
-        // If we're a child of a pickup and it's assigned, we don't need to search
+        // Pickup shadows never search
         if (isChildOfPickup && follow != null)
         {
-            if (spriteRenderer != null && !spriteRenderer.enabled)
-                spriteRenderer.enabled = true;
-
+            EnableVisuals();
             FollowTarget();
             return;
         }
 
-        // Normal behavior for non-pickup shadows
-        if (!isAssigned || follow == null)
+        // Handle lost target (Ball destroyed, player despawned, etc)
+        if (follow == null || !follow.activeInHierarchy)
         {
-            if (Time.time >= nextSearchTime)
-            {
-                nextSearchTime = Time.time + searchInterval;
-                TryFindFollowTarget();
-            }
-            return;
+            HandleLostTarget();
         }
 
-        if (spriteRenderer != null && !spriteRenderer.enabled)
-            spriteRenderer.enabled = true;
+        // Periodic search
+        if (!isAssigned && Time.time >= nextSearchTime)
+        {
+            nextSearchTime = Time.time + searchInterval;
+            TryFindFollowTarget();
+        }
 
-        FollowTarget();
+        if (isAssigned && follow != null)
+        {
+            EnableVisuals();
+            FollowTarget();
+        }
+        else
+        {
+            MoveToStorage();
+        }
     }
+
+    // ===================== CORE BEHAVIOR =====================
 
     private void FollowTarget()
     {
-        if (follow == null)
-            return;
-
         transform.position = new Vector3(
             follow.transform.position.x,
             groundY,
             follow.transform.position.z
         );
-        transform.rotation = Quaternion.Euler(-90, 0, 0);
+
+        transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
 
         float height = follow.transform.position.y;
         float t = Mathf.InverseLerp(0, maxHeight, height);
@@ -107,55 +109,49 @@ public class shadowFollow : MonoBehaviour
         transform.localScale = Vector3.one * scale;
     }
 
-    private void CheckIfChildOfPickup()
+    private void HandleLostTarget()
     {
-        // Check if this shadow is a child of a spell pickup
-        Transform parent = transform.parent;
-
-        if (parent != null)
+        if (followMode == FollowMode.Player && follow != null)
         {
-            // Check for PickupEffect component (most reliable)
-            if (parent.GetComponent<PickupEffect>() != null)
-            {
-                isChildOfPickup = true;
-                followMode = FollowMode.SpellPickup;
-                follow = parent.gameObject;
-                isAssigned = true;
-
-                Debug.Log($"[shadowFollow] Detected as child of PickupEffect '{parent.name}' - following parent");
-                return;
-            }
-
-            // Fallback checks for other pickup types
-            if (parent.CompareTag("SpellPickup") ||
-                parent.name.ToLower().Contains("pickup") ||
-                parent.name.ToLower().Contains("spell"))
-            {
-                isChildOfPickup = true;
-                followMode = FollowMode.SpellPickup;
-                follow = parent.gameObject;
-                isAssigned = true;
-
-                Debug.Log($"[shadowFollow] Detected as child of spell pickup '{parent.name}' - following parent");
-            }
+            claimedPlayers.Remove(follow);
         }
+
+        follow = null;
+        isAssigned = false;
+
+        DisableVisuals();
     }
+
+    private void MoveToStorage()
+    {
+        transform.position = storagePosition;
+        transform.localScale = Vector3.zero;
+        DisableVisuals();
+    }
+
+    private void EnableVisuals()
+    {
+        if (spriteRenderer != null && !spriteRenderer.enabled)
+            spriteRenderer.enabled = true;
+    }
+
+    private void DisableVisuals()
+    {
+        if (spriteRenderer != null && spriteRenderer.enabled)
+            spriteRenderer.enabled = false;
+    }
+
+    // ===================== TARGET FINDING =====================
 
     private void TryFindFollowTarget()
     {
-        if (isAssigned)
-            return;
-
-        // If manual target is set, use it
         if (manualTarget != null)
         {
             follow = manualTarget;
             isAssigned = true;
-            Debug.Log($"[shadowFollow] Assigned to manual target '{manualTarget.name}'");
             return;
         }
 
-        // Check mode
         switch (followMode)
         {
             case FollowMode.Ball:
@@ -181,151 +177,82 @@ public class shadowFollow : MonoBehaviour
         if (follow != null)
         {
             isAssigned = true;
-            Debug.Log("[shadowFollow] Assigned to Ball.");
+            EnableVisuals();
+            Debug.Log("[shadowFollow] Ball found and assigned.");
         }
     }
 
     private void AssignToPlayer()
     {
-        // Player assignment (one shadow per player)
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
 
         foreach (GameObject player in players)
         {
-            if (player == null)
+            if (player == null || claimedPlayers.Contains(player))
                 continue;
 
-            if (claimedPlayers.Contains(player))
-                continue;
-
-            // Claim this player
             claimedPlayers.Add(player);
             follow = player;
             isAssigned = true;
+            EnableVisuals();
             Debug.Log($"[shadowFollow] Assigned to Player '{player.name}'");
             return;
         }
-
-        Debug.Log("[shadowFollow] No available player without a shadow found.");
     }
 
     private void AssignToPickup()
     {
-        // Check if we have a parent first (most common case)
         if (transform.parent != null)
         {
-            // Prioritize PickupEffect component
-            if (transform.parent.GetComponent<PickupEffect>() != null)
+            PickupEffect pickup = transform.parent.GetComponent<PickupEffect>();
+            if (pickup != null)
             {
-                follow = transform.parent.gameObject;
+                follow = pickup.gameObject;
                 isAssigned = true;
                 isChildOfPickup = true;
-                Debug.Log($"[shadowFollow] Assigned to PickupEffect parent '{follow.name}'");
-                return;
-            }
-
-            // Fallback to generic pickup detection
-            if (transform.parent.CompareTag("SpellPickup") ||
-                transform.parent.name.ToLower().Contains("pickup"))
-            {
-                follow = transform.parent.gameObject;
-                isAssigned = true;
-                isChildOfPickup = true;
-                Debug.Log($"[shadowFollow] Assigned to spell pickup parent '{follow.name}'");
-                return;
+                EnableVisuals();
             }
         }
-
-        // If no parent, try to find a nearby pickup
-        PickupEffect[] pickups = FindObjectsOfType<PickupEffect>();
-
-        if (pickups.Length > 0)
-        {
-            float closestDistance = float.MaxValue;
-            GameObject closestPickup = null;
-
-            foreach (PickupEffect pickup in pickups)
-            {
-                float distance = Vector3.Distance(transform.position, pickup.transform.position);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestPickup = pickup.gameObject;
-                }
-            }
-
-            // If we found a close pickup (within 2 units), follow it
-            if (closestPickup != null && closestDistance < 2f)
-            {
-                follow = closestPickup;
-                isAssigned = true;
-                Debug.Log($"[shadowFollow] Assigned to nearby PickupEffect '{closestPickup.name}' at distance {closestDistance:F2}");
-                return;
-            }
-        }
-
-        Debug.Log("[shadowFollow] No PickupEffect parent or nearby pickup found.");
     }
 
-    /// <summary>
-    /// Public method to manually assign a target at runtime
-    /// </summary>
+    // ===================== PICKUP DETECTION =====================
+
+    private void CheckIfChildOfPickup()
+    {
+        Transform parent = transform.parent;
+        if (parent == null) return;
+
+        if (parent.GetComponent<PickupEffect>() != null)
+        {
+            isChildOfPickup = true;
+            followMode = FollowMode.SpellPickup;
+            follow = parent.gameObject;
+            isAssigned = true;
+        }
+    }
+
+    // ===================== PUBLIC API =====================
+
     public void SetFollowTarget(GameObject target)
     {
-        if (target == null)
-        {
-            Debug.LogWarning("[shadowFollow] Attempted to set null target");
-            return;
-        }
+        if (target == null) return;
 
-        // Clean up old claim if we were following a player
-        if (followMode == FollowMode.Player && follow != null && claimedPlayers.Contains(follow))
-        {
+        if (followMode == FollowMode.Player && follow != null)
             claimedPlayers.Remove(follow);
-        }
 
         follow = target;
         isAssigned = true;
-
-        Debug.Log($"[shadowFollow] Manually set target to '{target.name}'");
+        EnableVisuals();
     }
 
-    /// <summary>
-    /// Reset the shadow to search for a new target
-    /// </summary>
     public void ResetTarget()
     {
-        // Clean up old claim
-        if (followMode == FollowMode.Player && follow != null && claimedPlayers.Contains(follow))
-        {
-            claimedPlayers.Remove(follow);
-        }
-
-        follow = null;
-        isAssigned = false;
-        isChildOfPickup = false;
-
-        Debug.Log("[shadowFollow] Target reset - will search for new target");
+        HandleLostTarget();
     }
 
     private void OnDestroy()
     {
-        // Clean up claim if this shadow is destroyed
-        if (followMode == FollowMode.Player && isAssigned && follow != null && claimedPlayers.Contains(follow))
-        {
+        if (followMode == FollowMode.Player && follow != null)
             claimedPlayers.Remove(follow);
-            Debug.Log($"[shadowFollow] Released shadow from '{follow.name}'");
-        }
-    }
-
-    // Optional: Visualize the follow target in editor
-    private void OnDrawGizmosSelected()
-    {
-        if (follow != null)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(transform.position, follow.transform.position);
-            Gizmos.DrawWireSphere(follow.transform.position, 0.5f);
-        }
     }
 }

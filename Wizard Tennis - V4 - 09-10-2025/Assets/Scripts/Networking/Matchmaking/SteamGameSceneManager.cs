@@ -151,7 +151,7 @@ public class SteamGameSceneManager : MonoBehaviour
         // Unlock pickup spawning (server only)
         if (NetworkedGameManager.Instance != null)
         {
-            NetworkedGameManager.Instance.UnlockPickupSpawning();
+            NetworkedGameManager.Instance.RequestUnlockPickupSpawning();
             Log("Pickup spawning unlocked");
         }
 

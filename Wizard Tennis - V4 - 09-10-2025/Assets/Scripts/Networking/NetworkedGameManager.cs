@@ -304,18 +304,40 @@ public class NetworkedGameManager : NetworkBehaviour
     /// </summary>
     public void LockPickupSpawning()
     {
+        if (!IsServer) return;
+
         pickupsUnlocked = false;
+        Debug.Log("[NetworkedGameManager] Pickup spawning LOCKED (SERVER)");
     }
 
     /// <summary>
     /// Unlocks pickup spawning so new pickups can appear.
     /// </summary>
-    public void UnlockPickupSpawning()
+    public void RequestUnlockPickupSpawning()
+    {
+        if (IsServer)
+        {
+            UnlockPickupSpawningInternal();
+        }
+        else
+        {
+            UnlockPickupSpawningServerRpc();
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void UnlockPickupSpawningServerRpc()
+    {
+        UnlockPickupSpawningInternal();
+    }
+
+    private void UnlockPickupSpawningInternal()
     {
         pickupsUnlocked = true;
         hostSpawnTimer = spawnInterval;
         clientSpawnTimer = spawnInterval;
-        Debug.Log("[NetworkedGameManager] Pickup spawning unlocked.");
+
+        Debug.Log("[NetworkedGameManager] Pickup spawning UNLOCKED (SERVER)");
     }
 
     private void Start()
@@ -349,7 +371,7 @@ public class NetworkedGameManager : NetworkBehaviour
             if (Input.GetKeyDown(KeyCode.E))
             {
                 tutorialPanel.SetActive(false);
-                UnlockPickupSpawning();
+                RequestUnlockPickupSpawning();
             }
         }
 

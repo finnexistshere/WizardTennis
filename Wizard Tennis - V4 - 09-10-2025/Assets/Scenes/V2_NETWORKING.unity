@@ -49487,6 +49487,10 @@ PrefabInstance:
       propertyPath: followBallOnly
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5088767092636707470, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
+      propertyPath: storageTransitionSpeed
+      value: 40
+      objectReference: {fileID: 0}
     - target: {fileID: 8178539807689418615, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
       propertyPath: m_LocalScale.y
       value: 2.5000002
