@@ -219,7 +219,7 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         if (gameManager != null)
         {
-            gameManager.RoundOver(message);
+            gameManager.GameOverRound(message);
         }
         else
         {

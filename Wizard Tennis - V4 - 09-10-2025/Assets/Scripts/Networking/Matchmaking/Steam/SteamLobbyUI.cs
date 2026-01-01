@@ -5,10 +5,6 @@ using System.Collections.Generic;
 
 public class SteamLobbyUI : MonoBehaviour
 {
-    [Header("Main Menu Panels")]
-    public GameObject mainMenuPanel;
-    public GameObject lobbyPanel;
-
     [Header("Create Lobby")]
     public TMP_InputField lobbyNameInput;
     public TMP_InputField maxPlayersInput;
@@ -27,6 +23,9 @@ public class SteamLobbyUI : MonoBehaviour
     public Button startGameButton;
     public Button inviteFriendsButton;
     public Button leaveLobbyButton;
+
+    [Header("Scene Manager")]
+    [SerializeField] private SceneChanger sceneChanger;
 
     [Header("Player List with Avatars")]
     [Tooltip("Container for player entries (uses prefab)")]
@@ -72,7 +71,6 @@ public class SteamLobbyUI : MonoBehaviour
         Lobby.OnPlayerListChangedWithData += OnPlayerListChangedWithAvatars; // NEW
         Lobby.OnConnectionFailed += OnConnectionFailed;
 
-        ShowMainMenu();
         SetStatus("Ready");
     }
 
@@ -134,11 +132,18 @@ public class SteamLobbyUI : MonoBehaviour
         Lobby.LeaveLobby();
 
         // Clear avatar cache when leaving
-        if (SteamAvatarManager.Instance != null)
-            SteamAvatarManager.Instance.ClearCache();
+        SteamAvatarManager.Instance?.ClearCache();
 
-        ShowMainMenu();
         SetStatus("Left lobby");
+
+        // Delegate UI transition to SceneChanger
+        if (sceneChanger == null)
+            sceneChanger = FindObjectOfType<SceneChanger>();
+
+        if (sceneChanger != null)
+            sceneChanger.BackToMainFromMultiplayer();
+        else
+            Debug.LogWarning("[SteamLobbyUI] SceneChanger not found — cannot return to Main Menu");
     }
 
     #endregion
@@ -147,7 +152,6 @@ public class SteamLobbyUI : MonoBehaviour
 
     private void OnLobbyCreated(string lobbyId)
     {
-        ShowLobbyPanel();
 
         lobbyCodeText.text = $"Lobby ID: {lobbyId}";
         lobbyNameText.text = lobbyNameInput.text;
@@ -158,7 +162,6 @@ public class SteamLobbyUI : MonoBehaviour
 
     private void OnJoinedLobby()
     {
-        ShowLobbyPanel();
 
         lobbyCodeText.text = $"Lobby ID: {Lobby.GetLobbyId()}";
         UpdateStartButton();
@@ -224,25 +227,12 @@ public class SteamLobbyUI : MonoBehaviour
 
     private void OnConnectionFailed()
     {
-        ShowMainMenu();
         SetStatus("Failed to connect to lobby");
     }
 
     #endregion
 
     #region UI Helpers
-
-    private void ShowMainMenu()
-    {
-        mainMenuPanel?.SetActive(true);
-        lobbyPanel?.SetActive(false);
-    }
-
-    private void ShowLobbyPanel()
-    {
-        mainMenuPanel?.SetActive(false);
-        lobbyPanel?.SetActive(true);
-    }
 
     private void UpdateStartButton()
     {
