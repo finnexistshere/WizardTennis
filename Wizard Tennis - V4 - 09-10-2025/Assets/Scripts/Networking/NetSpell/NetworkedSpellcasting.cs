@@ -7,6 +7,84 @@ using Unity.Netcode;
 [RequireComponent(typeof(NetworkObject))]
 public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 {
+    // Serializable struct to pass spellBook over network
+    [System.Serializable]
+    public struct SerializedSpellBook : INetworkSerializable
+    {
+        public string[] addresses;
+        public string[] names;
+
+        public SerializedSpellBook(Dictionary<string, string> spellBook)
+        {
+            addresses = new string[spellBook.Count];
+            names = new string[spellBook.Count];
+
+            int i = 0;
+            foreach (var kvp in spellBook)
+            {
+                addresses[i] = kvp.Key;
+                names[i] = kvp.Value;
+                i++;
+            }
+        }
+
+        public Dictionary<string, string> ToDictionary()
+        {
+            Dictionary<string, string> result = new Dictionary<string, string>();
+
+            if (addresses != null && names != null)
+            {
+                for (int i = 0; i < addresses.Length && i < names.Length; i++)
+                {
+                    result[addresses[i]] = names[i];
+                }
+            }
+
+            return result;
+        }
+
+        public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+        {
+            // Serialize the count
+            int count = 0;
+
+            if (serializer.IsWriter)
+            {
+                count = addresses?.Length ?? 0;
+            }
+
+            serializer.SerializeValue(ref count);
+
+            // Initialize arrays on read
+            if (serializer.IsReader)
+            {
+                addresses = new string[count];
+                names = new string[count];
+            }
+
+            // Serialize each string individually
+            for (int i = 0; i < count; i++)
+            {
+                if (serializer.IsWriter)
+                {
+                    // Writing
+                    serializer.SerializeValue(ref addresses[i]);
+                    serializer.SerializeValue(ref names[i]);
+                }
+                else
+                {
+                    // Reading
+                    string addr = "";
+                    string name = "";
+                    serializer.SerializeValue(ref addr);
+                    serializer.SerializeValue(ref name);
+                    addresses[i] = addr;
+                    names[i] = name;
+                }
+            }
+        }
+    }
+
     // --- Racket Shader Reference ---
     [SerializeField] public Material racketShader;
 
@@ -72,6 +150,9 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     private bool queuedCast = false;
     private string queuedSpellAddress = "";
     private string queuedSpellName = "";
+
+    // Track original spell addresses for Gambit (so we remove the right spell on cleanup)
+    private Dictionary<string, string> gambitTransformations = new Dictionary<string, string>();
 
     private void Awake()
     {
@@ -327,19 +408,42 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     private void ExecuteSpell(string spellAddress, string spellName)
     {
+        // Special case: Gambit defers resolution to server
+        if (spellName == "Gambit")
+        {
+            isCasting = true; // lock input only
+            currentActiveSpell = "Gambit";
+
+            audioSource?.PlayOneShot(spellRegisterSound);
+
+            GameObject opponent = FindOpponent();
+            ulong opponentNetId = opponent != null && opponent.TryGetComponent<NetworkObject>(out var netObj)
+                ? netObj.NetworkObjectId
+                : ulong.MaxValue;
+
+            SerializedSpellBook serializedSpellBook = new SerializedSpellBook(spellBook);
+
+            // IMPORTANT: Do NOT start visuals or timers here
+            CastSpellServerRpc(spellAddress, spellName, opponentNetId, serializedSpellBook);
+
+            inputSpellAddress = "";
+            UpdateSpellBook();
+            return;
+        }
+
+        // === NORMAL SPELL FLOW (unchanged) ===
         isCasting = true;
         currentActiveSpell = spellName;
 
         audioSource?.PlayOneShot(spellRegisterSound);
 
-        // Get opponent NetworkObjectId for reliable lookup
-        GameObject opponent = FindOpponent();
-        ulong opponentNetId = opponent != null && opponent.TryGetComponent<NetworkObject>(out var netObj)
-            ? netObj.NetworkObjectId
+        GameObject opponentNormal = FindOpponent();
+        ulong opponentNetIdNormal = opponentNormal != null && opponentNormal.TryGetComponent<NetworkObject>(out var netObj2)
+            ? netObj2.NetworkObjectId
             : ulong.MaxValue;
 
-        // Request server to cast spell
-        CastSpellServerRpc(spellAddress, spellName, opponentNetId);
+        SerializedSpellBook normalBook = new SerializedSpellBook(spellBook);
+        CastSpellServerRpc(spellAddress, spellName, opponentNetIdNormal, normalBook);
 
         float duration = spellDurations.ContainsKey(spellAddress)
             ? spellDurations[spellAddress]
@@ -421,30 +525,79 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         return netObj.NetworkObjectId;
     }
 
-    // ---------- ServerRpc: validate and spawn networked effects (server authoritative) ----------
-    // ====================================================================
-    // FIX FOR NetworkedSpellcasting.cs - CastSpellServerRpc
-    // Replace the caster finding logic (around line 290-320)
-    // ====================================================================
-
     [ServerRpc(RequireOwnership = false)]
-    private void CastSpellServerRpc(string spellAddress, string spellName, ulong opponentNetId, ServerRpcParams rpcParams = default)
+    private void CastSpellServerRpc(string spellAddress, string spellName, ulong opponentNetId, SerializedSpellBook serializedSpellBook, ServerRpcParams rpcParams = default)
     {
         // Check for the spell lock
         if (NetworkedSpellEffects.Instance != null &&
-    NetworkedSpellEffects.Instance.IsAnySpellActive.Value)
+            NetworkedSpellEffects.Instance.IsAnySpellActive.Value)
         {
             Debug.Log($"[NSC-Server] Spell rejected — another spell is active");
             return;
         }
 
-        // if it passes the spell lock, we can now set it to block other spells
+        // Store original spell address for cleanup tracking
+        string originalSpellAddress = spellAddress;
+
+        // BEGIN GAMBIT HANDLING - BEFORE SPELL LOCK
+        if (spellName == "Gambit")
+        {
+            Debug.Log($"[NSC-Server] Gambit cast detected - rolling random spell");
+
+            // Get random spell from SpellEffects
+            if (NetworkedSpellEffects.Instance != null)
+            {
+                string[] gambitSpells = NetworkedSpellEffects.Instance.GetGambitSpells();
+                int randomIndex = Random.Range(0, gambitSpells.Length);
+                string rolledSpell = gambitSpells[randomIndex];
+
+                Debug.Log($"[NSC-Server] Gambit rolled: {rolledSpell}");
+
+                // Find the spell address for the rolled spell using the caster's spellBook
+                string rolledAddress = "";
+
+                // Deserialize the spellBook sent from client
+                Dictionary<string, string> casterSpellBook = serializedSpellBook.ToDictionary();
+
+                foreach (var kvp in casterSpellBook)
+                {
+                    if (kvp.Value == rolledSpell)
+                    {
+                        rolledAddress = kvp.Key;
+                        Debug.Log($"[NSC-Server] Found address '{rolledAddress}' for rolled spell '{rolledSpell}'");
+                        break;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(rolledAddress))
+                {
+                    // Replace spellName and spellAddress with rolled spell
+                    spellName = rolledSpell;
+                    spellAddress = rolledAddress;
+                    Debug.Log($"[NSC-Server] Gambit transformed to: {spellName} ({spellAddress})");
+                }
+                else
+                {
+                    Debug.LogWarning($"[NSC-Server] Gambit rolled {rolledSpell} but no spell address found in caster's spellBook - using original");
+                }
+            }
+            else
+            {
+                Debug.LogError($"[NSC-Server] Gambit failed - NetworkedSpellEffects.Instance is null");
+            }
+        }
+        // END GAMBIT HANDLING
+
+        // NOW set the spell lock (after Gambit transformation)
         NetworkedSpellEffects.Instance.BeginGlobalSpellLockServerRpc();
 
         // Who requested the cast?
         ulong casterClientId = rpcParams.Receive.SenderClientId;
 
         Debug.Log($"[NSC-Server] CastSpellServerRpc called for spell '{spellName}' by client {casterClientId}");
+
+        // ... rest of the method stays exactly the same ...
+        // (all the caster/opponent resolution and spawning logic)
 
         // Server resolves caster/opponent NetworkObjects
         GameObject caster = null;
@@ -617,7 +770,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                             Orbiter orb = orbNetObj.GetComponent<Orbiter>();
                             if (orb != null)
                             {
-                                orb.speed = 180f;   // <<< SET YOUR SPEED HERE
+                                orb.speed = 180f;
                             }
                         }
 
@@ -645,9 +798,10 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 break;
         }
 
-        // Broadcast to clients with the spawned network IDs (0 means "none")
-        CastSpellNetworkedClientRpc(spellAddress, spellName, casterClientId, opponentNetId, visualNetId, effectNetId);
+        // Broadcast to clients with the spawned network IDs (0 means "none") and original spell address
+        CastSpellNetworkedClientRpc(spellAddress, spellName, casterClientId, opponentNetId, visualNetId, effectNetId, originalSpellAddress);
     }
+
     private GameObject GetRealCaster(ulong clientId)
     {
         if (NetworkManager.Singleton == null)
@@ -705,9 +859,9 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 
     // ---------- Updated ClientRpc ----------
     [ClientRpc]
-    private void CastSpellNetworkedClientRpc(string spellAddress, string spellName, ulong casterClientId, ulong opponentNetId, ulong visualNetId, ulong effectNetId)
+    private void CastSpellNetworkedClientRpc(string spellAddress, string spellName, ulong casterClientId, ulong opponentNetId, ulong visualNetId, ulong effectNetId, string originalSpellAddress)
     {
-        Debug.Log($"[NetworkedSpellcasting] ClientRpc received: {spellName} for caster {casterClientId}");
+        Debug.Log($"[NetworkedSpellcasting] ClientRpc received: {spellName} (original: {originalSpellAddress}) for caster {casterClientId}");
 
         // Resolve caster/opponent locally (best-effort)
         GameObject caster = null;
@@ -881,9 +1035,9 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
         }
 
-        // Start cleanup timer on ALL clients
+        // Start cleanup timer on ALL clients - use ORIGINAL spell address for cleanup
         float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;
-        StartCoroutine(ResetVisualAfterDelayAllClients(duration, localBaseEffect, spellAddress));
+        StartCoroutine(ResetVisualAfterDelayAllClients(duration, localBaseEffect, originalSpellAddress));
     }
 
     // Helper coroutine to wait for networked visual to be available
@@ -921,11 +1075,11 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     }
 
     // New method: Reset visual on ALL clients (not just caster)
-    private IEnumerator ResetVisualAfterDelayAllClients(float delay, GameObject localBaseEffect, string spellAddress)
+    private IEnumerator ResetVisualAfterDelayAllClients(float delay, GameObject localBaseEffect, string originalSpellAddress)
     {
         yield return new WaitForSeconds(delay);
 
-        Debug.Log($"[NetworkedSpellcasting] Resetting visual after {delay}s on client");
+        Debug.Log($"[NetworkedSpellcasting] Resetting visual after {delay}s on client - will remove spell: {originalSpellAddress}");
 
         // Handle visual cleanup
         if (currentVisualInstance != null)
@@ -988,11 +1142,14 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             currentActiveSpell = "";
             isCasting = false;
             uiManager?.UpdateSpellStatus("None", Color.white);
-            RemoveSpell(spellAddress);
+
+            // CRITICAL: Remove the ORIGINAL spell address (e.g., Gambit), not the rolled spell
+            RemoveSpell(originalSpellAddress);
+
+            Debug.Log($"[NetworkedSpellcasting] Removed spell from book: {originalSpellAddress}");
         }
     }
 
-    // Keep your original ResetVisualAfterDelay for the caster's CheckSpell method
     private IEnumerator ResetVisualAfterDelay(float delay, GameObject baseEffect, string spellAddress)
     {
         yield return new WaitForSeconds(delay);
@@ -1005,6 +1162,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             currentActiveSpell = "";
             isCasting = false;
             uiManager?.UpdateSpellStatus("None", Color.white);
+            // Note: RemoveSpell is now handled in ResetVisualAfterDelayAllClients
         }
     }
 
@@ -1177,8 +1335,11 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             ? netObj.NetworkObjectId
             : ulong.MaxValue;
 
+        // Serialize the spellBook to send to server
+        SerializedSpellBook serializedSpellBook = new SerializedSpellBook(spellBook);
+
         // Trigger the networked spell cast for all clients via server
-        CastSpellServerRpc(spellAddress, spellName, opponentNetId);
+        CastSpellServerRpc(spellAddress, spellName, opponentNetId, serializedSpellBook);
 
         // Reset visuals after spell duration
         float duration = spellDurations.ContainsKey(spellAddress) ? spellDurations[spellAddress] : spellDuration;

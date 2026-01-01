@@ -5119,9 +5119,17 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 7109859178366572936}
     - target: {fileID: 5088767092636707470, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
+      propertyPath: followMode
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5088767092636707470, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
       propertyPath: gameObject
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 5088767092636707470, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
+      propertyPath: manualTarget
+      value: 
+      objectReference: {fileID: 7109859178366572936}
     - target: {fileID: 5088767092636707470, guid: 3ba37388edf2b8d4f9c8ed9517e9cdc6, type: 3}
       propertyPath: followBallOnly
       value: 0

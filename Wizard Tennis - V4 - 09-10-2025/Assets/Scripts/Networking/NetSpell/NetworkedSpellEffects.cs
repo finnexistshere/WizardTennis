@@ -86,11 +86,11 @@ public class NetworkedSpellEffects : NetworkBehaviour
     public bool spellHit;
     public static bool isSpellSlowdownActive = false;
 
-    private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether" };
+    private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether", "Gambit" };
 
     [SerializeField]
     private string[] gambitSpells = new string[]
-{
+    {
     "Lightning",
     "Ice",
     "Fireball",
@@ -106,7 +106,15 @@ public class NetworkedSpellEffects : NetworkBehaviour
     "Pisces",
     "Tether",
     "Gorbino"
-};
+    };
+
+    /// <summary>
+    /// Get the list of spells Gambit can roll
+    /// </summary>
+    public string[] GetGambitSpells()
+    {
+        return gambitSpells;
+    }
 
     private bool networkSpellActive = false;
     private GameObject Gorbino;
@@ -1323,13 +1331,8 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 ScheduleReset(5f);
                 break;
 
-            case "Gambit":
-                if (isLocalCaster)
-                {
-                    Debug.Log("[SpellEffects] Gambit cast — requesting server roll");
-                    ResolveGambitServerRpc(casterClientId);
-                }
-                break;
+                // The Gambit case WAS here, but I've removed it.
+                // The system now handles Gambit by catching the Spell name in the Cast routine in NetworkedSpellEffects.cs and changes that value randomly based on the Gambit-Available spells
 
                 // Visual casting is already handled by NetworkedSpellcasting.CastSpellServerRpc
                 // No need to call CastSpellNormal here - it would cause duplicate visual spawning
@@ -2386,23 +2389,47 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 {
                     Debug.Log($"[SpellEffects-OnPlayerHitBall] Spawning mud pit at victim position: {victimPosition}");
 
-                    // Spawn the mud pit at victim's feet
-                    // Use raycast to find ground
-                    Vector3 rayOrigin = victimPosition + Vector3.up * 1f;
-                    Vector3 spawnPos = victimPosition; // Default to victim position
+                    // Find the ground below the victim
+                    Vector3 spawnPos = victimPosition;
 
-                    if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 5f))
+                    // Raycast from high above the victim straight down to find the ground
+                    Vector3 rayOrigin = new Vector3(victimPosition.x, victimPosition.y + 10f, victimPosition.z);
+
+                    if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 50f))
                     {
-                        spawnPos = hit.point;
-                        Debug.Log($"[SpellEffects-OnPlayerHitBall] Found ground at {spawnPos}");
+                        // Check if we hit the ground (tagged as "Ground")
+                        if (hit.collider.CompareTag("Ground"))
+                        {
+                            spawnPos = hit.point;
+                            Debug.Log($"[SpellEffects-OnPlayerHitBall] Found Ground at {spawnPos} - hit object: {hit.collider.name}");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[SpellEffects-OnPlayerHitBall] Raycast hit {hit.collider.name} (tag: {hit.collider.tag}), not Ground - using hit point anyway");
+                            spawnPos = hit.point;
+                        }
                     }
                     else
                     {
-                        Debug.LogWarning("[SpellEffects-OnPlayerHitBall] No ground found, using victim position");
-                        spawnPos.y = 0f; // Fallback to ground level
+                        Debug.LogWarning("[SpellEffects-OnPlayerHitBall] No ground found via raycast, searching for Ground object");
+
+                        // Fallback: Find the Ground object directly
+                        GameObject ground = GameObject.FindWithTag("Ground");
+                        if (ground != null)
+                        {
+                            // Use the ground's Y position with the victim's X and Z
+                            spawnPos = new Vector3(victimPosition.x, ground.transform.position.y, victimPosition.z);
+                            Debug.Log($"[SpellEffects-OnPlayerHitBall] Using Ground object position: {spawnPos}");
+                        }
+                        else
+                        {
+                            // Last resort: assume ground level is at y=0
+                            spawnPos.y = 0f;
+                            Debug.LogWarning("[SpellEffects-OnPlayerHitBall] No Ground found, defaulting to y=0");
+                        }
                     }
 
-                    // Spawn the mud pit
+                    // Spawn the mud pit on the ground (not on the player's head!)
                     SpawnEffectServerRpc("Mud", casterClientId, victimClientId, spawnPos, Quaternion.identity);
 
                     // Reset the spell after spawning
@@ -2558,33 +2585,5 @@ public class NetworkedSpellEffects : NetworkBehaviour
             pointSource.PlayOneShot(pointlost, pointSFXVolume);
             Debug.Log("[SpellEffects] Point lost sound played");
         }
-    }
-
-    [ServerRpc(RequireOwnership = false)]
-    private void ResolveGambitServerRpc(ulong casterClientId)
-    {
-        int index = Random.Range(0, gambitSpells.Length);
-        string chosenSpell = gambitSpells[index];
-
-        Debug.Log($"[Gambit-Server] Rolled spell: {chosenSpell}");
-
-        ResolveGambitClientRpc(casterClientId, chosenSpell);
-    }
-
-    [ClientRpc]
-    private void ResolveGambitClientRpc(ulong casterClientId, string chosenSpell)
-    {
-        // Only the caster actually executes it
-        if (NetworkManager.Singleton.LocalClientId != casterClientId)
-            return;
-
-        Debug.Log($"[Gambit-Client] Casting resolved spell: {chosenSpell}");
-
-        string originalSpell = spellName;
-
-        spellName = chosenSpell;
-        castSpell();
-
-        spellName = originalSpell; // restore
     }
 }
