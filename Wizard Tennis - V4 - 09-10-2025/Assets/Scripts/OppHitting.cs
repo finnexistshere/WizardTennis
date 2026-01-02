@@ -23,6 +23,7 @@ public class OppHitting : MonoBehaviour
 
     public CollisionTrackerBall CollisionTracker;
     public GameObject Player;
+    public string PlayerName = "Player_Singleplayer";
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -74,7 +75,7 @@ public class OppHitting : MonoBehaviour
 
     private void Awake()
     {
-        Player = GameObject.Find("Player");
+        Player = GameObject.Find(PlayerName);
     }
 
     void Update()
