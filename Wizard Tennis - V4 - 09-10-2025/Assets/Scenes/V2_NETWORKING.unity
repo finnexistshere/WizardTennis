@@ -43847,7 +43847,6 @@ GameObject:
   - component: {fileID: 1633047532}
   - component: {fileID: 1633047531}
   - component: {fileID: 1633047530}
-  - component: {fileID: 1633047529}
   - component: {fileID: 1633047528}
   - component: {fileID: 1633047527}
   - component: {fileID: 1633047533}
@@ -43903,14 +43902,6 @@ MonoBehaviour:
   _PostProcessShaderAccurate: {fileID: 4800000, guid: 2ebed186567d3c244a87538744a62920, type: 3}
   _PixelationShader: {fileID: 4800000, guid: f2da0e2a14a532548b5db043244b3df1, type: 3}
   _InterlacingShader: {fileID: 4800000, guid: 03ebd34214b41ef459d7ee6753b062be, type: 3}
---- !u!81 &1633047529
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1633047526}
-  m_Enabled: 1
 --- !u!114 &1633047530
 MonoBehaviour:
   m_ObjectHideFlags: 0

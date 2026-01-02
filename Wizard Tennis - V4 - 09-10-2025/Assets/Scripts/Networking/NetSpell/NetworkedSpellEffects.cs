@@ -799,6 +799,19 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
 
             case "Mud":
+                // Ensure mud spawns on ground and scales up like non-networked version
+                if (effectObj != null)
+                {
+                    // Set initial position on ground
+                    Vector3 mudPos = effectObj.transform.position;
+                    mudPos.y = 0.94f; // Match non-networked version
+                    effectObj.transform.position = mudPos;
+
+                    // Apply scaling animation
+                    StartCoroutine(HandleMud(effectObj, 5f));
+
+                    Debug.Log($"[SpellEffects] Mud pit spawned at {mudPos}");
+                }
                 StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
                 break;
 
@@ -2377,67 +2390,36 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
             if (resetOnOppHit && ballOwner != null && hitter != ballOwner)
             {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✓ MUD TRIGGERED! Will spawn pit under {hitter.name}");
+                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✓ MUD TRIGGERED!");
 
-                // Get the victim's position
-                Vector3 victimPosition = hitter.transform.position;
+                // Find the ball to get its position (like the non-networked version)
+                GameObject ballObject = GameObject.FindWithTag("Ball");
 
-                ulong casterClientId = ballOwner.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-
-                if (casterClientId != ulong.MaxValue && victimClientId != ulong.MaxValue)
+                if (ballObject != null)
                 {
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Spawning mud pit at victim position: {victimPosition}");
+                    Vector3 spawnPos = ballObject.transform.position;
+                    spawnPos.y = 0.94f; // Match the non-networked version's ground height
 
-                    // Find the ground below the victim
-                    Vector3 spawnPos = victimPosition;
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Spawning mud pit at ball position: {spawnPos}");
 
-                    // Raycast from high above the victim straight down to find the ground
-                    Vector3 rayOrigin = new Vector3(victimPosition.x, victimPosition.y + 10f, victimPosition.z);
+                    ulong casterClientId = ballOwner.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
-                    if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 50f))
+                    if (casterClientId != ulong.MaxValue && victimClientId != ulong.MaxValue)
                     {
-                        // Check if we hit the ground (tagged as "Ground")
-                        if (hit.collider.CompareTag("Ground"))
-                        {
-                            spawnPos = hit.point;
-                            Debug.Log($"[SpellEffects-OnPlayerHitBall] Found Ground at {spawnPos} - hit object: {hit.collider.name}");
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"[SpellEffects-OnPlayerHitBall] Raycast hit {hit.collider.name} (tag: {hit.collider.tag}), not Ground - using hit point anyway");
-                            spawnPos = hit.point;
-                        }
+                        SpawnEffectServerRpc("Mud", casterClientId, victimClientId, spawnPos, Quaternion.identity);
+
+                        // Reset the spell after spawning
+                        resetSpellEffect();
                     }
                     else
                     {
-                        Debug.LogWarning("[SpellEffects-OnPlayerHitBall] No ground found via raycast, searching for Ground object");
-
-                        // Fallback: Find the Ground object directly
-                        GameObject ground = GameObject.FindWithTag("Ground");
-                        if (ground != null)
-                        {
-                            // Use the ground's Y position with the victim's X and Z
-                            spawnPos = new Vector3(victimPosition.x, ground.transform.position.y, victimPosition.z);
-                            Debug.Log($"[SpellEffects-OnPlayerHitBall] Using Ground object position: {spawnPos}");
-                        }
-                        else
-                        {
-                            // Last resort: assume ground level is at y=0
-                            spawnPos.y = 0f;
-                            Debug.LogWarning("[SpellEffects-OnPlayerHitBall] No Ground found, defaulting to y=0");
-                        }
+                        Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - invalid client IDs");
                     }
-
-                    // Spawn the mud pit on the ground (not on the player's head!)
-                    SpawnEffectServerRpc("Mud", casterClientId, victimClientId, spawnPos, Quaternion.identity);
-
-                    // Reset the spell after spawning
-                    resetSpellEffect();
                 }
                 else
                 {
-                    Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - invalid client IDs");
+                    Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - Ball not found!");
                 }
             }
             else
@@ -2561,6 +2543,37 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
 
         activeFreezeCoroutines.Clear();
+    }
+
+    private IEnumerator HandleMud(GameObject mud, float duration)
+    {
+        if (mud == null) yield break;
+
+        Vector3 endScale = mud.transform.localScale;
+        Vector3 startScale = new Vector3(0.1f, 0.01f, 0.1f);
+        mud.transform.localScale = startScale;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            if (mud == null) yield break;
+            t += Time.deltaTime * 2f; // speed of growth
+            mud.transform.localScale = Vector3.Lerp(startScale, endScale, t);
+            yield return null;
+        }
+
+        // Wait for the mud's duration
+        yield return new WaitForSeconds(duration - 0.5f);
+
+        // Optional: Shrink before despawn
+        float shrink = 0f;
+        while (shrink < 0.5f)
+        {
+            if (mud == null) yield break;
+            shrink += Time.deltaTime;
+            mud.transform.localScale = Vector3.Lerp(endScale, Vector3.zero, shrink / 0.5f);
+            yield return null;
+        }
     }
 
     /// <summary>
