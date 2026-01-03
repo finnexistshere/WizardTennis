@@ -62,6 +62,22 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
     private float ballCheckInterval = 0.5f;
     private float nextBallCheckTime = 0f;
 
+    [Header("Visual Feedback")]
+    public TwoHandIKController ikController;  // Reference to IK controller
+    public GameObject arrowKeyPrefab;  // Prefab with Canvas + TextMeshPro showing arrow
+    public Transform arrowSpawnPoint;  // Where arrows spawn (e.g., above player's head)
+
+    [Header("IK Nudge Settings")]
+    public float nudgeDistance = 0.15f;  // How far to nudge hands
+    public float nudgeDuration = 0.2f;   // How long the nudge lasts
+
+    [Header("Arrow Particle Settings")]
+    public float arrowLifetime = 0.8f;
+    public float arrowFadeStart = 0.3f;  // When to start fading (seconds)
+    public float arrowMoveSpeed = 2f;
+    public Vector2 randomAngleRange = new Vector2(-30f, 30f);  // Random angle variance
+    public float arrowSpawnRadius = 0.3f;  // Random spawn offset
+
     // ================================================================
     // INITIALIZATION
     // ================================================================
@@ -164,6 +180,42 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         {
             hitParticle = FindObjectOfType<ParticleSystem>();
             Debug.Log(hitParticle ? "[Spellcasting] Found hitParticle." : "[Spellcasting] No ParticleSystem found!");
+        }
+
+        // --- IK Controller ---
+        if (ikController == null)
+        {
+            ikController = GetComponent<TwoHandIKController>();
+            if (ikController == null)
+                ikController = FindObjectOfType<TwoHandIKController>();
+
+            Debug.Log(ikController ? "[Spellcasting] Linked IK Controller." : "[Spellcasting] IK Controller not found!");
+        }
+
+        // --- Arrow Spawn Point ---
+        if (arrowSpawnPoint == null)
+        {
+            // Try to find a transform named "ArrowSpawnPoint" or use player's head
+            Transform[] children = GetComponentsInChildren<Transform>();
+            foreach (Transform child in children)
+            {
+                if (child.name.Contains("Head") || child.name.Contains("Spine"))
+                {
+                    arrowSpawnPoint = child;
+                    Debug.Log($"[Spellcasting] Using {child.name} as arrow spawn point.");
+                    break;
+                }
+            }
+
+            if (arrowSpawnPoint == null)
+            {
+                // Fallback: create a spawn point above player
+                GameObject spawnObj = new GameObject("ArrowSpawnPoint");
+                spawnObj.transform.SetParent(transform);
+                spawnObj.transform.localPosition = new Vector3(0f, 2f, 0f); // 2 units above player
+                arrowSpawnPoint = spawnObj.transform;
+                Debug.Log("[Spellcasting] Created ArrowSpawnPoint above player.");
+            }
         }
     }
 
@@ -289,6 +341,10 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         inputSpellAddress += direction;
         lastInputTime = Time.time;
         UpdateSpellBook();
+
+        // VISUAL FEEDBACK
+        TriggerIKNudge(direction);
+        SpawnArrowParticle(direction);
     }
 
     // ================================================================
@@ -550,4 +606,170 @@ public void CastSpellNormal(string spellName)
             audioSource.PlayOneShot(spellClip);
     }
 
+    /// <summary>
+    /// Triggers a small nudge in the IK controller based on input direction
+    /// </summary>
+    private void TriggerIKNudge(string direction)
+    {
+        if (ikController == null)
+        {
+            Debug.LogWarning("[Spellcasting] IK Controller not assigned!");
+            return;
+        }
+
+        Vector3 nudgeOffset = Vector3.zero;
+
+        switch (direction)
+        {
+            case "a": // Left
+                nudgeOffset = -transform.right * nudgeDistance;
+                break;
+            case "A": // Right
+                nudgeOffset = transform.right * nudgeDistance;
+                break;
+            case "B": // Up
+                nudgeOffset = Vector3.up * nudgeDistance;
+                break;
+            case "b": // Down
+                nudgeOffset = -Vector3.up * nudgeDistance * 0.5f; // Smaller downward nudge
+                break;
+        }
+
+        StartCoroutine(IKNudgeCoroutine(nudgeOffset));
+    }
+
+    /// <summary>
+    /// Animates a small nudge in the IK controller
+    /// </summary>
+    private IEnumerator IKNudgeCoroutine(Vector3 offset)
+    {
+        if (ikController == null || ikController.twoHandController == null)
+            yield break;
+
+        Transform handTarget = ikController.twoHandController;
+        Vector3 startPos = handTarget.localPosition;
+        Vector3 nudgedPos = startPos + offset;
+
+        float elapsed = 0f;
+        float halfDuration = nudgeDuration / 2f;
+
+        // Move to nudged position
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            handTarget.localPosition = Vector3.Lerp(startPos, nudgedPos, t);
+            yield return null;
+        }
+
+        elapsed = 0f;
+
+        // Return to original position
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            handTarget.localPosition = Vector3.Lerp(nudgedPos, startPos, t);
+            yield return null;
+        }
+
+        handTarget.localPosition = startPos;
+    }
+
+    /// <summary>
+    /// Spawns a floating arrow particle that fades out
+    /// </summary>
+    private void SpawnArrowParticle(string direction)
+    {
+        if (arrowKeyPrefab == null)
+        {
+            Debug.LogWarning("[Spellcasting] Arrow key prefab not assigned!");
+            return;
+        }
+
+        if (arrowSpawnPoint == null)
+        {
+            Debug.LogWarning("[Spellcasting] Arrow spawn point not assigned!");
+            return;
+        }
+
+        // Get arrow symbol based on direction
+        string arrowSymbol = direction;
+
+        // Random spawn position around spawn point
+        Vector2 randomCircle = Random.insideUnitCircle * arrowSpawnRadius;
+        Vector3 spawnPos = arrowSpawnPoint.position + new Vector3(randomCircle.x, randomCircle.y, 0f);
+
+        // Random rotation angle
+        float randomAngle = Random.Range(randomAngleRange.x, randomAngleRange.y);
+        Quaternion spawnRot = Quaternion.Euler(0f, 0f, randomAngle);
+
+        // Instantiate arrow
+        GameObject arrowInstance = Instantiate(arrowKeyPrefab, spawnPos, spawnRot);
+
+        // Set the text
+        TextMeshProUGUI arrowText = arrowInstance.GetComponentInChildren<TextMeshProUGUI>();
+        if (arrowText != null)
+        {
+            arrowText.text = arrowSymbol;
+        }
+        else
+        {
+            Debug.LogWarning("[Spellcasting] Arrow prefab missing TextMeshProUGUI component!");
+        }
+
+        // Animate it
+        StartCoroutine(AnimateArrowParticle(arrowInstance, arrowText));
+    }
+
+    private string GetArrowSymbol(string direction)
+    {
+        // Font glyphs already match our input directions
+        return direction;
+    }
+
+    /// <summary>
+    /// Animates the arrow particle: moves upward and fades out
+    /// </summary>
+    private IEnumerator AnimateArrowParticle(GameObject arrow, TextMeshProUGUI arrowText)
+    {
+        if (arrow == null)
+            yield break;
+
+        float elapsed = 0f;
+        Vector3 startPos = arrow.transform.position;
+        Vector3 moveDirection = Vector3.up * arrowMoveSpeed;
+
+        CanvasGroup canvasGroup = arrow.GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = arrow.AddComponent<CanvasGroup>();
+        }
+
+        while (elapsed < arrowLifetime)
+        {
+            elapsed += Time.deltaTime;
+
+            // Move upward
+            arrow.transform.position = startPos + moveDirection * elapsed;
+
+            // Fade out after arrowFadeStart
+            if (elapsed > arrowFadeStart)
+            {
+                float fadeProgress = (elapsed - arrowFadeStart) / (arrowLifetime - arrowFadeStart);
+                canvasGroup.alpha = 1f - fadeProgress;
+
+                if (arrowText != null)
+                {
+                    Color textColor = arrowText.color;
+                    textColor.a = 1f - fadeProgress;
+                    arrowText.color = textColor;
+                }
+            }
+
+            yield return null;
+        }
+
+        Destroy(arrow);
+    }
 }

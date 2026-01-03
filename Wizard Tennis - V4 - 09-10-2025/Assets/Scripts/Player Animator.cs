@@ -5,7 +5,7 @@ using System.Collections;
 public class TwoHandIKController : MonoBehaviour
 {
     [Header("Controller & Targets")]
-    [SerializeField] private Transform twoHandController;
+    [SerializeField] public Transform twoHandController;
     [SerializeField] private Transform playerPos;
 
     [Header("Extras")]

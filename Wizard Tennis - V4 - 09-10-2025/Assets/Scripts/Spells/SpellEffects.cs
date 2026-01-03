@@ -56,6 +56,12 @@ public class SpellEffects : MonoBehaviour
     private GameObject activeBall;
     public GameObject flamePrefab;
     private GameObject activeFlame;
+    public GameObject lightningTrailObject;
+
+    [Header("Shadow Spell Settings")]
+    public Material shadowMaterial;  // Material to apply to opponent (semi-transparent/ghostly)
+    private Dictionary<Renderer, Material> shadowOriginalMaterials = new Dictionary<Renderer, Material>();
+    private bool shadowFirstCast = true; // Track if this is the first cast or the return
 
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
@@ -90,6 +96,18 @@ public class SpellEffects : MonoBehaviour
         {
             case "Lightning":
                 Player.GetComponent<MainCharacterMovement>().speed = 17;
+
+                // Activate the lightning trail effect
+                if (lightningTrailObject != null)
+                {
+                    lightningTrailObject.SetActive(true);
+                    Debug.Log("[SpellEffects] Lightning trail activated");
+                }
+                else
+                {
+                    Debug.LogWarning("[SpellEffects] Lightning trail object not assigned!");
+                }
+
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
 
@@ -114,17 +132,40 @@ public class SpellEffects : MonoBehaviour
                 break;
 
             case "Shadow":
-                if (!oppHitSpell)
+                if (shadowFirstCast)
                 {
+                    // First cast: Apply visual effect to PLAYER (caster) and wait for opponent to hit
+                    ApplyShadowMaterial();
+
+                    // Set flag to trigger on opponent hit
                     oppHitSpell = true;
+
+                    // Cast the spell visually
+                    Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
+
+                    shadowFirstCast = false;
+
+                    Debug.Log("[SpellEffects] Shadow spell cast (first) - player made semi-transparent, waiting for opponent return");
                 }
                 else
                 {
+                    // Second cast: Opponent returns the shadowed ball
                     Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
+
+                    // Set opponent's aim position to player's current location
+                    // This makes the opponent hit the ball directly at where the player is standing
                     OppHitting opp = Opponent.GetComponent<OppHitting>();
-                    opp.xPos = Player.transform.position.x;
-                    opp.zPos = Player.transform.position.z;
+                    if (opp != null)
+                    {
+                        opp.xPos = Player.transform.position.x;
+                        opp.zPos = Player.transform.position.z;
+                        Debug.Log($"[SpellEffects] Shadow return - opponent will aim at player position: ({opp.xPos}, {opp.zPos})");
+                    }
+
+                    // Now reset when opponent hits again
                     resetOnOppHit = true;
+
+                    Debug.Log("[SpellEffects] Shadow spell cast (second) - opponent aim set, will reset on next opponent hit");
                 }
                 break;
 
@@ -296,6 +337,14 @@ public class SpellEffects : MonoBehaviour
         {
             case "Lightning":
                 Player.GetComponent<MainCharacterMovement>().speed = 7;
+
+                // Deactivate the lightning trail effect
+                if (lightningTrailObject != null)
+                {
+                    lightningTrailObject.SetActive(false);
+                    Debug.Log("[SpellEffects] Lightning trail deactivated");
+                }
+
                 break;
 
             case "Ice":
@@ -322,6 +371,15 @@ public class SpellEffects : MonoBehaviour
                 break;
             case "Shadow":
                 resetOnOppHit = false;
+                oppHitSpell = false;
+
+                // Restore player's original materials
+                RemoveShadowMaterial();
+
+                // Reset for next cast
+                shadowFirstCast = true;
+
+                Debug.Log("[SpellEffects] Shadow spell ended - player visibility restored, flags reset");
                 break;
             case "Chronos":
                 Time.timeScale = 1f;
@@ -504,6 +562,106 @@ public class SpellEffects : MonoBehaviour
         yield return new WaitForSeconds(duration - 1f);
 
         Destroy(orbiter);
+    }
+
+    /// <summary>
+    /// Applies shadow material to PLAYER (caster), making them semi-transparent
+    /// </summary>
+    private void ApplyShadowMaterial()
+    {
+        if (Player == null)
+        {
+            Debug.LogWarning("[SpellEffects] Cannot apply Shadow - no player found");
+            return;
+        }
+
+        // Clear any existing stored materials
+        shadowOriginalMaterials.Clear();
+
+        // Get all renderers in the PLAYER (including children)
+        Renderer[] renderers = Player.GetComponentsInChildren<Renderer>();
+
+        Debug.Log($"[SpellEffects] Applying Shadow to {renderers.Length} renderers on {Player.name}");
+
+        foreach (Renderer renderer in renderers)
+        {
+            // Skip certain objects (like racket effects, particles, etc.)
+            if (renderer.gameObject.name.Contains("Particle") ||
+                renderer.gameObject.name.Contains("Effect") ||
+                renderer.gameObject.name.Contains("Trail"))
+            {
+                continue;
+            }
+
+            // Store original material
+            shadowOriginalMaterials[renderer] = renderer.material;
+
+            // Apply shadow material or create transparent version
+            if (shadowMaterial != null)
+            {
+                renderer.material = shadowMaterial;
+                Debug.Log($"[SpellEffects] Applied shadow material to {renderer.gameObject.name}");
+            }
+            else
+            {
+                // Fallback: make semi-transparent
+                Material tempMat = new Material(renderer.material);
+                Color c = tempMat.color;
+                c.a = 0.3f; // 30% opacity
+                tempMat.color = c;
+
+                // If using Standard shader, enable transparency
+                if (tempMat.HasProperty("_Mode"))
+                {
+                    tempMat.SetFloat("_Mode", 3); // Transparent mode
+                    tempMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    tempMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    tempMat.SetInt("_ZWrite", 0);
+                    tempMat.DisableKeyword("_ALPHATEST_ON");
+                    tempMat.EnableKeyword("_ALPHABLEND_ON");
+                    tempMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    tempMat.renderQueue = 3000;
+                }
+
+                renderer.material = tempMat;
+                Debug.Log($"[SpellEffects] Applied transparency to {renderer.gameObject.name}");
+            }
+        }
+
+        Debug.Log($"[SpellEffects] Shadow applied to player - stored {shadowOriginalMaterials.Count} original materials");
+    }
+
+    /// <summary>
+    /// Removes shadow material from PLAYER (caster), restoring original appearance
+    /// </summary>
+    private void RemoveShadowMaterial()
+    {
+        if (shadowOriginalMaterials.Count == 0)
+        {
+            Debug.Log("[SpellEffects] No shadow materials to restore");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects] Restoring {shadowOriginalMaterials.Count} original materials");
+
+        int restoredCount = 0;
+        foreach (var kvp in shadowOriginalMaterials)
+        {
+            if (kvp.Key != null && kvp.Value != null)
+            {
+                kvp.Key.material = kvp.Value;
+                restoredCount++;
+                Debug.Log($"[SpellEffects] Restored material for {kvp.Key.gameObject.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SpellEffects] Null renderer or material during restoration");
+            }
+        }
+
+        Debug.Log($"[SpellEffects] Restored {restoredCount} materials to player");
+
+        shadowOriginalMaterials.Clear();
     }
 
     public void OnPointWon()
