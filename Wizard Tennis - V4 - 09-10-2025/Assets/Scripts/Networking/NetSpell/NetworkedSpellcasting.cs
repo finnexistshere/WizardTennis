@@ -93,6 +93,10 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         Down
     }
 
+    [Header("Lightning Trail")]
+    [SerializeField] public GameObject lightningTrailObject;
+    public GameObject LightningTrailObject => lightningTrailObject;
+
     [SerializeField] private GameObject arrowKeyPrefab;
     [SerializeField] private Transform arrowSpawnPoint;
 
@@ -1226,6 +1230,10 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             isCasting = false;
             uiManager?.UpdateSpellStatus("None", Color.white);
             // Note: RemoveSpell is now handled in ResetVisualAfterDelayAllClients
+            if (lightningTrailObject.activeSelf)
+            {
+                lightningTrailObject.SetActive(false);
+            }
         }
     }
 

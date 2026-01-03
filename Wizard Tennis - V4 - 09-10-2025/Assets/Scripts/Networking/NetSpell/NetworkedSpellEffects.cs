@@ -79,6 +79,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
     [Header("Other Spell Settings")]
     public float fireballForceStrength = 20f;
 
+    [Header("Lightning Trail Objects")]
+    private Dictionary<ulong, GameObject> playerLightningTrails = new Dictionary<ulong, GameObject>();
+
     private static HashSet<string> spellsUsedThisRound = new HashSet<string>();
     private Coroutine explanationRoutine;
     private float lastOriginalTimeScale = 1f;
@@ -1074,6 +1077,9 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
                         activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(mcm, 5f));
                         Debug.Log("[SpellEffects] Lightning speed boost applied");
+
+                        // Activate lightning trail for this player
+                        ActivateLightningTrail(player, true);
                     }
                 }
                 break;
@@ -1443,6 +1449,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     mcm.speed = 7;
                     Debug.Log("[SpellEffects] Lightning reset: Speed restored to 7");
                 }
+
+                // Deactivate lightning trail for this player
+                Debug.Log($"[SpellEffects] Attempting to deactivate lightning trail for {player?.name}");
+                ActivateLightningTrail(player, false);
                 break;
 
             case "Green":
@@ -2574,6 +2584,95 @@ public class NetworkedSpellEffects : NetworkBehaviour
             mud.transform.localScale = Vector3.Lerp(endScale, Vector3.zero, shrink / 0.5f);
             yield return null;
         }
+    }
+
+    /// <summary>
+    /// Activates or deactivates the lightning trail for a specific player
+    /// </summary>
+    private void ActivateLightningTrail(GameObject player, bool active)
+    {
+        if (player == null)
+        {
+            Debug.LogWarning("[SpellEffects] ActivateLightningTrail: player is null");
+            return;
+        }
+
+        Debug.Log($"[SpellEffects] ActivateLightningTrail called - player: {player.name}, active: {active}");
+
+        // Get the player's NetworkedSpellcasting component to access their trail object
+        var spellcasting = player.GetComponent<NetworkedSpellcasting>();
+        if (spellcasting == null)
+        {
+            Debug.LogWarning($"[SpellEffects] Player {player.name} has no NetworkedSpellcasting component");
+            return;
+        }
+
+        GameObject trailObject = spellcasting.LightningTrailObject;
+
+        Debug.Log($"[SpellEffects] Trail object from spellcasting: {(trailObject != null ? trailObject.name : "NULL")}");
+
+        if (trailObject == null)
+        {
+            Debug.LogWarning($"[SpellEffects] Player {player.name} has no Lightning Trail Object assigned!");
+            return;
+        }
+
+        // Check current state before changing
+        bool currentState = trailObject.activeSelf;
+        Debug.Log($"[SpellEffects] Trail {trailObject.name} current state: {currentState}, setting to: {active}");
+
+        // Store reference for tracking
+        ulong clientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+        if (clientId != ulong.MaxValue)
+        {
+            if (active)
+            {
+                playerLightningTrails[clientId] = trailObject;
+                Debug.Log($"[SpellEffects] Added trail to tracking dictionary for client {clientId}");
+            }
+            else
+            {
+                playerLightningTrails.Remove(clientId);
+                Debug.Log($"[SpellEffects] Removed trail from tracking dictionary for client {clientId}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[SpellEffects] Could not get client ID for {player.name}");
+        }
+
+        // Activate/deactivate the trail
+        trailObject.SetActive(active);
+
+        // Verify the change took effect
+        bool newState = trailObject.activeSelf;
+        Debug.Log($"[SpellEffects] Trail {trailObject.name} new state after SetActive: {newState}");
+
+        if (newState != active)
+        {
+            Debug.LogError($"[SpellEffects] FAILED to change trail state! Expected: {active}, Got: {newState}");
+        }
+        else
+        {
+            Debug.Log($"[SpellEffects] ✓ Lightning trail {(active ? "activated" : "deactivated")} successfully for {player.name}");
+        }
+    }
+
+    /// <summary>
+    /// Deactivates all active lightning trails (useful for cleanup)
+    /// </summary>
+    public void DeactivateAllLightningTrails()
+    {
+        foreach (var kvp in playerLightningTrails)
+        {
+            if (kvp.Value != null)
+            {
+                kvp.Value.SetActive(false);
+                Debug.Log($"[SpellEffects] Deactivated lightning trail for client {kvp.Key}");
+            }
+        }
+
+        playerLightningTrails.Clear();
     }
 
     /// <summary>
