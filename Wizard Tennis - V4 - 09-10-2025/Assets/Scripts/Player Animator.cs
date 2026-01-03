@@ -22,6 +22,14 @@ public class TwoHandIKController : MonoBehaviour
     [SerializeField] private float followThroughAmount = 0.6f;
     [SerializeField] private float swingTriggerDistance = 0.4f;
 
+    [Header("IK Nudge")]
+    [SerializeField] private float nudgeDamping = 12f;
+
+    private Coroutine nudgeRoutine;
+    private bool isNudging = false;
+    private Vector3 currentNudge;
+    private Vector3 targetNudge;
+
     [Header("Debug")]
     [SerializeField] private bool debugLogs = false;
 
@@ -155,8 +163,18 @@ public class TwoHandIKController : MonoBehaviour
             + playerPos.forward * forwardOffset
             + Vector3.up * heightOffset;
 
+        currentNudge = Vector3.Lerp(
+            currentNudge,
+            targetNudge,
+            Time.deltaTime * nudgeDamping
+        );
+
         twoHandController.position =
-            Vector3.Lerp(twoHandController.position, targetPos, Time.deltaTime * followSpeed);
+            Vector3.Lerp(
+                twoHandController.position,
+                targetPos + currentNudge,
+                Time.deltaTime * followSpeed
+            );
 
         if (debugLogs)
             Debug.Log($"{name}: Hand target={targetPos}, ball={ball.position}");
@@ -174,5 +192,32 @@ public class TwoHandIKController : MonoBehaviour
             playerPos.position,
             playerPos.position + playerPos.forward * swingDistance
         );
+    }
+
+    public void Nudge(Vector3 worldOffset, float duration)
+    {
+        if (nudgeRoutine != null)
+            StopCoroutine(nudgeRoutine);
+
+        nudgeRoutine = StartCoroutine(NudgeRoutine(worldOffset, duration));
+    }
+
+    private IEnumerator NudgeRoutine(Vector3 offset, float duration)
+    {
+        isNudging = true;
+
+        targetNudge = offset;
+
+        yield return new WaitForSeconds(duration);
+
+        // Release back to ball tracking
+        targetNudge = Vector3.zero;
+
+        // Wait until we've visually settled back
+        while (currentNudge.sqrMagnitude > 0.0001f)
+            yield return null;
+
+        currentNudge = Vector3.zero;
+        isNudging = false;
     }
 }

@@ -85,6 +85,23 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         }
     }
 
+    public enum SpellInputDirection : byte
+    {
+        Left,
+        Right,
+        Up,
+        Down
+    }
+
+    [SerializeField] private GameObject arrowKeyPrefab;
+    [SerializeField] private Transform arrowSpawnPoint;
+
+    [SerializeField] private float arrowSpawnRadius = 0.15f;
+    [SerializeField] private Vector2 randomAngleRange = new Vector2(-20f, 20f);
+    [SerializeField] private float arrowMoveSpeed = 0.6f;
+    [SerializeField] private float arrowLifetime = 0.6f;
+    [SerializeField] private float arrowFadeStart = 0.25f;
+
     // --- Racket Shader Reference ---
     [SerializeField] public Material racketShader;
 
@@ -145,6 +162,10 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     private NetworkedUIManager uiManager;
 
     public bool green;
+
+    [SerializeField] private TwoHandIKController ikController;
+    [SerializeField] private float ikNudgeAmount = 0.08f;
+    [SerializeField] private float ikNudgeTime = 0.12f;
 
     // Queue state
     private bool queuedCast = false;
@@ -271,8 +292,11 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             UpdateSpellBook();
         }
 
-        if (CheckSpellInput(out string direction))
-            RegisterInput(direction);
+        if (CheckSpellInput(out SpellInputDirection dir))
+        {
+            RegisterInput(DirectionToGlyph(dir));
+            TriggerInputFeedback(dir);
+        }
 
         if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
             CheckSpell();
@@ -351,20 +375,22 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         Debug.Log($"[NetworkedSpellcasting] Owner Client {OwnerClientId} connected to Ball: {ballObj.name}. BaseEffect: {(baseEffectObject != null ? baseEffectObject.name : "NULL")}");
     }
 
-    private bool CheckSpellInput(out string direction)
+    private bool CheckSpellInput(out SpellInputDirection dir)
     {
-        direction = "";
+        dir = default;
+
         KeyCode leftKey = leftHandedMode ? KeyCode.A : KeyCode.LeftArrow;
         KeyCode rightKey = leftHandedMode ? KeyCode.D : KeyCode.RightArrow;
         KeyCode upKey = leftHandedMode ? KeyCode.W : KeyCode.UpArrow;
         KeyCode downKey = leftHandedMode ? KeyCode.S : KeyCode.DownArrow;
 
-        if (Input.GetKeyDown(leftKey)) direction = "a";
-        if (Input.GetKeyDown(rightKey)) direction = "A";
-        if (Input.GetKeyDown(upKey)) direction = "B";
-        if (Input.GetKeyDown(downKey)) direction = "b";
+        if (Input.GetKeyDown(leftKey)) dir = SpellInputDirection.Left;
+        else if (Input.GetKeyDown(rightKey)) dir = SpellInputDirection.Right;
+        else if (Input.GetKeyDown(upKey)) dir = SpellInputDirection.Up;
+        else if (Input.GetKeyDown(downKey)) dir = SpellInputDirection.Down;
+        else return false;
 
-        return !string.IsNullOrEmpty(direction);
+        return true;
     }
 
     private void RegisterInput(string direction)
@@ -480,6 +506,177 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             queuedSpellAddress = "";
             queuedSpellName = "";
         }
+    }
+
+    private string DirectionToGlyph(SpellInputDirection dir)
+    {
+        switch (dir)
+        {
+            case SpellInputDirection.Left: return "a";
+            case SpellInputDirection.Right: return "A";
+            case SpellInputDirection.Up: return "B";
+            case SpellInputDirection.Down: return "b";
+        }
+        return "";
+    }
+
+    private void TriggerInputFeedback(SpellInputDirection dir)
+    {
+        // Local IK nudge (owner only)
+        TriggerIKNudge(dir);
+
+        // Tell server to broadcast particle
+        InputFeedbackServerRpc(dir);
+    }
+
+    [ServerRpc]
+    private void InputFeedbackServerRpc(SpellInputDirection dir, ServerRpcParams rpcParams = default)
+    {
+        InputFeedbackClientRpc(dir, rpcParams.Receive.SenderClientId);
+    }
+
+    [ClientRpc]
+    private void InputFeedbackClientRpc(SpellInputDirection dir, ulong casterClientId)
+    {
+        // Find caster
+        NetworkedSpellcasting caster = null;
+        foreach (var sc in FindObjectsOfType<NetworkedSpellcasting>())
+        {
+            if (sc.OwnerClientId == casterClientId)
+            {
+                caster = sc;
+                break;
+            }
+        }
+
+        if (caster == null) return;
+
+        // Spawn directional particle
+        caster.PlayInputParticle(dir);
+
+        // IK only on owning client
+        if (caster.IsOwner)
+        {
+            caster.TriggerIKNudge(dir);
+        }
+    }
+
+    private void PlayInputParticle(SpellInputDirection dir)
+    {
+        if (arrowKeyPrefab == null || arrowSpawnPoint == null)
+            return;
+
+        // Convert direction to glyph
+        string arrowSymbol = GetArrowSymbol(dir);
+
+        // Random position around spawn point (world-space UI)
+        Vector2 randomCircle = Random.insideUnitCircle * arrowSpawnRadius;
+        Vector3 spawnPos =
+            arrowSpawnPoint.position +
+            new Vector3(randomCircle.x, randomCircle.y, 0f);
+
+        // Random slight rotation
+        float randomAngle = Random.Range(randomAngleRange.x, randomAngleRange.y);
+        Quaternion spawnRot = Quaternion.Euler(0f, 0f, randomAngle);
+
+        // Spawn arrow
+        GameObject arrowInstance =
+            Instantiate(arrowKeyPrefab, spawnPos, spawnRot);
+
+        // Set glyph
+        TextMeshProUGUI arrowText =
+            arrowInstance.GetComponentInChildren<TextMeshProUGUI>();
+
+        if (arrowText != null)
+            arrowText.text = arrowSymbol;
+
+        StartCoroutine(AnimateArrowParticle(arrowInstance, arrowText));
+    }
+
+    private string GetArrowSymbol(SpellInputDirection dir)
+    {
+        switch (dir)
+        {
+            case SpellInputDirection.Left: return "a";
+            case SpellInputDirection.Right: return "A";
+            case SpellInputDirection.Up: return "B";
+            case SpellInputDirection.Down: return "a";
+        }
+
+        return "?";
+    }
+
+    private IEnumerator AnimateArrowParticle(
+    GameObject arrow,
+    TextMeshProUGUI arrowText)
+    {
+        if (arrow == null)
+            yield break;
+
+        float elapsed = 0f;
+        Vector3 startPos = arrow.transform.position;
+        Vector3 moveDir = Vector3.up * arrowMoveSpeed;
+
+        CanvasGroup canvasGroup =
+            arrow.GetComponent<CanvasGroup>() ??
+            arrow.AddComponent<CanvasGroup>();
+
+        while (elapsed < arrowLifetime)
+        {
+            elapsed += Time.deltaTime;
+
+            arrow.transform.position =
+                startPos + moveDir * elapsed;
+
+            if (elapsed > arrowFadeStart)
+            {
+                float t =
+                    (elapsed - arrowFadeStart) /
+                    (arrowLifetime - arrowFadeStart);
+
+                canvasGroup.alpha = 1f - t;
+
+                if (arrowText != null)
+                {
+                    Color c = arrowText.color;
+                    c.a = 1f - t;
+                    arrowText.color = c;
+                }
+            }
+
+            yield return null;
+        }
+
+        Destroy(arrow);
+    }
+
+    private void TriggerIKNudge(SpellInputDirection dir)
+    {
+        if (!IsOwner || ikController == null) return;
+
+        Transform player = ikController.transform;
+        Vector3 nudge = Vector3.zero;
+
+        switch (dir)
+        {
+            case SpellInputDirection.Left:
+                nudge = -player.right;
+                break;
+
+            case SpellInputDirection.Right:
+                nudge = player.right;
+                break;
+
+            case SpellInputDirection.Up:
+                nudge = Vector3.up;
+                break;
+
+            case SpellInputDirection.Down:
+                nudge = Vector3.down;
+                break;
+        }
+
+        ikController.Nudge(nudge * ikNudgeAmount, ikNudgeTime);
     }
 
     // ---------- Helper: lookup spawned object by NetworkObjectId ----------

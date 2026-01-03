@@ -62,6 +62,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 7382674720721816042}
   m_LocalEulerAnglesHint: {x: 22.779, y: 0, z: 0}
+--- !u!1 &7256089619785960005
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2113900062357106847}
+  m_Layer: 0
+  m_Name: ArrowUIPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2113900062357106847
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7256089619785960005}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.458, y: 1.137, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7382674720721816042}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7574428254200817810
 GameObject:
   m_ObjectHideFlags: 0
@@ -109,6 +140,7 @@ Transform:
   - {fileID: 7169873694817178116}
   - {fileID: 2277041728426686444}
   - {fileID: 5797967983157082458}
+  - {fileID: 2113900062357106847}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!33 &6314804436430758415
@@ -231,6 +263,7 @@ MonoBehaviour:
   pitchJitter: 0.07
   volumeJitter: 0.12
   minInterval: 0.08
+  barrierController: {fileID: 0}
 --- !u!136 &7980530429995331093
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -303,6 +336,7 @@ MonoBehaviour:
   swingSharpness: 0.1
   followThroughAmount: 5
   swingTriggerDistance: 0.4
+  nudgeDamping: 12
   debugLogs: 0
 --- !u!114 &4859587465706889866
 MonoBehaviour:
@@ -318,7 +352,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
   playerInputPrefab: {fileID: 0}
-  playerCameraPrefab: {fileID: 7243684604373740206, guid: a46b80d98432d7644a3011e4225a971e, type: 3}
   cameraSpawnTransform: {fileID: 5797967983157082458}
 --- !u!114 &6196798854856940667
 MonoBehaviour:
@@ -333,6 +366,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkedSpellcasting
   ShowTopMostFoldoutHeaderGroup: 1
+  arrowKeyPrefab: {fileID: 7946335307351082077, guid: f23a5f0d933501545b23a8c4e4691e72, type: 3}
+  arrowSpawnPoint: {fileID: 2113900062357106847}
+  arrowSpawnRadius: 0.15
+  randomAngleRange: {x: -20, y: 20}
+  arrowMoveSpeed: 0.6
+  arrowLifetime: 0.6
+  arrowFadeStart: 0.25
   racketShader: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
   spellBookPanel: {fileID: 0}
   spellAddressText: {fileID: 0}
@@ -351,6 +391,9 @@ MonoBehaviour:
   SpellEffects: {fileID: 0}
   leftHandedMode: 0
   green: 0
+  ikController: {fileID: 5254710448533051725}
+  ikNudgeAmount: 0.5
+  ikNudgeTime: 0.12
 --- !u!114 &-339827697620475669
 MonoBehaviour:
   m_ObjectHideFlags: 0
