@@ -158,6 +158,16 @@ public class NetworkedBall : NetworkBehaviour
                 Debug.Log($"[NetworkedBall] Player {OwnerClientId} initialized barriers to ACTIVE");
             }
         }
+        // --- Server authoritative ball physics ---
+        if (IsServer && currentBallInstance != null)
+        {
+            Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
+            }
+        }
     }
 
     private void FindServingBarriers()
@@ -478,6 +488,13 @@ public class NetworkedBall : NetworkBehaviour
         GameObject ball = Instantiate(ballPrefab, position, rotation);
         ball.tag = "Ball";
 
+        if (!IsServer)
+        {
+            Rigidbody rb = ball.GetComponent<Rigidbody>();
+            if (rb != null)
+                rb.isKinematic = true;
+        }
+
         NetworkObject netObj = ball.GetComponent<NetworkObject>();
         if (netObj != null)
         {
@@ -683,29 +700,48 @@ public class NetworkedBall : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void HitBallServerRpc(Vector3 direction, float force, float upwardForce, ServerRpcParams rpcParams = default)
+    private void HitBallServerRpc(
+        Vector3 direction,
+        float force,
+        float upwardForce,
+        ServerRpcParams rpcParams = default
+    )
     {
-        if (!IsServer || currentBallInstance == null) return;
+        if (!IsServer || currentBallInstance == null)
+            return;
 
-        // Server-side debounce
+        // Global server debounce (unchanged behavior)
         if (Time.time - lastGlobalServerHitTime < serverHitDebounce)
         {
-            Debug.Log($"[Server] Ignoring hit from client {rpcParams.Receive.SenderClientId} - too soon after last hit ({Time.time - lastGlobalServerHitTime:F2}s ago)");
+            Debug.Log($"[Server] Ignoring hit from client {rpcParams.Receive.SenderClientId} (debounced)");
+            return;
+        }
+
+        // Validate closest player on server
+        if (!IsClosestServerPlayer(rpcParams.Receive.SenderClientId))
+        {
+            Debug.Log($"[Server] Rejecting hit from client {rpcParams.Receive.SenderClientId} (not closest)");
             return;
         }
 
         lastGlobalServerHitTime = Time.time;
 
         Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.useGravity = true;
-            Vector3 velocity = direction.normalized * force + new Vector3(0, upwardForce, 0);
-            rb.linearVelocity = velocity;
+        if (rb == null)
+            return;
 
-            Debug.Log($"[Server] Ball hit by client {rpcParams.Receive.SenderClientId} - velocity: {velocity}");
-        }
+        rb.useGravity = true;
 
+        Vector3 finalVelocity =
+            direction.normalized * force +
+            Vector3.up * upwardForce;
+
+        rb.linearVelocity = finalVelocity;
+        SyncBallVelocityClientRpc(finalVelocity);
+
+        Debug.Log($"[Server] Ball hit accepted from client {rpcParams.Receive.SenderClientId}, velocity: {finalVelocity}");
+
+        // Visuals only
         PlayHitEffectsClientRpc(currentBallInstance.transform.position);
     }
 
@@ -747,13 +783,6 @@ public class NetworkedBall : NetworkBehaviour
         if (!hitting)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} can't hit - hitting is disabled");
-            return;
-        }
-
-        // Only allow hit if this player is closest to the ball
-        if (!IsClosestPlayerToBall(other.transform.position))
-        {
-            Debug.Log($"[NetworkedBall] Player {OwnerClientId} not closest to ball, ignoring hit.");
             return;
         }
 
@@ -820,14 +849,42 @@ public class NetworkedBall : NetworkBehaviour
         }
     }
 
-    private bool IsClosestPlayerToBall(Vector3 ballPosition)
+    private bool IsClosestServerPlayer(ulong hittingClientId)
     {
-        float myDistance = Vector3.Distance(transform.position, ballPosition);
+        if (currentBallInstance == null)
+            return false;
 
-        if (opponent != null)
+        Vector3 ballPos = currentBallInstance.transform.position;
+
+        if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(
+                hittingClientId,
+                out var hittingClient))
+            return false;
+
+        if (hittingClient.PlayerObject == null)
+            return false;
+
+        float hitterDist = Vector3.Distance(
+            hittingClient.PlayerObject.transform.position,
+            ballPos
+        );
+
+        foreach (var client in NetworkManager.Singleton.ConnectedClients.Values)
         {
-            float opponentDistance = Vector3.Distance(opponent.transform.position, ballPosition);
-            return myDistance < opponentDistance;
+            if (client.PlayerObject == null)
+                continue;
+
+            if (client.ClientId == hittingClientId)
+                continue;
+
+            float otherDist = Vector3.Distance(
+                client.PlayerObject.transform.position,
+                ballPos
+            );
+
+            // Small tolerance to avoid ties
+            if (otherDist < hitterDist - 0.05f)
+                return false;
         }
 
         return true;
@@ -957,5 +1014,22 @@ public class NetworkedBall : NetworkBehaviour
         Debug.Log($"  localServing: {localServing}");
         Debug.Log($"  nearBall: {nearBall}");
         Debug.Log($"=== END BARRIER DEBUG ===");
+    }
+
+    [ClientRpc]
+    private void SyncBallVelocityClientRpc(Vector3 serverVelocity)
+    {
+        if (IsServer || currentBallInstance == null)
+            return;
+
+        Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+        if (rb == null)
+            return;
+
+        rb.linearVelocity = Vector3.Lerp(
+            rb.linearVelocity,
+            serverVelocity,
+            0.65f
+        );
     }
 }

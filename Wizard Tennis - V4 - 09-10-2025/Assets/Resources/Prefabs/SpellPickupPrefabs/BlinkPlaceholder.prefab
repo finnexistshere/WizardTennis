@@ -163,10 +163,10 @@ MonoBehaviour:
   Color2: {r: 0.25490198, g: 0.3529412, b: 0.46666667, a: 1}
   spellCastAudio: {fileID: 0}
   wizardSpellSound: {fileID: 0}
-  duration: 5
+  duration: 0.1
   spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 7bf1fe9791385154b8d9de75a70b64b6, type: 3}
-  pickupAudio: {fileID: 0}
+  pickupAudio: {fileID: 8300000, guid: bc2deeab52e088e43a9cef4a166237ef, type: 3}
   fadeInDuration: 3
   destroyAfterFadeIn: 0
 --- !u!114 &6878362711651341788

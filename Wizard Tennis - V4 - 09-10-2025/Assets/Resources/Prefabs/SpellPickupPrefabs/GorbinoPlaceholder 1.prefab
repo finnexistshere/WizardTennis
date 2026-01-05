@@ -88,7 +88,7 @@ MonoBehaviour:
   duration: 5
   spawnWeight: 0.1
   spellVisualPrefab: {fileID: 7846448991718186160, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
-  pickupAudio: {fileID: 0}
+  pickupAudio: {fileID: 8300000, guid: bc2deeab52e088e43a9cef4a166237ef, type: 3}
   fadeInDuration: 3
   destroyAfterFadeIn: 0
 --- !u!114 &9179096196316100491

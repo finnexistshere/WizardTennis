@@ -5012,7 +5012,7 @@ MonoBehaviour:
   duration: 2
   spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 7685bcac08d39984bb728ba3898cd10b, type: 3}
-  pickupAudio: {fileID: 0}
+  pickupAudio: {fileID: 8300000, guid: bc2deeab52e088e43a9cef4a166237ef, type: 3}
   fadeInDuration: 3
   destroyAfterFadeIn: 0
 --- !u!114 &-7058819217126101163

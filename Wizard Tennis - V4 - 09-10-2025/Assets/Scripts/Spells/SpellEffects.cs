@@ -140,9 +140,6 @@ public class SpellEffects : MonoBehaviour
                     // Set flag to trigger on opponent hit
                     oppHitSpell = true;
 
-                    // Cast the spell visually
-                    Player.GetComponent<Spellcasting>().CastSpellNormal(spellName);
-
                     shadowFirstCast = false;
 
                     Debug.Log("[SpellEffects] Shadow spell cast (first) - player made semi-transparent, waiting for opponent return");
