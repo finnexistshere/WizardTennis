@@ -195,6 +195,28 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             uiManager = GetComponent<NetworkedUIManager>();
             if (uiManager == null)
                 Debug.LogWarning($"[NetworkedSpellcasting] Player {OwnerClientId} missing NetworkedUIManager!");
+
+            // Subscribe to language changes
+            if (OptionsManager.Instance != null)
+            {
+                OptionsManager.Instance.OnLanguageChanged += OnLanguageChanged;
+            }
+        }
+    }
+
+    private void OnLanguageChanged(Language newLanguage)
+    {
+        if (!IsOwner) return;
+
+        Debug.Log($"[NetworkedSpellcasting] Language changed to: {LanguageHelper.GetLanguageName(newLanguage)}");
+        RefreshSpellBookUI();
+    }
+
+    private void OnDestroy()
+    {
+        if (IsOwner && OptionsManager.Instance != null)
+        {
+            OptionsManager.Instance.OnLanguageChanged -= OnLanguageChanged;
         }
     }
 
@@ -1361,6 +1383,61 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
                 newEntry.gameObject.tag = "SpellUI";
                 newEntry.SetText(item.Value, item.Key);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Refresh the spell book UI when language changes
+    /// Called by SpellLocalizationManager
+    /// </summary>
+    public void RefreshSpellBookUI()
+    {
+        // Only refresh on owner client (the player who owns this character)
+        if (!IsOwner) return;
+
+        if (SpellLocalizationManager.Instance == null) return;
+
+        Language currentLang = SpellLocalizationManager.Instance.CurrentLanguage;
+        Debug.Log($"[NetworkedSpellcasting] Refreshing spell book UI for language: {LanguageHelper.GetLanguageName(currentLang)}");
+
+        // Update all spell names in the spellBook dictionary
+        Dictionary<string, string> updatedSpellBook = new Dictionary<string, string>();
+
+        foreach (var kvp in spellBook)
+        {
+            string address = kvp.Key;
+            string localizedName = SpellLocalizationManager.Instance.GetLocalizedSpellName(address, kvp.Value);
+            updatedSpellBook[address] = localizedName;
+        }
+
+        // Replace the spell book with updated names
+        spellBook = updatedSpellBook;
+
+        // Refresh the visual UI
+        UpdateSpellBook();
+
+        // Update current active spell display if there is one
+        if (!string.IsNullOrEmpty(currentActiveSpell) && uiManager != null)
+        {
+            // Find the spell address for the current active spell
+            string activeAddress = "";
+            foreach (var kvp in spellBook)
+            {
+                if (kvp.Value == currentActiveSpell)
+                {
+                    activeAddress = kvp.Key;
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(activeAddress))
+            {
+                Color uiColor = spellColors.ContainsKey(activeAddress)
+                    ? spellColors[activeAddress]
+                    : Color.white;
+
+                uiManager.UpdateSpellStatus(currentActiveSpell, uiColor);
             }
         }
     }
