@@ -5007,7 +5007,7 @@ MonoBehaviour:
   Color1: {r: 0.8509804, g: 0.65882355, b: 0.35686275, a: 1}
   Color2: {r: 0.19607843, g: 0.05882353, b: 0.003921569, a: 1}
   spellCastAudio: {fileID: 0}
-  wizardSpellSound: {fileID: 0}
+  wizardSpellSound: {fileID: 8300000, guid: c1e3da09380b23542923e2343db7d766, type: 3}
   duration: 5
   spawnWeight: 0.3
   spellVisualPrefab: {fileID: 4549237697235292045, guid: c47d56ba4aabe5741b3ed542e8316d5b, type: 3}
