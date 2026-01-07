@@ -42204,7 +42204,7 @@ MonoBehaviour:
   stoneWallPrefab: {fileID: 6431261414360197309, guid: 0b4927277a528a04a88b24971fd682e3, type: 3}
   geminiPrefab: {fileID: 488275310566214477, guid: 9eed86688c0f9514b83461d1acd9c40b, type: 3}
   mudPrefab: {fileID: 6622199852326541046, guid: 2e4ad7e8bdb68b248869e973c529e432, type: 3}
-  orbiterPrefab: {fileID: 1664898280556804845, guid: 7e0753e70f131dd429aff91289e199c5, type: 3}
+  orbiterPrefab: {fileID: 1664898280556804845, guid: 1b909269e4c14a249a38ba2dda10af9f, type: 3}
   tetherPrefab: {fileID: 7245028594593329606, guid: 43847781cb6a7244f9c92d25630a510f, type: 3}
   jollyPrefab: {fileID: 6974429216218887945, guid: 6931c73d6b9e40f449e0c1b8ce25993d, type: 3}
   BallPrefab: {fileID: 5499011774259568949, guid: 23daab679bb69d54c9d92efa7a6a88d0, type: 3}
