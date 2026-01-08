@@ -54,6 +54,7 @@ public class OptionsManager : MonoBehaviour
 
     [Tooltip("Show FPS counter toggle")]
     [SerializeField] private Toggle showFpsToggle;
+    [SerializeField] private GameObject fPSCanvas;
 
     [Tooltip("Field of view slider")]
     [SerializeField] private Slider fovSlider;
@@ -127,6 +128,11 @@ public class OptionsManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        if (fpsText != null)
+        {
+            DontDestroyOnLoad(fPSCanvas);
+        }
 
         LoadSettings();
         InitializeResolutions();

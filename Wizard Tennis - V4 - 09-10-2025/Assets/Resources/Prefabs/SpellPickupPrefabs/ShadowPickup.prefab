@@ -156,7 +156,6 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   type: 1
   value: -0.2
-  spellName: Shadow
   spellAddress: bbb
   onHitBool: 0
   Color1: {r: 0.54901963, g: 0.6745098, b: 0.8862745, a: 1}
@@ -164,6 +163,28 @@ MonoBehaviour:
   spellCastAudio: {fileID: 8300000, guid: 4def3e56f2c119b4bbe45fb5c0cd97b6, type: 3}
   wizardSpellSound: {fileID: 8300000, guid: b57cf6f1e7d0645499ea9cb68ea4fdb1, type: 3}
   duration: 5
+  defaultSpellName: Shadow
+  localizedSpellNames:
+  - language: 0
+    localizedName: Shadow
+  - language: 1
+    localizedName: "Espa\xF1ol"
+  - language: 2
+    localizedName: Unknown Spell
+  - language: 3
+    localizedName: Unknown Spell
+  - language: 4
+    localizedName: Unknown Spell
+  - language: 5
+    localizedName: Unknown Spell
+  - language: 6
+    localizedName: Unknown Spell
+  - language: 7
+    localizedName: Unknown Spell
+  - language: 8
+    localizedName: Unknown Spell
+  - language: 9
+    localizedName: Unknown Spell
   spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: a7f6afc188cd81d498f7f718f966c46d, type: 3}
   pickupAudio: {fileID: 8300000, guid: bc2deeab52e088e43a9cef4a166237ef, type: 3}

@@ -78,7 +78,6 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   type: 0
   value: 0
-  spellName: Gorbino
   spellAddress: AaAa
   onHitBool: 0
   Color1: {r: 0.44991243, g: 0.6132076, b: 0.43676576, a: 1}
@@ -86,6 +85,28 @@ MonoBehaviour:
   spellCastAudio: {fileID: 0}
   wizardSpellSound: {fileID: 0}
   duration: 5
+  defaultSpellName: Gorbino
+  localizedSpellNames:
+  - language: 0
+    localizedName: Gorbino
+  - language: 1
+    localizedName: "Espa\xF1ol"
+  - language: 2
+    localizedName: Unknown Spell
+  - language: 3
+    localizedName: Unknown Spell
+  - language: 4
+    localizedName: Unknown Spell
+  - language: 5
+    localizedName: Unknown Spell
+  - language: 6
+    localizedName: Unknown Spell
+  - language: 7
+    localizedName: Unknown Spell
+  - language: 8
+    localizedName: Unknown Spell
+  - language: 9
+    localizedName: Unknown Spell
   spawnWeight: 0.1
   spellVisualPrefab: {fileID: 7846448991718186160, guid: ba6c1350b99b9b044a8fe511844f8b2a, type: 3}
   pickupAudio: {fileID: 8300000, guid: bc2deeab52e088e43a9cef4a166237ef, type: 3}

@@ -157,7 +157,6 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   type: 0
   value: 0
-  spellName: Gambit
   spellAddress: bABa
   onHitBool: 0
   Color1: {r: 0.74874234, g: 0.4481132, b: 1, a: 1}
@@ -165,6 +164,28 @@ MonoBehaviour:
   spellCastAudio: {fileID: 0}
   wizardSpellSound: {fileID: 8300000, guid: e08c41b07954a324ba9787d4eb8aa78b, type: 3}
   duration: 5
+  defaultSpellName: Gambit
+  localizedSpellNames:
+  - language: 0
+    localizedName: Gambit
+  - language: 1
+    localizedName: "Espa\xF1ol"
+  - language: 2
+    localizedName: Unknown Spell
+  - language: 3
+    localizedName: Unknown Spell
+  - language: 4
+    localizedName: Unknown Spell
+  - language: 5
+    localizedName: Unknown Spell
+  - language: 6
+    localizedName: Unknown Spell
+  - language: 7
+    localizedName: Unknown Spell
+  - language: 8
+    localizedName: Unknown Spell
+  - language: 9
+    localizedName: Unknown Spell
   spawnWeight: 0.2
   spellVisualPrefab: {fileID: 4549237697235292045, guid: 56338ad9f85554244bad57da7f53f9cc, type: 3}
   pickupAudio: {fileID: 8300000, guid: bc2deeab52e088e43a9cef4a166237ef, type: 3}
