@@ -15,9 +15,11 @@ public class LocalizedTextEditor : Editor
     private SerializedProperty tmp3DTextProp;
     private SerializedProperty updateOnStartProp;
     private SerializedProperty useFormattingProp;
+    private SerializedProperty defaultFontSizeProp;
 
     private bool showLocalizationFoldout = true;
     private bool showComponentsFoldout = false;
+    private bool showFontSizeSettings = false;
     private Language previewLanguage = Language.English;
 
     private void OnEnable()
@@ -29,6 +31,7 @@ public class LocalizedTextEditor : Editor
         tmp3DTextProp = serializedObject.FindProperty("tmp3DText");
         updateOnStartProp = serializedObject.FindProperty("updateOnStart");
         useFormattingProp = serializedObject.FindProperty("useFormatting");
+        defaultFontSizeProp = serializedObject.FindProperty("defaultFontSize");
     }
 
     public override void OnInspectorGUI()
@@ -54,6 +57,38 @@ public class LocalizedTextEditor : Editor
         EditorGUILayout.PropertyField(updateOnStartProp, new GUIContent("Update On Start"));
         EditorGUILayout.PropertyField(useFormattingProp, new GUIContent("Use String Formatting", 
             "Enable for format strings like 'Score: {0}'"));
+
+        EditorGUILayout.Space(5);
+
+        // Font Size Settings
+        showFontSizeSettings = EditorGUILayout.Foldout(showFontSizeSettings, 
+            "Font Size Settings", true);
+
+        if (showFontSizeSettings)
+        {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(defaultFontSizeProp, new GUIContent("Default Font Size", 
+                "Base font size (0 = use component's original size)"));
+            
+            if (defaultFontSizeProp.floatValue == 0f)
+            {
+                EditorGUILayout.HelpBox(
+                    "Default Font Size is 0 - will use the text component's original font size.", 
+                    MessageType.Info);
+            }
+
+            if (GUILayout.Button("Set to Current Component Size"))
+            {
+                float currentSize = GetCurrentComponentFontSize(localizedText);
+                if (currentSize > 0f)
+                {
+                    defaultFontSizeProp.floatValue = currentSize;
+                    serializedObject.ApplyModifiedProperties();
+                }
+            }
+
+            EditorGUI.indentLevel--;
+        }
 
         EditorGUILayout.Space(10);
 
@@ -105,6 +140,7 @@ public class LocalizedTextEditor : Editor
                 SerializedProperty element = localizedTextsProp.GetArrayElementAtIndex(i);
                 SerializedProperty languageProp = element.FindPropertyRelative("language");
                 SerializedProperty textProp = element.FindPropertyRelative("text");
+                SerializedProperty fontSizeProp = element.FindPropertyRelative("fontSize");
 
                 Language lang = (Language)languageProp.enumValueIndex;
 
@@ -125,6 +161,27 @@ public class LocalizedTextEditor : Editor
                 // Text area
                 EditorGUI.indentLevel++;
                 textProp.stringValue = EditorGUILayout.TextArea(textProp.stringValue, GUILayout.Height(60));
+                
+                // Font size override
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Font Size Override:", GUILayout.Width(120));
+                fontSizeProp.floatValue = EditorGUILayout.Slider(fontSizeProp.floatValue, 0f, 300f);
+                
+                if (fontSizeProp.floatValue > 0f && GUILayout.Button("Clear", GUILayout.Width(50)))
+                {
+                    fontSizeProp.floatValue = 0f;
+                }
+                EditorGUILayout.EndHorizontal();
+
+                if (fontSizeProp.floatValue > 0f)
+                {
+                    EditorGUILayout.HelpBox($"Custom size: {fontSizeProp.floatValue:F0}", MessageType.None);
+                }
+                else
+                {
+                    EditorGUILayout.HelpBox("Using default size", MessageType.None);
+                }
+
                 EditorGUI.indentLevel--;
 
                 // Character count
@@ -197,6 +254,18 @@ public class LocalizedTextEditor : Editor
         EditorGUILayout.EndHorizontal();
 
         serializedObject.ApplyModifiedProperties();
+    }
+
+    private float GetCurrentComponentFontSize(LocalizedText localizedText)
+    {
+        if (localizedText.GetComponent<TextMeshProUGUI>() != null)
+            return localizedText.GetComponent<TextMeshProUGUI>().fontSize;
+        else if (localizedText.GetComponent<Text>() != null)
+            return localizedText.GetComponent<Text>().fontSize;
+        else if (localizedText.GetComponent<TextMeshPro>() != null)
+            return localizedText.GetComponent<TextMeshPro>().fontSize;
+
+        return 0f;
     }
 
     private void AddAllLanguages()

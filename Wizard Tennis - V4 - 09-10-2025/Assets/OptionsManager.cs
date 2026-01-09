@@ -653,10 +653,7 @@ public class OptionsManager : MonoBehaviour
 
     private void UpdateUILabel()
     {
-        if (modeLabel != null)
-        {
-            modeLabel.text = leftHandedMode ? "Left-Handed Mode: ON" : "Left-Handed Mode: OFF";
-        }
+        // Removed for compatibility with the Language switching, here for legacy
     }
 
     private void LoadSettings()

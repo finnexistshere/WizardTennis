@@ -33,6 +33,13 @@ public class LocalizedText : MonoBehaviour
     [Tooltip("Format string arguments (e.g., 'Score: {0}')")]
     [SerializeField] private bool useFormatting = false;
 
+    [Header("Font Size Settings")]
+    [Tooltip("Default font size (0 = use component's current size)")]
+    [SerializeField] private float defaultFontSize = 0f;
+
+    [Tooltip("Store original font size when component first loads")]
+    private float originalFontSize = 0f;
+
     private object[] formatArgs = null;
 
     private void Awake()
@@ -51,6 +58,34 @@ public class LocalizedText : MonoBehaviour
         if (legacyText == null && tmpText == null && tmp3DText == null)
         {
             Debug.LogWarning($"[LocalizedText] No Text or TextMeshPro component found on {gameObject.name}");
+        }
+
+        // Store original font size
+        StoreOriginalFontSize();
+    }
+
+    /// <summary>
+    /// Store the original font size from the text component
+    /// </summary>
+    private void StoreOriginalFontSize()
+    {
+        if (tmpText != null)
+        {
+            originalFontSize = tmpText.fontSize;
+        }
+        else if (legacyText != null)
+        {
+            originalFontSize = legacyText.fontSize;
+        }
+        else if (tmp3DText != null)
+        {
+            originalFontSize = tmp3DText.fontSize;
+        }
+
+        // Use original size as default if no default is set
+        if (defaultFontSize == 0f)
+        {
+            defaultFontSize = originalFontSize;
         }
     }
 
@@ -111,6 +146,7 @@ public class LocalizedText : MonoBehaviour
             : Language.English;
 
         string text = GetLocalizedText(currentLang);
+        float fontSize = GetLocalizedFontSize(currentLang);
 
         // Apply formatting if enabled
         if (useFormatting && formatArgs != null && formatArgs.Length > 0)
@@ -126,6 +162,7 @@ public class LocalizedText : MonoBehaviour
         }
 
         SetText(text);
+        SetFontSize(fontSize);
     }
 
     /// <summary>
@@ -164,20 +201,37 @@ public class LocalizedText : MonoBehaviour
     }
 
     /// <summary>
+    /// Get the localized font size for a specific language (0 = use default)
+    /// </summary>
+    public float GetLocalizedFontSize(Language language)
+    {
+        // Try to find exact language match with custom font size
+        foreach (var entry in localizedTexts)
+        {
+            if (entry.language == language && entry.fontSize > 0f)
+                return entry.fontSize;
+        }
+
+        // Use default font size
+        return defaultFontSize > 0f ? defaultFontSize : originalFontSize;
+    }
+
+    /// <summary>
     /// Add or update a localized text entry
     /// </summary>
-    public void SetLocalizedText(Language language, string text)
+    public void SetLocalizedText(Language language, string text, float fontSize = 0f)
     {
         for (int i = 0; i < localizedTexts.Count; i++)
         {
             if (localizedTexts[i].language == language)
             {
                 localizedTexts[i].text = text;
+                localizedTexts[i].fontSize = fontSize;
                 return;
             }
         }
 
-        localizedTexts.Add(new LocalizedTextEntry(language, text));
+        localizedTexts.Add(new LocalizedTextEntry(language, text, fontSize));
     }
 
     /// <summary>
@@ -193,6 +247,24 @@ public class LocalizedText : MonoBehaviour
 
         if (tmp3DText != null)
             tmp3DText.text = text;
+    }
+
+    /// <summary>
+    /// Set the font size on the appropriate component
+    /// </summary>
+    private void SetFontSize(float size)
+    {
+        if (size <= 0f)
+            return; // Don't set if size is 0 or negative
+
+        if (legacyText != null)
+            legacyText.fontSize = Mathf.RoundToInt(size);
+
+        if (tmpText != null)
+            tmpText.fontSize = size;
+
+        if (tmp3DText != null)
+            tmp3DText.fontSize = size;
     }
 
     /// <summary>
@@ -235,9 +307,22 @@ public class LocalizedTextEntry
     [TextArea(2, 5)]
     public string text;
 
+    [Header("Optional Size Override")]
+    [Tooltip("Leave at 0 to use default size. Set a custom size to override for this language.")]
+    [Range(0, 300)]
+    public float fontSize = 0f;
+
     public LocalizedTextEntry(Language lang, string txt)
     {
         language = lang;
         text = txt;
+        fontSize = 0f;
+    }
+
+    public LocalizedTextEntry(Language lang, string txt, float size)
+    {
+        language = lang;
+        text = txt;
+        fontSize = size;
     }
 }

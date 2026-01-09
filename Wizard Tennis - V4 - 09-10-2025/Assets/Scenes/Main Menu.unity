@@ -7244,7 +7244,7 @@ MonoBehaviour:
   - language: 1
     text: Start Game
   - language: 2
-    text: "D\xE9marrez Partie"
+    text: Demarrez Partie
   - language: 3
     text: Start Game
   - language: 4
@@ -8881,6 +8881,8 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Start Game
+  - language: 2
+    text: Demarrez Partie
 --- !u!1 &602758490
 GameObject:
   m_ObjectHideFlags: 0
@@ -11327,7 +11329,7 @@ GameObject:
   - component: {fileID: 962254925}
   - component: {fileID: 962254930}
   m_Layer: 5
-  m_Name: Start (4)
+  m_Name: Multiplayer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11581,6 +11583,8 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Multiplayer
+  - language: 2
+    text: Multijoueur
 --- !u!1 &971707579
 GameObject:
   m_ObjectHideFlags: 0
@@ -11597,7 +11601,7 @@ GameObject:
   - component: {fileID: 971707581}
   - component: {fileID: 971707586}
   m_Layer: 5
-  m_Name: Start (1)
+  m_Name: Options
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -13158,7 +13162,7 @@ GameObject:
   - component: {fileID: 1127713875}
   - component: {fileID: 1127713880}
   m_Layer: 5
-  m_Name: Start (2)
+  m_Name: Credits
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -20132,6 +20136,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LocalizedButton
   defaultText: Button
   localizedTexts:
+  - language: 2
+    text: Dos
   - language: 0
     text: Back
 --- !u!1 &1418134402
@@ -20659,7 +20665,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1437697855}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1476066146}
+  m_Script: {fileID: 11500000, guid: 973c5c5093937b84d9cb690fb88704bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LocalizedInputField
   defaultPlaceholder: Enter text...
@@ -21474,7 +21480,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1461189212}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1476066146}
+  m_Script: {fileID: 11500000, guid: 973c5c5093937b84d9cb690fb88704bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LocalizedInputField
   defaultPlaceholder: Enter text...
@@ -21627,7 +21633,7 @@ GameObject:
   - component: {fileID: 1528718847}
   - component: {fileID: 1528718852}
   m_Layer: 5
-  m_Name: Start (3)
+  m_Name: Spellbook
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -21881,6 +21887,8 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Spellbook
+  - language: 2
+    text: Grimoire
 --- !u!1 &1528912660
 GameObject:
   m_ObjectHideFlags: 0

@@ -350,11 +350,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Spell Address
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &15416433
 GameObject:
   m_ObjectHideFlags: 0
@@ -15501,7 +15503,7 @@ GameObject:
   - component: {fileID: 126685021}
   - component: {fileID: 126685022}
   m_Layer: 5
-  m_Name: Resume (4)
+  m_Name: QuitToMenu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -15755,6 +15757,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit to Menu
+    fontSize: 0
 --- !u!4 &151709499 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3fef29261fda45942952b496e299da7f, type: 3}
@@ -16030,6 +16033,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Resume
+    fontSize: 0
 --- !u!1 &153926187
 GameObject:
   m_ObjectHideFlags: 0
@@ -16727,11 +16731,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: New Text
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &177295368
 GameObject:
   m_ObjectHideFlags: 0
@@ -17153,11 +17159,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 0
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &216367065 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 233c1d04373bad24f9fea80911a837ef, type: 3}
@@ -17431,18 +17439,17 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 260133490}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 400132959}
+  m_Children: []
   m_Father: {fileID: 1265070138}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -654, y: -385}
-  m_SizeDelta: {x: 500, y: 50}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 337, y: -1127.6265}
+  m_SizeDelta: {x: 459.14, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &260133492
 MonoBehaviour:
@@ -17498,8 +17505,8 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
-  m_VerticalAlignment: 256
+  m_HorizontalAlignment: 4
+  m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_wordSpacing: 0
@@ -17529,7 +17536,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: -89.76245, y: 0, z: 224.76472, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -17559,11 +17566,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 'Rally Count:'
+    fontSize: 0
+  - language: 1
+    text: 'Rally Count:'
+    fontSize: 0
+  - language: 2
+    text: 'Nombre de Rassemblements:'
+    fontSize: 30
+  - language: 3
+    text: 'Rally Count:'
+    fontSize: 0
+  - language: 4
+    text: 'Rally Count:'
+    fontSize: 0
+  - language: 5
+    text: 'Rally Count:'
+    fontSize: 0
+  - language: 6
+    text: 'Rally Count:'
+    fontSize: 0
+  - language: 7
+    text: 'Rally Count:'
+    fontSize: 0
+  - language: 8
+    text: 'Rally Count:'
+    fontSize: 0
+  - language: 9
+    text: 'Rally Count:'
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &265330815
 GameObject:
   m_ObjectHideFlags: 0
@@ -17819,11 +17855,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Next Round
+    fontSize: 0
+  - language: 1
+    text: Next Round
+    fontSize: 0
+  - language: 2
+    text: Prochain Tour
+    fontSize: 0
+  - language: 3
+    text: Next Round
+    fontSize: 0
+  - language: 4
+    text: Next Round
+    fontSize: 0
+  - language: 5
+    text: Next Round
+    fontSize: 0
+  - language: 6
+    text: Next Round
+    fontSize: 0
+  - language: 7
+    text: Next Round
+    fontSize: 0
+  - language: 8
+    text: Next Round
+    fontSize: 0
+  - language: 9
+    text: Next Round
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &301578357 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: dcb581a0dd811d844bf5807c2a463c22, type: 3}
@@ -17845,7 +17910,7 @@ GameObject:
   - component: {fileID: 302547066}
   - component: {fileID: 302547067}
   m_Layer: 5
-  m_Name: Resume (2)
+  m_Name: QuitGame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18099,6 +18164,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit Game
+    fontSize: 0
 --- !u!1 &319551047
 GameObject:
   m_ObjectHideFlags: 0
@@ -23406,11 +23472,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit to Menu
+    fontSize: 0
+  - language: 1
+    text: Quit to Menu
+    fontSize: 0
+  - language: 2
+    text: Retour au Menu
+    fontSize: 0
+  - language: 3
+    text: Quit to Menu
+    fontSize: 0
+  - language: 4
+    text: Quit to Menu
+    fontSize: 0
+  - language: 5
+    text: Quit to Menu
+    fontSize: 0
+  - language: 6
+    text: Quit to Menu
+    fontSize: 0
+  - language: 7
+    text: Quit to Menu
+    fontSize: 0
+  - language: 8
+    text: Quit to Menu
+    fontSize: 0
+  - language: 9
+    text: Quit to Menu
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &383939412
 GameObject:
   m_ObjectHideFlags: 0
@@ -23573,11 +23668,68 @@ MonoBehaviour:
 
 
       Run into Ball to Hit'
+    fontSize: 0
+  - language: 1
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
+  - language: 2
+    text: 'E au service
+
+
+
+      Courir vers la balle pour la frapper'
+    fontSize: 0
+  - language: 3
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
+  - language: 4
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
+  - language: 5
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
+  - language: 6
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
+  - language: 7
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
+  - language: 8
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
+  - language: 9
+    text: 'E to Serve
+
+
+      Run into Ball to Hit'
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &400132958
 GameObject:
   m_ObjectHideFlags: 0
@@ -23609,11 +23761,11 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 260133491}
+  m_Father: {fileID: 1265070138}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 306.1, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 337, y: -1127.6263}
   m_SizeDelta: {x: 500, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &400132960
@@ -23701,7 +23853,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 275.02652, y: 0, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -23731,11 +23883,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 0
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1001 &413408969
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -23840,7 +23994,7 @@ GameObject:
   - component: {fileID: 440953816}
   - component: {fileID: 440953817}
   m_Layer: 5
-  m_Name: Resume (3)
+  m_Name: NextRound
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -24094,6 +24248,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Next Round
+    fontSize: 0
 --- !u!4 &469019828 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5748362185717435989, guid: bc00f3d5be97a7c4eb93f43c477c2398, type: 3}
@@ -24252,11 +24407,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Restart
+    fontSize: 0
+  - language: 1
+    text: Restart
+    fontSize: 0
+  - language: 2
+    text: Redemarrage
+    fontSize: 0
+  - language: 3
+    text: Restart
+    fontSize: 0
+  - language: 4
+    text: Restart
+    fontSize: 0
+  - language: 5
+    text: Restart
+    fontSize: 0
+  - language: 6
+    text: Restart
+    fontSize: 0
+  - language: 7
+    text: Restart
+    fontSize: 0
+  - language: 8
+    text: Restart
+    fontSize: 0
+  - language: 9
+    text: Restart
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1001 &479218930
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -25375,6 +25559,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit to Menu
+    fontSize: 0
 --- !u!1 &579273216
 GameObject:
   m_ObjectHideFlags: 0
@@ -26873,7 +27058,6 @@ GameObject:
   - component: {fileID: 838355078}
   - component: {fileID: 838355080}
   - component: {fileID: 838355079}
-  - component: {fileID: 838355081}
   m_Layer: 5
   m_Name: SpellStatusText
   m_TagString: Untagged
@@ -26920,7 +27104,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: None
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 28e2d54675e35af41bc04cc1067d3cb9, type: 2}
   m_sharedMaterial: {fileID: -5053161182684626317, guid: 28e2d54675e35af41bc04cc1067d3cb9, type: 2}
@@ -26999,27 +27183,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 838355077}
   m_CullTransparentMesh: 1
---- !u!114 &838355081
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 838355077}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: New Text
-  localizedTexts:
-  - language: 0
-    text: New Text
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
 --- !u!1 &842105361
 GameObject:
   m_ObjectHideFlags: 0
@@ -27567,11 +27730,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: VS
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1001 &897744301
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -27798,11 +27963,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit to Menu
+    fontSize: 0
+  - language: 1
+    text: Quit to Menu
+    fontSize: 0
+  - language: 2
+    text: Retour au Menu
+    fontSize: 0
+  - language: 3
+    text: Quit to Menu
+    fontSize: 0
+  - language: 4
+    text: Quit to Menu
+    fontSize: 0
+  - language: 5
+    text: Quit to Menu
+    fontSize: 0
+  - language: 6
+    text: Quit to Menu
+    fontSize: 0
+  - language: 7
+    text: Quit to Menu
+    fontSize: 0
+  - language: 8
+    text: Quit to Menu
+    fontSize: 0
+  - language: 9
+    text: Quit to Menu
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &935831813 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: dcb581a0dd811d844bf5807c2a463c22, type: 3}
@@ -28452,11 +28646,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 0
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1001 &994187377
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -29346,11 +29542,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 'Current Spell:'
+    fontSize: 0
+  - language: 1
+    text: 'Current Spell:'
+    fontSize: 0
+  - language: 2
+    text: 'Sort Actuel :'
+    fontSize: 0
+  - language: 3
+    text: 'Current Spell:'
+    fontSize: 0
+  - language: 4
+    text: 'Current Spell:'
+    fontSize: 0
+  - language: 5
+    text: 'Current Spell:'
+    fontSize: 0
+  - language: 6
+    text: 'Current Spell:'
+    fontSize: 0
+  - language: 7
+    text: 'Current Spell:'
+    fontSize: 0
+  - language: 8
+    text: 'Current Spell:'
+    fontSize: 0
+  - language: 9
+    text: 'Current Spell:'
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &1113748717 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: dcb581a0dd811d844bf5807c2a463c22, type: 3}
@@ -29655,7 +29880,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 126.7}
-  m_SizeDelta: {x: 250, y: 50}
+  m_SizeDelta: {x: 700, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1176950518
 MonoBehaviour:
@@ -29772,11 +29997,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: GAME OVER
+    fontSize: 0
+  - language: 1
+    text: GAME OVER
+    fontSize: 0
+  - language: 2
+    text: JEU TERMINE
+    fontSize: 0
+  - language: 3
+    text: GAME OVER
+    fontSize: 0
+  - language: 4
+    text: GAME OVER
+    fontSize: 0
+  - language: 5
+    text: GAME OVER
+    fontSize: 0
+  - language: 6
+    text: GAME OVER
+    fontSize: 0
+  - language: 7
+    text: GAME OVER
+    fontSize: 0
+  - language: 8
+    text: GAME OVER
+    fontSize: 0
+  - language: 9
+    text: GAME OVER
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &1182497478 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 233c1d04373bad24f9fea80911a837ef, type: 3}
@@ -30590,8 +30844,9 @@ RectTransform:
   - {fileID: 1578197340}
   - {fileID: 842105362}
   - {fileID: 579273217}
-  - {fileID: 260133491}
   - {fileID: 1708105518}
+  - {fileID: 400132959}
+  - {fileID: 260133491}
   m_Father: {fileID: 1797665258}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -36334,11 +36589,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 0
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1001 &1383997553
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -36807,6 +37064,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Restart
+    fontSize: 0
 --- !u!4 &1438669994 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1c487447fde61f64f8ae1517f83de4a5, type: 3}
@@ -43152,11 +43410,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Resume
+    fontSize: 0
+  - language: 1
+    text: Resume
+    fontSize: 0
+  - language: 2
+    text: Reprendre
+    fontSize: 0
+  - language: 3
+    text: Resume
+    fontSize: 0
+  - language: 4
+    text: Resume
+    fontSize: 0
+  - language: 5
+    text: Resume
+    fontSize: 0
+  - language: 6
+    text: Resume
+    fontSize: 0
+  - language: 7
+    text: Resume
+    fontSize: 0
+  - language: 8
+    text: Resume
+    fontSize: 0
+  - language: 9
+    text: Resume
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &1639222523 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: dcb581a0dd811d844bf5807c2a463c22, type: 3}
@@ -48565,11 +48852,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 'Green Points:'
+    fontSize: 0
+  - language: 1
+    text: 'Green Points:'
+    fontSize: 0
+  - language: 2
+    text: 'Points Verts:'
+    fontSize: 0
+  - language: 3
+    text: 'Green Points:'
+    fontSize: 0
+  - language: 4
+    text: 'Green Points:'
+    fontSize: 0
+  - language: 5
+    text: 'Green Points:'
+    fontSize: 0
+  - language: 6
+    text: 'Green Points:'
+    fontSize: 0
+  - language: 7
+    text: 'Green Points:'
+    fontSize: 0
+  - language: 8
+    text: 'Green Points:'
+    fontSize: 0
+  - language: 9
+    text: 'Green Points:'
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &1710648335 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: dcb581a0dd811d844bf5807c2a463c22, type: 3}
@@ -48958,11 +49274,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: New Text
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &1790106858 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1c487447fde61f64f8ae1517f83de4a5, type: 3}
@@ -49900,11 +50218,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Spellbook
+    fontSize: 0
+  - language: 1
+    text: Spellbook
+    fontSize: 0
+  - language: 2
+    text: Grimoire
+    fontSize: 0
+  - language: 3
+    text: Spellbook
+    fontSize: 0
+  - language: 4
+    text: Spellbook
+    fontSize: 0
+  - language: 5
+    text: Spellbook
+    fontSize: 0
+  - language: 6
+    text: Spellbook
+    fontSize: 0
+  - language: 7
+    text: Spellbook
+    fontSize: 0
+  - language: 8
+    text: Spellbook
+    fontSize: 0
+  - language: 9
+    text: Spellbook
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1977279297 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8730164143838520366, guid: 0969430af3e17c444b1f282991c1e4bc, type: 3}
@@ -50081,11 +50428,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit Game
+    fontSize: 0
+  - language: 1
+    text: Quit Game
+    fontSize: 0
+  - language: 2
+    text: Quitter le Jeu
+    fontSize: 0
+  - language: 3
+    text: Quit Game
+    fontSize: 0
+  - language: 4
+    text: Quit Game
+    fontSize: 0
+  - language: 5
+    text: Quit Game
+    fontSize: 0
+  - language: 6
+    text: Quit Game
+    fontSize: 0
+  - language: 7
+    text: Quit Game
+    fontSize: 0
+  - language: 8
+    text: Quit Game
+    fontSize: 0
+  - language: 9
+    text: Quit Game
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1991496444 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 8179f0c2d810c8f4d884e6dd5bdabdb8, type: 3}
@@ -55826,11 +56202,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit Game
+    fontSize: 0
+  - language: 1
+    text: Quit Game
+    fontSize: 0
+  - language: 2
+    text: Quitter le jeu
+    fontSize: 0
+  - language: 3
+    text: Quit Game
+    fontSize: 0
+  - language: 4
+    text: Quit Game
+    fontSize: 0
+  - language: 5
+    text: Quit Game
+    fontSize: 0
+  - language: 6
+    text: Quit Game
+    fontSize: 0
+  - language: 7
+    text: Quit Game
+    fontSize: 0
+  - language: 8
+    text: Quit Game
+    fontSize: 0
+  - language: 9
+    text: Quit Game
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &2101770628
 GameObject:
   m_ObjectHideFlags: 0
@@ -56101,6 +56506,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Quit Game
+    fontSize: 0
 --- !u!1 &2115178750
 GameObject:
   m_ObjectHideFlags: 0
