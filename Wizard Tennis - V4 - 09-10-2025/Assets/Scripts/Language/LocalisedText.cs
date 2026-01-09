@@ -56,7 +56,13 @@ public class LocalizedText : MonoBehaviour
 
     private void Start()
     {
-        // Subscribe to language changes
+        // Register with the broadcast manager for automatic updates
+        if (LocalizationBroadcastManager.Instance != null)
+        {
+            LocalizationBroadcastManager.Instance.Register(this);
+        }
+
+        // Subscribe to language changes (legacy support)
         if (OptionsManager.Instance != null)
         {
             OptionsManager.Instance.OnLanguageChanged += OnLanguageChanged;
@@ -77,7 +83,13 @@ public class LocalizedText : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Unsubscribe from language changes
+        // Unregister from broadcast manager
+        if (LocalizationBroadcastManager.Instance != null)
+        {
+            LocalizationBroadcastManager.Instance.Unregister(this);
+        }
+
+        // Unsubscribe from language changes (legacy support)
         if (OptionsManager.Instance != null)
         {
             OptionsManager.Instance.OnLanguageChanged -= OnLanguageChanged;

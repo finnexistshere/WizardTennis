@@ -165,11 +165,24 @@ public class SpellLocalizationManager : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        // Delayed subscription in case OptionsManager spawns after this
+        if (OptionsManager.Instance != null && currentLanguage != OptionsManager.Instance.CurrentLanguage)
+        {
+            currentLanguage = OptionsManager.Instance.CurrentLanguage;
+        }
+    }
+
     private void OnDestroy()
     {
-        if (OptionsManager.Instance != null)
+        if (instance == this)
         {
-            OptionsManager.Instance.OnLanguageChanged -= OnLanguageChanged;
+            if (OptionsManager.Instance != null)
+            {
+                OptionsManager.Instance.OnLanguageChanged -= OnLanguageChanged;
+            }
+            instance = null;
         }
     }
 

@@ -630,7 +630,12 @@ public class OptionsManager : MonoBehaviour
         if (languageDropdown != null && languageDropdown.value != (int)language)
             languageDropdown.value = (int)language;
 
+        // Fire the language changed event (for spellcasting and other subscribers)
         OnLanguageChanged?.Invoke(language);
+
+        // Force update all localized UI components
+        BroadcastLanguageChangeToAllUI();
+
         OnSettingsChanged?.Invoke();
     }
 
@@ -745,6 +750,55 @@ public class OptionsManager : MonoBehaviour
         SetLanguage(Language.English);
 
         Debug.Log("[OptionsManager] Reset all settings to defaults");
+    }
+
+    /// <summary>
+    /// Broadcasts language change to all localized UI components in the scene
+    /// </summary>
+    private void BroadcastLanguageChangeToAllUI()
+    {
+        Debug.Log($"[OptionsManager] Broadcasting language change to all UI components...");
+
+        int updatedCount = 0;
+
+        // Update all LocalizedText components
+        foreach (var localizedText in FindObjectsOfType<LocalizedText>(true))
+        {
+            localizedText.UpdateText();
+            updatedCount++;
+        }
+
+        // Update all LocalizedButton components
+        foreach (var localizedButton in FindObjectsOfType<LocalizedButton>(true))
+        {
+            localizedButton.UpdateText();
+            updatedCount++;
+        }
+
+        // Update all LocalizedDropdown components
+        foreach (var localizedDropdown in FindObjectsOfType<LocalizedDropdown>(true))
+        {
+            localizedDropdown.UpdateOptions();
+            updatedCount++;
+        }
+
+        // Update all LocalizedInputField components
+        foreach (var localizedInputField in FindObjectsOfType<LocalizedInputField>(true))
+        {
+            localizedInputField.UpdatePlaceholder();
+            updatedCount++;
+        }
+
+        Debug.Log($"[OptionsManager] Updated {updatedCount} localized UI components");
+    }
+
+    /// <summary>
+    /// Force refresh all localized UI in the scene (useful for debugging)
+    /// </summary>
+    public void ForceRefreshAllLocalizedUI()
+    {
+        Debug.Log("[OptionsManager] Forcing refresh of all localized UI...");
+        BroadcastLanguageChangeToAllUI();
     }
 
     #endregion
