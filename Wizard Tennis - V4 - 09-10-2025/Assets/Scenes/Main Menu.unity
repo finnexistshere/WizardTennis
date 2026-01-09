@@ -272,29 +272,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Create Lobby
+    fontSize: 0
   - language: 1
     text: Create Lobby
+    fontSize: 0
   - language: 2
     text: Creer un lobby
+    fontSize: 0
   - language: 3
     text: Create Lobby
+    fontSize: 0
   - language: 4
     text: Create Lobby
+    fontSize: 0
   - language: 5
     text: Create Lobby
+    fontSize: 0
   - language: 6
     text: Create Lobby
+    fontSize: 0
   - language: 7
     text: Create Lobby
+    fontSize: 0
   - language: 8
     text: Create Lobby
+    fontSize: 0
   - language: 9
     text: Create Lobby
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &11697158
 GameObject:
   m_ObjectHideFlags: 0
@@ -494,6 +505,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 
+    fontSize: 0
 --- !u!114 &11697164
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -510,11 +522,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &31424732
 GameObject:
   m_ObjectHideFlags: 0
@@ -6016,7 +6030,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &218456330
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6611,11 +6625,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &332311676
 GameObject:
   m_ObjectHideFlags: 0
@@ -6760,7 +6776,7 @@ RectTransform:
   m_Father: {fileID: 904416378}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -7007,11 +7023,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Enter Lobby Code
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &384828482
 GameObject:
   m_ObjectHideFlags: 0
@@ -7241,29 +7259,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Start Game
+    fontSize: 0
   - language: 1
     text: Start Game
+    fontSize: 0
   - language: 2
     text: Demarrez Partie
+    fontSize: 0
   - language: 3
     text: Start Game
+    fontSize: 0
   - language: 4
     text: Start Game
+    fontSize: 0
   - language: 5
     text: Start Game
+    fontSize: 0
   - language: 6
     text: Start Game
+    fontSize: 0
   - language: 7
     text: Start Game
+    fontSize: 0
   - language: 8
     text: Start Game
+    fontSize: 0
   - language: 9
     text: Start Game
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &401489381
 GameObject:
   m_ObjectHideFlags: 0
@@ -7417,29 +7446,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Back
+    fontSize: 0
   - language: 1
     text: Back
+    fontSize: 0
   - language: 2
     text: Dos
+    fontSize: 0
   - language: 3
     text: Back
+    fontSize: 0
   - language: 4
     text: Back
+    fontSize: 0
   - language: 5
     text: Back
+    fontSize: 0
   - language: 6
     text: Back
+    fontSize: 0
   - language: 7
     text: Back
+    fontSize: 0
   - language: 8
     text: Back
+    fontSize: 0
   - language: 9
     text: Back
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &464346488
 GameObject:
   m_ObjectHideFlags: 0
@@ -7886,6 +7926,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Start Game
+    fontSize: 0
 --- !u!1 &478326371
 GameObject:
   m_ObjectHideFlags: 0
@@ -8606,11 +8647,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Green
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &593452713
 GameObject:
   m_ObjectHideFlags: 0
@@ -8881,8 +8924,10 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Start Game
+    fontSize: 0
   - language: 2
     text: Demarrez Partie
+    fontSize: 0
 --- !u!1 &602758490
 GameObject:
   m_ObjectHideFlags: 0
@@ -9153,6 +9198,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: a
+    fontSize: 0
 --- !u!1 &633374755
 GameObject:
   m_ObjectHideFlags: 0
@@ -9381,11 +9427,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Back
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &640471069
 GameObject:
   m_ObjectHideFlags: 0
@@ -9539,11 +9587,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Forces the enemy to return the ball to you.
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &645397770
 GameObject:
   m_ObjectHideFlags: 0
@@ -9775,11 +9825,13 @@ MonoBehaviour:
   - language: 0
     text: Starts a rally counter with the opponent. Whoever wins the rally gains
       all the counter points.
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &689968009
 GameObject:
   m_ObjectHideFlags: 0
@@ -10039,11 +10091,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &743577951
 GameObject:
   m_ObjectHideFlags: 0
@@ -10570,6 +10624,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: X
+    fontSize: 0
 --- !u!1 &840309347
 GameObject:
   m_ObjectHideFlags: 0
@@ -10873,11 +10928,13 @@ MonoBehaviour:
 
 
       Paco Casares'
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &868519674
 GameObject:
   m_ObjectHideFlags: 0
@@ -11096,11 +11153,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Toggle
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &904416377
 GameObject:
   m_ObjectHideFlags: 0
@@ -11290,29 +11349,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Spellbook
+    fontSize: 0
   - language: 1
     text: Spellbook
+    fontSize: 0
   - language: 2
     text: Grimoire
+    fontSize: 0
   - language: 3
     text: Spellbook
+    fontSize: 0
   - language: 4
     text: Spellbook
+    fontSize: 0
   - language: 5
     text: Spellbook
+    fontSize: 0
   - language: 6
     text: Spellbook
+    fontSize: 0
   - language: 7
     text: Spellbook
+    fontSize: 0
   - language: 8
     text: Spellbook
+    fontSize: 0
   - language: 9
     text: Spellbook
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &962254923
 GameObject:
   m_ObjectHideFlags: 0
@@ -11583,8 +11653,10 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Multiplayer
+    fontSize: 0
   - language: 2
     text: Multijoueur
+    fontSize: 0
 --- !u!1 &971707579
 GameObject:
   m_ObjectHideFlags: 0
@@ -11855,6 +11927,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Options
+    fontSize: 0
 --- !u!1 &1009818075
 GameObject:
   m_ObjectHideFlags: 0
@@ -12083,11 +12156,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: a
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1046364657
 GameObject:
   m_ObjectHideFlags: 0
@@ -12387,11 +12462,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Credits
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1061660977
 GameObject:
   m_ObjectHideFlags: 0
@@ -12662,6 +12739,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Back
+    fontSize: 0
 --- !u!1 &1069029934
 GameObject:
   m_ObjectHideFlags: 0
@@ -13146,6 +13224,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Leave Lobby
+    fontSize: 0
 --- !u!1 &1127713873
 GameObject:
   m_ObjectHideFlags: 0
@@ -13416,6 +13495,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Credits
+    fontSize: 0
 --- !u!1 &1136432766
 GameObject:
   m_ObjectHideFlags: 0
@@ -13695,29 +13775,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Leave Lobby
+    fontSize: 0
   - language: 1
     text: Leave Lobby
+    fontSize: 0
   - language: 2
     text: Quitter le Lobby
+    fontSize: 0
   - language: 3
     text: Leave Lobby
+    fontSize: 0
   - language: 4
     text: Leave Lobby
+    fontSize: 0
   - language: 5
     text: Leave Lobby
+    fontSize: 0
   - language: 6
     text: Leave Lobby
+    fontSize: 0
   - language: 7
     text: Leave Lobby
+    fontSize: 0
   - language: 8
     text: Leave Lobby
+    fontSize: 0
   - language: 9
     text: Leave Lobby
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1160402982
 GameObject:
   m_ObjectHideFlags: 0
@@ -18733,7 +18824,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1223142009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18992,29 +19083,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Start Game
+    fontSize: 0
   - language: 1
     text: Start Game
+    fontSize: 0
   - language: 2
     text: Demarrer la partie
+    fontSize: 0
   - language: 3
     text: Start Game
+    fontSize: 0
   - language: 4
     text: Start Game
+    fontSize: 0
   - language: 5
     text: Start Game
+    fontSize: 0
   - language: 6
     text: Start Game
+    fontSize: 0
   - language: 7
     text: Start Game
+    fontSize: 0
   - language: 8
     text: Start Game
+    fontSize: 0
   - language: 9
     text: Start Game
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1254094510
 GameObject:
   m_ObjectHideFlags: 0
@@ -19318,11 +19420,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 'Players:'
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1304201149
 GameObject:
   m_ObjectHideFlags: 0
@@ -19611,11 +19715,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: "2\u200B"
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1322520199
 GameObject:
   m_ObjectHideFlags: 0
@@ -19845,29 +19951,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Spellcasting Tips
+    fontSize: 0
   - language: 1
     text: Spellcasting Tips
+    fontSize: 0
   - language: 2
     text: Conseils pour lancer des sorts
+    fontSize: 0
   - language: 3
     text: Spellcasting Tips
+    fontSize: 0
   - language: 4
     text: Spellcasting Tips
+    fontSize: 0
   - language: 5
     text: Spellcasting Tips
+    fontSize: 0
   - language: 6
     text: Spellcasting Tips
+    fontSize: 0
   - language: 7
     text: Spellcasting Tips
+    fontSize: 0
   - language: 8
     text: Spellcasting Tips
+    fontSize: 0
   - language: 9
     text: Spellcasting Tips
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1403158832
 GameObject:
   m_ObjectHideFlags: 0
@@ -20138,8 +20255,10 @@ MonoBehaviour:
   localizedTexts:
   - language: 2
     text: Dos
+    fontSize: 0
   - language: 0
     text: Back
+    fontSize: 0
 --- !u!1 &1418134402
 GameObject:
   m_ObjectHideFlags: 0
@@ -20314,11 +20433,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Enter Lobby Code
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1423079952
 GameObject:
   m_ObjectHideFlags: 0
@@ -20472,11 +20593,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Shadow
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1437697855
 GameObject:
   m_ObjectHideFlags: 0
@@ -20940,6 +21063,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Join Lobby
+    fontSize: 0
 --- !u!1 &1457131169
 GameObject:
   m_ObjectHideFlags: 0
@@ -21093,29 +21217,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: FPS Counter
+    fontSize: 0
   - language: 1
     text: FPS Counter
+    fontSize: 0
   - language: 2
     text: Compteur FPS
+    fontSize: 0
   - language: 3
     text: FPS Counter
+    fontSize: 0
   - language: 4
     text: FPS Counter
+    fontSize: 0
   - language: 5
     text: FPS Counter
+    fontSize: 0
   - language: 6
     text: FPS Counter
+    fontSize: 0
   - language: 7
     text: FPS Counter
+    fontSize: 0
   - language: 8
     text: FPS Counter
+    fontSize: 0
   - language: 9
     text: FPS Counter
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1459652102
 GameObject:
   m_ObjectHideFlags: 0
@@ -21269,29 +21404,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Options
+    fontSize: 0
   - language: 1
     text: Options
+    fontSize: 0
   - language: 2
     text: Options
+    fontSize: 0
   - language: 3
     text: Options
+    fontSize: 0
   - language: 4
     text: Options
+    fontSize: 0
   - language: 5
     text: Options
+    fontSize: 0
   - language: 6
     text: Options
+    fontSize: 0
   - language: 7
     text: Options
+    fontSize: 0
   - language: 8
     text: Options
+    fontSize: 0
   - language: 9
     text: Options
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1461189212
 GameObject:
   m_ObjectHideFlags: 0
@@ -21887,8 +22033,10 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Spellbook
+    fontSize: 0
   - language: 2
     text: Grimoire
+    fontSize: 0
 --- !u!1 &1528912660
 GameObject:
   m_ObjectHideFlags: 0
@@ -22078,11 +22226,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Ice
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1594760187
 GameObject:
   m_ObjectHideFlags: 0
@@ -22322,11 +22472,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Spellbook
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1620001709
 GameObject:
   m_ObjectHideFlags: 0
@@ -22602,29 +22754,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 1
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 2
     text: WIZARDS OF THE COURT EQUIPE
+    fontSize: 0
   - language: 3
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 4
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 5
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 6
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 7
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 8
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   - language: 9
     text: WIZARDS OF THE COURT TEAM
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1673721753
 GameObject:
   m_ObjectHideFlags: 0
@@ -22778,11 +22941,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Freezes the enemy for a short period of time.
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1679730064
 GameObject:
   m_ObjectHideFlags: 0
@@ -23046,29 +23211,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Left Handed Mode
+    fontSize: 0
   - language: 1
     text: Left Handed Mode
+    fontSize: 0
   - language: 2
     text: Mode Gaucher
+    fontSize: 0
   - language: 3
     text: Left Handed Mode
+    fontSize: 0
   - language: 4
     text: Left Handed Mode
+    fontSize: 0
   - language: 5
     text: Left Handed Mode
+    fontSize: 0
   - language: 6
     text: Left Handed Mode
+    fontSize: 0
   - language: 7
     text: Left Handed Mode
+    fontSize: 0
   - language: 8
     text: Left Handed Mode
+    fontSize: 0
   - language: 9
     text: Left Handed Mode
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1716588849
 GameObject:
   m_ObjectHideFlags: 0
@@ -23222,11 +23398,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: 
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1727850662
 GameObject:
   m_ObjectHideFlags: 0
@@ -23401,29 +23579,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Enter Lobby Code
+    fontSize: 0
   - language: 1
     text: Enter Lobby Code
+    fontSize: 0
   - language: 2
     text: Saisissez le code d'acces
+    fontSize: 0
   - language: 3
     text: Enter Lobby Code
+    fontSize: 0
   - language: 4
     text: Enter Lobby Code
+    fontSize: 0
   - language: 5
     text: Enter Lobby Code
+    fontSize: 0
   - language: 6
     text: Enter Lobby Code
+    fontSize: 0
   - language: 7
     text: Enter Lobby Code
+    fontSize: 0
   - language: 8
     text: Enter Lobby Code
+    fontSize: 0
   - language: 9
     text: Enter Lobby Code
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1759563147
 GameObject:
   m_ObjectHideFlags: 0
@@ -23694,6 +23883,7 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Create Lobby
+    fontSize: 0
 --- !u!1 &1763835696
 GameObject:
   m_ObjectHideFlags: 0
@@ -23923,11 +24113,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Speeds the player up for a short period of time.
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1770045584
 GameObject:
   m_ObjectHideFlags: 0
@@ -24036,7 +24228,7 @@ RectTransform:
   m_Father: {fileID: 254692455}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -24231,29 +24423,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Multiplayer
+    fontSize: 0
   - language: 1
     text: Multiplayer
+    fontSize: 0
   - language: 2
     text: Multijoueur
+    fontSize: 0
   - language: 3
     text: Multiplayer
+    fontSize: 0
   - language: 4
     text: Multiplayer
+    fontSize: 0
   - language: 5
     text: Multiplayer
+    fontSize: 0
   - language: 6
     text: Multiplayer
+    fontSize: 0
   - language: 7
     text: Multiplayer
+    fontSize: 0
   - language: 8
     text: Multiplayer
+    fontSize: 0
   - language: 9
     text: Multiplayer
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1822209735
 GameObject:
   m_ObjectHideFlags: 0
@@ -24407,11 +24610,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Electricity
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1890218771
 GameObject:
   m_ObjectHideFlags: 0
@@ -24607,6 +24812,7 @@ MonoBehaviour:
   localizedPlaceholders:
   - language: 0
     text: Enter Lobby Code
+    fontSize: 0
 --- !u!1 &1903966346
 GameObject:
   m_ObjectHideFlags: 0
@@ -24979,6 +25185,7 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 1
     text: 'Lead Artist / Composer
 
@@ -25006,10 +25213,12 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 2
     text: "Artiste Principal / Compositeur\n\n\nProgrammeuses\n\n\n\nConcepteur /
       Conception Sonore / Doublage\n\n\nConcepteur / Assistant programmeur / Ingenieur
       Reseau\n\n\n&%^!@#*^\n\n\nRemerciements sp\xE9ciaux\n"
+    fontSize: 0
   - language: 3
     text: 'Lead Artist / Composer
 
@@ -25037,6 +25246,7 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 4
     text: 'Lead Artist / Composer
 
@@ -25064,6 +25274,7 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 5
     text: 'Lead Artist / Composer
 
@@ -25091,6 +25302,7 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 6
     text: 'Lead Artist / Composer
 
@@ -25118,6 +25330,7 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 7
     text: 'Lead Artist / Composer
 
@@ -25145,6 +25358,7 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 8
     text: 'Lead Artist / Composer
 
@@ -25172,6 +25386,7 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   - language: 9
     text: 'Lead Artist / Composer
 
@@ -25199,11 +25414,13 @@ MonoBehaviour:
       Thanks
 
 '
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1930564894
 GameObject:
   m_ObjectHideFlags: 0
@@ -25357,11 +25574,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Fire
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1973600734
 GameObject:
   m_ObjectHideFlags: 0
@@ -25515,29 +25734,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Join Lobby
+    fontSize: 0
   - language: 1
     text: Join Lobby
+    fontSize: 0
   - language: 2
     text: Rejoindre le lobby
+    fontSize: 0
   - language: 3
     text: Join Lobby
+    fontSize: 0
   - language: 4
     text: Join Lobby
+    fontSize: 0
   - language: 5
     text: Join Lobby
+    fontSize: 0
   - language: 6
     text: Join Lobby
+    fontSize: 0
   - language: 7
     text: Join Lobby
+    fontSize: 0
   - language: 8
     text: Join Lobby
+    fontSize: 0
   - language: 9
     text: Join Lobby
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &1997666342
 GameObject:
   m_ObjectHideFlags: 0
@@ -25691,29 +25921,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Full Screen
+    fontSize: 0
   - language: 1
     text: Full Screen
+    fontSize: 0
   - language: 2
     text: Plein Ecran
+    fontSize: 0
   - language: 3
     text: Full Screen
+    fontSize: 0
   - language: 4
     text: Full Screen
+    fontSize: 0
   - language: 5
     text: Full Screen
+    fontSize: 0
   - language: 6
     text: Full Screen
+    fontSize: 0
   - language: 7
     text: Full Screen
+    fontSize: 0
   - language: 8
     text: Full Screen
+    fontSize: 0
   - language: 9
     text: Full Screen
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &2002776334
 GameObject:
   m_ObjectHideFlags: 0
@@ -25942,11 +26183,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: "\u200B"
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &2034903078
 GameObject:
   m_ObjectHideFlags: 0
@@ -26551,29 +26794,40 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Volume
+    fontSize: 0
   - language: 1
     text: Volume
+    fontSize: 0
   - language: 2
     text: Volume
+    fontSize: 0
   - language: 3
     text: Volume
+    fontSize: 0
   - language: 4
     text: Volume
+    fontSize: 0
   - language: 5
     text: Volume
+    fontSize: 0
   - language: 6
     text: Volume
+    fontSize: 0
   - language: 7
     text: Volume
+    fontSize: 0
   - language: 8
     text: Volume
+    fontSize: 0
   - language: 9
     text: Volume
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!4 &2097173847 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7422316886086846054, guid: 2186c9d6522b6cd42824b0a0f615db3e, type: 3}
@@ -26807,11 +27061,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: "\u200B"
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1 &2142096237
 GameObject:
   m_ObjectHideFlags: 0
@@ -26966,11 +27222,13 @@ MonoBehaviour:
   localizedTexts:
   - language: 0
     text: Shoots a fireball at the enemy, lowering the chance of the ball being returned.
+    fontSize: 0
   legacyText: {fileID: 0}
   tmpText: {fileID: 0}
   tmp3DText: {fileID: 0}
   updateOnStart: 1
   useFormatting: 0
+  defaultFontSize: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
