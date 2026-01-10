@@ -23,6 +23,10 @@ public class SteamLobbyUI : MonoBehaviour
     public Button startGameButton;
     public Button inviteFriendsButton;
     public Button leaveLobbyButton;
+    public Button warningTriggerButton;
+    public Button warningNoButton;
+
+    public GameObject warningPopup;
 
     [Header("Scene Manager")]
     [SerializeField] private SceneChanger sceneChanger;
@@ -55,6 +59,8 @@ public class SteamLobbyUI : MonoBehaviour
         startGameButton?.onClick.AddListener(OnStartGame);
         inviteFriendsButton?.onClick.AddListener(OnInviteFriends);
         leaveLobbyButton?.onClick.AddListener(OnLeaveLobby);
+        warningTriggerButton?.onClick.AddListener(OnWarningPopup);
+        warningNoButton?.onClick.AddListener(OnWarningHitNo);
 
         // Click-to-copy lobby code
         if (lobbyCodeText != null)
@@ -78,6 +84,11 @@ public class SteamLobbyUI : MonoBehaviour
 
     private void OnCreateLobby()
     {
+        if (warningPopup != null)
+        {
+            warningPopup.gameObject.SetActive(false);
+        }
+
         string lobbyName = string.IsNullOrEmpty(lobbyNameInput.text)
             ? "Game Lobby"
             : lobbyNameInput.text;
@@ -88,6 +99,22 @@ public class SteamLobbyUI : MonoBehaviour
 
         SetStatus("Creating lobby...");
         Lobby.CreateLobby(lobbyName, maxPlayers);
+    }
+
+    private void OnWarningPopup()
+    {
+        if (warningPopup != null)
+        {
+            warningPopup.gameObject.SetActive(true);
+        }
+    }
+
+    private void OnWarningHitNo()
+    {
+        if (warningPopup != null)
+        {
+            warningPopup.gameObject.SetActive(false);
+        }
     }
 
     private void OnJoinLobby()
