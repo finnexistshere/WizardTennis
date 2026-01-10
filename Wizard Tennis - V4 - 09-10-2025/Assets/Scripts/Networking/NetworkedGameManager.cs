@@ -699,7 +699,6 @@ public class NetworkedGameManager : NetworkBehaviour
     public void PauseGame()
     {
         isPaused = true;
-        Time.timeScale = 0f;
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("UI");
         pauseMenuUI?.SetActive(true);
@@ -708,7 +707,6 @@ public class NetworkedGameManager : NetworkBehaviour
     public void ResumeGame()
     {
         isPaused = false;
-        Time.timeScale = 1f;
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
         pauseMenuUI?.SetActive(false);
@@ -1150,12 +1148,6 @@ public class NetworkedGameManager : NetworkBehaviour
 
         // Show UI on all clients
         ShowGameOverUIClientRpc(message);
-
-        // After 3 seconds, start next round (server only)
-        if (IsServer)
-        {
-            StartCoroutine(StartNextRoundAfterDelay(3f));
-        }
     }
 
     public void GameOverFinal(string message)
