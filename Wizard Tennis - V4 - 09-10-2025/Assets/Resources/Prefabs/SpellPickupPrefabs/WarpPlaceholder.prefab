@@ -5006,7 +5006,7 @@ MonoBehaviour:
   Color1: {r: 0.16078432, g: 0.69803923, b: 0.69803923, a: 1}
   Color2: {r: 0.3019608, g: 0.52156866, b: 0.5803922, a: 1}
   spellCastAudio: {fileID: 0}
-  wizardSpellSound: {fileID: 8300000, guid: 209812780d4220f4688eef076d0843ba, type: 3}
+  wizardSpellSound: {fileID: 8300000, guid: 887de8efaa4f72c4287b7b7b64ee17a5, type: 3}
   duration: 5
   defaultSpellName: Warp
   localizedSpellNames:
