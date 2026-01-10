@@ -1095,8 +1095,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     FreezePlayerServerRpc(targetClientId, 5f);
 
                     Debug.Log($"[SpellEffects] Ice spawned and freeze requested for opponent");
+
+                    // Force a reset across all clients
+                    ScheduleReset(5f);
                 }
-                ScheduleReset(5f);
                 break;
 
             case "Fireball":
@@ -2459,7 +2461,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
             // --- COPY MOVEMENT INPUT ---
             Vector3 casterVelocity = casterMCM.controller.velocity;
 
-            // --- MIRROR POSITION (optional, matches your singleplayer logic) ---
+            // --- MIRROR POSITION ---
             Vector3 mirroredPos = casterT.position;
             mirroredPos.x = -mirroredPos.x;
             geminiT.position = mirroredPos;
@@ -2476,7 +2478,13 @@ public class NetworkedSpellEffects : NetworkBehaviour
     /// </summary>
     private void ScheduleReset(float delay)
     {
-        // Cancel any existing scheduled reset
+        // Small catch so this doesn't fire unessecarily
+        if (spellName == "Ice")
+        {
+            // Force all Active Freeze Routines to stop
+            ForceUnfreezeAllPlayers();
+        }
+
         CancelInvoke(nameof(resetSpellEffect));
 
         // Schedule new reset
