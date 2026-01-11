@@ -10,6 +10,8 @@ public class ScoreManager : MonoBehaviour
     public TextMeshProUGUI playerScoreText;
     public TextMeshProUGUI opponentScoreText;
 
+    private SpellEffects spellEffects;
+
     [Header("Scoring Settings")]
     public int winningScore = 5;
 
@@ -25,6 +27,8 @@ public class ScoreManager : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject); // Keep manager alive
             SceneManager.sceneLoaded += OnSceneLoaded; // Reconnect after reload
+
+            spellEffects = FindObjectOfType<SpellEffects>();
         }
         else
         {
@@ -57,10 +61,19 @@ public class ScoreManager : MonoBehaviour
         GameData.OpponentScore = opponentScore;
 
         UpdateScoreUI();
+        if (scorer == "Player")
+        {
+            spellEffects?.OnPointWon();
+        }
+        else if (scorer == "Opponent")
+        {
+            spellEffects?.OnPointLost();
+        }
 
         if (playerScore >= winningScore)
         {
             GameManager.Instance.GameOverFinal("You Win the Match!");
+
         }
         else if (opponentScore >= winningScore)
         {

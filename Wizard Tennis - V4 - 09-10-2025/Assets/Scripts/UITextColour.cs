@@ -31,25 +31,28 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     private Quaternion originalRotation;
     private Quaternion targetRotation;
 
+    private float hoverCooldown = 0.05f; // 50ms stability window
+    private float lastHoverEventTime = -1f;
+
     void Awake()
     {
         btn = GetComponent<Button>();
-
         audioSource = GetComponent<AudioSource>();
 
-        // Try to find TMP_Text in children (searching only this button’s hierarchy)
+        // Find TMP_Text in children
         txt = GetComponentInChildren<TMP_Text>(true);
 
         if (txt == null)
-        {
             Debug.LogWarning($"UITextColour: No TMP_Text found on {gameObject.name}!");
-        }
 
         lastInteractable = btn.interactable;
         originalRotation = transform.localRotation;
         targetRotation = originalRotation;
 
         UpdateTextColor();
+
+        // Optional: hook ResetButton to button click
+        btn.onClick.AddListener(ResetButton);
     }
 
     void Update()
@@ -81,18 +84,20 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     {
         if (!btn.interactable || txt == null) return;
 
+        // Prevent edge jitter from spamming enter/exit events
+        if (Time.unscaledTime - lastHoverEventTime < hoverCooldown)
+            return;
+
+        lastHoverEventTime = Time.unscaledTime;
+
         isHovered = true;
         txt.color = highlightedColor;
         targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle);
+
         if (creakSFX != null)
-        {
             audioSource.PlayOneShot(creakSFX);
-        }
         if (sparkleSFX != null)
-        {
             audioSource.PlayOneShot(sparkleSFX);
-            Debug.Log("Playing Sparkle SFX");
-        }
     }
 
     public void OnPointerDown(PointerEventData eventData)
@@ -115,8 +120,26 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     {
         if (txt == null) return;
 
+        // Prevent exit spam on boundary jitter
+        if (Time.unscaledTime - lastHoverEventTime < hoverCooldown)
+            return;
+
+        lastHoverEventTime = Time.unscaledTime;
+
         isHovered = false;
         UpdateTextColor();
         targetRotation = originalRotation;
+    }
+
+    /// <summary>
+    /// Resets the button to its normal color and rotation.
+    /// Can be called from the button's OnClick event.
+    /// </summary>
+    public void ResetButton()
+    {
+        isHovered = false;
+        targetRotation = originalRotation;
+        if (txt != null)
+            txt.color = normalColor;
     }
 }

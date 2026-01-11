@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class OppHitting : MonoBehaviour
 {
@@ -21,6 +23,7 @@ public class OppHitting : MonoBehaviour
 
     public CollisionTrackerBall CollisionTracker;
     public GameObject Player;
+    public string PlayerName = "Player_Singleplayer";
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -30,6 +33,10 @@ public class OppHitting : MonoBehaviour
     public float minInterval = 0.08f;     // Prevents rapid double-fires on multi-collider entries
 
     private float _lastHitSfxTime = -999f;
+
+    public NPCBounceAnimator npcBounceAnimator;
+
+    public GameObject tether;
 
     private void PlayHitsound(Vector3 contactPoint)
     {
@@ -68,7 +75,7 @@ public class OppHitting : MonoBehaviour
 
     private void Awake()
     {
-        Player = GameObject.Find("Player");
+        Player = GameObject.Find(PlayerName);
     }
 
     void Update()
@@ -80,8 +87,6 @@ public class OppHitting : MonoBehaviour
             if (ballObj != null)
             {
                 ball = ballObj.transform;
-
-                // Also grab the CollisionTrackerBall component
                 CollisionTracker = ballObj.GetComponent<CollisionTrackerBall>();
             }
             else
@@ -92,7 +97,24 @@ public class OppHitting : MonoBehaviour
 
         // Move opponent on X axis toward the ball
         targetPosition.x = ball.position.x;
-        transform.position = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
+
+        // Measure actual movement between frames
+        float frameMovement = Mathf.Abs(targetPosition.x - transform.position.x);
+
+        // Trigger bounce whenever *any* movement occurs (even very small)
+        npcBounceAnimator.isMoving = frameMovement > 0.0001f;
+
+        // Perform movement
+        //if (barrier) targetPosition.x *= -1;
+        Vector3 testPos = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
+        if (tether != null)
+        {
+            if (testPos.x > (tether.transform.position.x + 2f) || testPos.x < (tether.transform.position.x - 2f))
+            {
+                return;
+            }
+        }
+        transform.position = testPos;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -129,6 +151,8 @@ public class OppHitting : MonoBehaviour
                     upForce += 1;
                 }
 
+                if (other.transform.position.y < 2) upForce += 1;
+
                 ParticleSystem particle = GameObject.FindGameObjectWithTag("Opponent Hit Particle").GetComponent<ParticleSystem>(); // Plays opponent hit particle
 
                 particle.transform.position = other.transform.position;
@@ -147,7 +171,7 @@ public class OppHitting : MonoBehaviour
 
                 // If you want more detailed comments regarding how the ball hitting works, check the PlayerHitting code
                 Vector3 dir = aimTarget.transform.position - transform.position;
-                other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
+                other.GetComponent<Rigidbody>().linearVelocity = dir.normalized * strength + new Vector3(0, upForce, 0);
 
                 Player.GetComponent<Ball>().rallyCount++;
 
@@ -162,7 +186,15 @@ public class OppHitting : MonoBehaviour
                 CollisionTracker.hasBounced = false;
             }
         }
+
+        if (other.CompareTag("Mud")) speed = 4f;
     }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Mud")) speed = 5f;
+    }
+
     private void OnDrawGizmos()
     {
         // Draw the current target position

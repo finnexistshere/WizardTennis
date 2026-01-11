@@ -6,13 +6,15 @@ using UnityEngine.InputSystem;
 public class Ball : MonoBehaviour
 {
     public Transform aimTarget; // point on the opposite side
-    public float strength = 25;
-    public float ogUpForce = 11;
-    private float upForce = 11;
+    public float strength = 15;
+    public float ogUpForce = 5;
+    public float upForce = 5;
     public float ballSpeed = 5;
 
     private bool hitting = true;
     public bool serving;
+
+    public TwoHandIKController_Opponent OppIKRig;
 
     private bool nearBall = false;
 
@@ -31,6 +33,13 @@ public class Ball : MonoBehaviour
     public float minInterval = 0.08f;     // Prevents rapid double-fires on multi-collider entries
 
     private float _lastHitSfxTime = -999f;
+
+    public GameObject Opponent;
+    public float xPos;
+
+    public GameObject servingBarriers;
+
+    private Camera cam;
 
     private void PlayHitsound(Vector3 contactPoint)
     {
@@ -78,6 +87,13 @@ public class Ball : MonoBehaviour
             currentBall = GameObject.FindWithTag("Ball");
     }
 
+    private void Awake()
+    {
+        cam = GameObject.Find("Main Camera").GetComponent<Camera>();
+        Opponent = GameObject.Find("Opponent");
+        servingBarriers = GameObject.Find("ServingBarriers");
+    }
+
     void Update()
     {
         // Press E: spawn ball if none exists
@@ -86,6 +102,15 @@ public class Ball : MonoBehaviour
             currentBall = Instantiate(ballPrefab, ballSpawnPoint.position, ballSpawnPoint.rotation);
             CollisionTracker = currentBall.GetComponent<CollisionTrackerBall>(); // get tracker
             nearBall = true; // immediately allow serving
+            GameManager.Instance.UnlockPickupSpawning();
+
+            // --- NEW: Assign the new ball to the TwoHandIKController ---
+            TwoHandIKController ikController = FindObjectOfType<TwoHandIKController>();
+            if (ikController != null)
+            {
+                ikController.AssignBall(currentBall.transform);
+            }
+            OppIKRig.AssignBall(currentBall.transform);
         }
 
         // Press E: serve if near ball
@@ -95,13 +120,49 @@ public class Ball : MonoBehaviour
             {
                 Rigidbody rb = currentBall.GetComponent<Rigidbody>();
                 rb.useGravity = true;
-                rb.velocity = new Vector3(0, upForce, 0).normalized * strength / 2;
+                rb.linearVelocity = new Vector3(0, upForce, 0).normalized * strength / 2;
                 serving = false;
+                servingBarriers.SetActive(false);
             }
         }
     }
 
-    
+    // Had to stuff this thing full of safety rails to make sure it plays nice with the Tutorial coroutine in Playerhitting.cs. We love timescale. - Ed
+    private static bool isHitSlowActive = false;
+
+    IEnumerator HitSlowdown()
+    {
+        // If a spell explanation slow is active, wait for it to finish
+        if (SpellEffects.isSpellSlowdownActive)
+        {
+            yield return new WaitUntil(() => SpellEffects.isSpellSlowdownActive == false);
+        }
+
+        // Give one frame so any timescale restoration from the spell system settles
+        yield return null;
+
+        // Prevent overlapping impact slowdowns
+        if (isHitSlowActive) yield break;
+        isHitSlowActive = true;
+
+        // Store originals
+        float originalFOV = cam.fieldOfView;
+        float originalTimeScale = Time.timeScale;
+
+        // Apply impact feel
+        cam.fieldOfView = 60.5f;
+
+        // Use a perceptible realtime slowdown (use WaitForSecondsRealtime so it's unaffected by timescale)
+        Time.timeScale = 0.1f;
+        yield return new WaitForSecondsRealtime(0.08f); // 80ms realtime � tweak to taste
+
+        // Restore everything
+        Time.timeScale = originalTimeScale;
+        cam.fieldOfView = originalFOV;
+
+        isHitSlowActive = false;
+    }
+
 
     private void OnTriggerEnter(Collider other)
     {
@@ -110,12 +171,31 @@ public class Ball : MonoBehaviour
             nearBall = true;
             if (hitting)
             {
-                if (SpellEffects.plrHitSpell) SpellEffects.castSpell();
-
+                
                 if (35.5 < transform.position.x) upForce = ogUpForce + 2;
                 else upForce = ogUpForce;
 
                 if (-6.25 < transform.position.z || transform.position.z < 6.25) upForce += 2;
+
+                if (other.transform.position.y < 2) upForce += 1;
+
+                float aimTargety = aimTarget.transform.position.y;
+                float aimTargetz = aimTarget.transform.position.z;
+                Vector3 oppPos = Opponent.transform.position;
+                if (oppPos.x > 0)
+                {
+                    xPos = -2f;
+                }
+                else
+                {
+                    xPos = 2f;
+                }
+
+                if (transform.position.z < 5 || transform.position.x < -5 || transform.position.x > 5) xPos = 0f;
+
+                if (SpellEffects.plrHitSpell) SpellEffects.castSpell();
+
+                aimTarget.transform.position = new Vector3(xPos, aimTargety, aimTargetz);
 
                 ParticleSystem particle = GameObject.FindGameObjectWithTag("Player Hit Particle").GetComponent<ParticleSystem>();
                 particle.transform.position = other.transform.position;
@@ -127,8 +207,8 @@ public class Ball : MonoBehaviour
 
                 if (!serving)
                 {
-                    Vector3 dir = aimTarget.position - transform.position;
-                    other.GetComponent<Rigidbody>().velocity = dir.normalized * strength + new Vector3(0, upForce, 0);
+                    Vector3 dir = aimTarget.transform.position - transform.position;
+                    other.GetComponent<Rigidbody>().linearVelocity = dir.normalized * strength + new Vector3(0, upForce, 0);
                     rallyCount++;
                     if (green)
                     {
@@ -152,6 +232,10 @@ public class Ball : MonoBehaviour
                 {
                     CollisionTracker.LastHitWizard = "Player";
                     CollisionTracker.hasBounced = false;
+                }
+                if (SpellEffects.spellHit == true)
+                {
+                    StartCoroutine(HitSlowdown());
                 }
             }
         }

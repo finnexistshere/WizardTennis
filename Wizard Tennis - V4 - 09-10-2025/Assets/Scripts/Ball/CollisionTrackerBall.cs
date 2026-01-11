@@ -4,6 +4,7 @@ public class CollisionTrackerBall : MonoBehaviour
 {
     [Header("References")]
     public GameManager gameManager;
+    public SpellEffects spellEffects;
 
     [Header("State")]
     public string LastHitWizard = "";
@@ -13,9 +14,11 @@ public class CollisionTrackerBall : MonoBehaviour
 
     private void Awake()
     {
-        // Auto-assign GameManager if not set
         if (gameManager == null)
             gameManager = GameManager.Instance;
+
+        if (spellEffects == null)
+            spellEffects = FindObjectOfType<SpellEffects>();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -124,9 +127,14 @@ public class CollisionTrackerBall : MonoBehaviour
     // --- Utility Methods ---
     private void AwardPoint(string winner, string message)
     {
+        // Ensure time is normal and UI hidden before awarding points
+        if (spellEffects != null)
+            spellEffects.ForceResetSpellExplanation();
+
         ScoreManager.Instance.AddPoint(winner);
         gameManager.RoundOver(message);
     }
+
 
     private void ResetBounceTrigger()
     {

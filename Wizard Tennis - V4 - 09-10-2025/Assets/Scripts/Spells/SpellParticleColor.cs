@@ -6,18 +6,16 @@ public class SpellParticleColor : MonoBehaviour
     [Header("References")]
     public ParticleSystem targetParticleSystem;
 
-    private ParticleSystem.MainModule mainModule;
-    private Color baseColor; // cached original color
+    private Color baseColor;
 
     void Awake()
     {
         if (targetParticleSystem == null)
             targetParticleSystem = GetComponent<ParticleSystem>();
 
-        mainModule = targetParticleSystem.main;
-
-        // Cache the starting color
-        baseColor = mainModule.startColor.color;
+        // Cache original color
+        var main = targetParticleSystem.main;
+        baseColor = main.startColor.color;
     }
 
     /// <summary>
@@ -25,7 +23,14 @@ public class SpellParticleColor : MonoBehaviour
     /// </summary>
     public void SetSpellColor(Color spellColor)
     {
-        mainModule.startColor = spellColor;
+        if (targetParticleSystem == null)
+        {
+            Debug.LogError("SpellParticleColor: No ParticleSystem assigned!");
+            return;
+        }
+
+        var main = targetParticleSystem.main;   // always fetch fresh
+        main.startColor = spellColor;
     }
 
     /// <summary>
@@ -33,6 +38,9 @@ public class SpellParticleColor : MonoBehaviour
     /// </summary>
     public void ResetColor()
     {
-        mainModule.startColor = baseColor;
+        if (targetParticleSystem == null) return;
+
+        var main = targetParticleSystem.main;   // fresh again
+        main.startColor = baseColor;
     }
 }

@@ -6,6 +6,11 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using System.Collections;
 
+public interface ISpellcasting
+{
+    Dictionary<string, string> spellBook { get; }
+}
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
@@ -31,26 +36,48 @@ public class GameManager : MonoBehaviour
     public GameObject pauseMenuUI;
     public GameObject gameOverUI;
     public TextMeshProUGUI WinLoseText;
-    public TextMeshProUGUI tutorialText;
+    public GameObject tutorialPanel;
 
+    private ISpellcasting spellcastingReference;
 
     private bool isPaused = false;
     public PlayerInput playerInput;
 
     private BallSpawner ballSpawner;
 
+    private bool pickupsUnlocked = false;
+
+    /// <summary>
+    /// Locks all pickup spawning (used by default at game start).
+    /// </summary>
+    public void LockPickupSpawning()
+    {
+        pickupsUnlocked = false;
+    }
+
+    /// <summary>
+    /// Unlocks pickup spawning so new pickups can appear.
+    /// Call this from another script when you’re ready.
+    /// </summary>
+    public void UnlockPickupSpawning()
+    {
+        pickupsUnlocked = true;
+        spawnTimer = spawnInterval; // reset timer so first spawn happens normally
+    }
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
+        LockPickupSpawning();
         Time.timeScale = 1f;
 
-        ballSpawner = FindObjectOfType<BallSpawner>();
-
+        // Resolve spawnCenter
         if (spawnCenter == null)
             spawnCenter = GameObject.Find("SpawnCenter")?.transform;
 
+        // Resolve UI panels
         if (pauseMenuUI == null)
             pauseMenuUI = GameObject.Find("PauseMenu");
         if (pauseMenuUI != null)
@@ -67,10 +94,21 @@ public class GameManager : MonoBehaviour
         ScoreManager.Instance.LoadSavedScores();
     }
 
-
     private void Start()
     {
         spawnTimer = spawnInterval;
+
+        // --- Resolve the correct spellcasting reference ---
+        // If networked, find the local player's NetworkedSpellcasting
+        NetworkedSpellcasting netSpell = FindObjectOfType<NetworkedSpellcasting>();
+        if (netSpell != null && netSpell.IsOwner)
+        {
+            spellcastingReference = (ISpellcasting)netSpell; // explicit cast
+        }
+
+        // Otherwise fall back to normal single-player Spellcasting
+        if (spellcastingReference == null && spellcasting != null)
+            spellcastingReference = (ISpellcasting)spellcasting; // explicit cast
 
         // Setup UI buttons
         if (pauseMenuUI != null)
@@ -82,16 +120,16 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        ResetRound(); // start with a ball
+        ResetRound();
     }
 
     private void Update()
     {
-        if (tutorialText.gameObject.activeSelf)
+        if (tutorialPanel.gameObject.activeSelf)
         {
             if (Input.GetKeyDown(KeyCode.E))
                     {
-                tutorialText.gameObject.SetActive(false);
+                tutorialPanel.gameObject.SetActive(false);
                     }
         }
 
@@ -100,11 +138,15 @@ public class GameManager : MonoBehaviour
         activePickups.RemoveAll(p => p == null);
 
         // Spawn new pickups if timer elapsed
-        spawnTimer -= Time.deltaTime;
-        if (spawnTimer <= 0f && activePickups.Count < maxActivePickups)
+        // Only spawn if pickups are unlocked
+        if (pickupsUnlocked)
         {
-            SpawnPickup();
-            spawnTimer = spawnInterval;
+            spawnTimer -= Time.deltaTime;
+            if (spawnTimer <= 0f && activePickups.Count < maxActivePickups)
+            {
+                SpawnPickup();
+                spawnTimer = spawnInterval;
+            }
         }
     }
 
@@ -136,13 +178,19 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // --- Updated SpawnPickup with null check and network-aware spellcasting ---
     private void SpawnPickup()
     {
+        if (spawnCenter == null)
+        {
+            Debug.LogWarning("[PickupSpawner] spawnCenter not assigned.");
+            return;
+        }
+
         Vector3 spawnPos = Vector3.zero;
         bool validPositionFound = false;
         int attempts = 0;
 
-        // Find a valid spawn position
         while (!validPositionFound && attempts < 20)
         {
             attempts++;
@@ -165,21 +213,35 @@ public class GameManager : MonoBehaviour
 
         if (!validPositionFound) return;
 
-        // Choose prefab using weighted probability
         GameObject prefab = GetWeightedPickup();
         if (prefab == null) return;
 
         var pickupEffect = prefab.GetComponent<PickupEffect>();
         if (pickupEffect == null) return;
 
-        // Prevent spawning spells the player already owns
-        if (!spellcasting.spellBook.ContainsKey(pickupEffect.SpellAddress))
+        // If it can't find Spellcasting in the scene, It'll try and track down a Networked Spellcasting. Is this a bad way of doing this?
+        // Yes.
+        if (spellcastingReference == null)
+        {
+            NetworkedSpellcasting netSpell = FindObjectOfType<NetworkedSpellcasting>();
+            if (netSpell != null && netSpell.IsOwner)
+                spellcastingReference = netSpell;
+            else
+                spellcastingReference = (ISpellcasting)FindObjectOfType<Spellcasting>();
+
+            if (spellcastingReference == null)
+                Debug.LogWarning("[PickupSpawner] No spellcasting reference found!");
+        }
+
+        bool alreadyOwned = spellcastingReference.spellBook.ContainsKey(pickupEffect.SpellAddress);
+        if (!alreadyOwned)
         {
             GameObject newPickup = Instantiate(prefab, spawnPos, Quaternion.identity);
             activePickups.Add(newPickup);
         }
     }
 
+    // --- GetWeightedPickup unchanged ---
     private GameObject GetWeightedPickup()
     {
         float totalWeight = 0f;
@@ -207,7 +269,6 @@ public class GameManager : MonoBehaviour
             randomPoint -= weight;
         }
 
-        // Fallback
         return pickupPrefabs[Random.Range(0, pickupPrefabs.Count)];
     }
 
@@ -355,6 +416,7 @@ public class GameManager : MonoBehaviour
     {
         ScoreManager.Instance.ResetScores();
         SceneManager.LoadScene("Main Menu");
+        Time.timeScale = 1f;
     }
 
     public void QuitGame()
