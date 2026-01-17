@@ -15,6 +15,15 @@ public class LocalPlayerSetup : NetworkBehaviour
     [Tooltip("Apply customisation on spawn")]
     public bool applyCustomisation = true;
 
+    [Tooltip("Apply material to child objects as well")]
+    public bool applyToChildren = true;
+
+    [Tooltip("Only apply to objects with specific tag (leave empty for all children)")]
+    public string childFilterTag = "";
+
+    [Tooltip("Layer mask for objects to customize (0 = all layers)")]
+    public LayerMask customizationLayerMask = ~0;
+
     // NetworkVariable to sync material index across network
     private NetworkVariable<int> materialIndex = new NetworkVariable<int>(
         0,
@@ -165,23 +174,72 @@ public class LocalPlayerSetup : NetworkBehaviour
 
     private void ApplyMaterialToAllRenderers(Material material)
     {
-        // Get all renderers including children
-        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        // Apply to this object's renderers first
+        ApplyMaterialToGameObjectRenderers(gameObject, material);
 
-        foreach (Renderer renderer in renderers)
+        // Apply to children if enabled
+        if (applyToChildren)
         {
-            if (renderer == null) continue;
-
-            // Create new material array with selected material
-            Material[] materials = new Material[renderer.sharedMaterials.Length];
-            for (int i = 0; i < materials.Length; i++)
+            Renderer[] childRenderers = GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer renderer in childRenderers)
             {
-                materials[i] = material;
+                // Skip if this is the parent object (already applied)
+                if (renderer.gameObject == gameObject)
+                    continue;
+
+                // Check if we should apply to this child object
+                if (ShouldApplyToObject(renderer.gameObject))
+                {
+                    ApplyMaterialToRenderer(renderer, material);
+                }
             }
-            renderer.sharedMaterials = materials;
         }
 
-        Debug.Log($"[LocalPlayerSetup] Applied material to {renderers.Length} renderer(s)");
+        Debug.Log($"[LocalPlayerSetup] Applied material to renderers on player {OwnerClientId}");
+    }
+
+    private bool ShouldApplyToObject(GameObject obj)
+    {
+        // Check layer mask
+        if (customizationLayerMask != ~0 && ((1 << obj.layer) & customizationLayerMask) == 0)
+        {
+            Debug.Log($"[LocalPlayerSetup] Skipping '{obj.name}' - layer {obj.layer} not in mask");
+            return false;
+        }
+
+        // Check child filter tag if specified
+        if (!string.IsNullOrEmpty(childFilterTag) && !obj.CompareTag(childFilterTag))
+        {
+            Debug.Log($"[LocalPlayerSetup] Skipping '{obj.name}' - tag '{obj.tag}' doesn't match filter '{childFilterTag}'");
+            return false;
+        }
+
+        return true;
+    }
+
+    private void ApplyMaterialToGameObjectRenderers(GameObject obj, Material material)
+    {
+        if (!ShouldApplyToObject(obj))
+            return;
+
+        Renderer[] renderers = obj.GetComponents<Renderer>();
+        foreach (Renderer renderer in renderers)
+        {
+            ApplyMaterialToRenderer(renderer, material);
+        }
+    }
+
+    private void ApplyMaterialToRenderer(Renderer renderer, Material material)
+    {
+        if (renderer == null) return;
+
+        // Create new material array with selected material
+        Material[] materials = new Material[renderer.sharedMaterials.Length];
+        for (int i = 0; i < materials.Length; i++)
+        {
+            materials[i] = material;
+        }
+        renderer.sharedMaterials = materials;
     }
 
     /// <summary>

@@ -355,6 +355,11 @@ MonoBehaviour:
   playerInputPrefab: {fileID: 0}
   cameraSpawnTransform: {fileID: 5797967983157082458}
   applyCustomisation: 1
+  applyToChildren: 1
+  childFilterTag: 
+  customizationLayerMask:
+    serializedVersion: 2
+    m_Bits: 256
 --- !u!114 &6196798854856940667
 MonoBehaviour:
   m_ObjectHideFlags: 0
