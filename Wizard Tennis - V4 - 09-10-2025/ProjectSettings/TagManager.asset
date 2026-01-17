@@ -21,6 +21,7 @@ TagManager:
   - SpawnPoint
   - Pickup
   - ServingBarriers
+  - Racket
   layers:
   - Default
   - TransparentFX

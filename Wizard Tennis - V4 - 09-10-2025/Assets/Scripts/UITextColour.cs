@@ -38,6 +38,8 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
     private float hoverCooldown = 0.05f; // 50ms stability window
     private float lastHoverEventTime = -1f;
+    private float forceResetTimer = 0f;
+    private const float FORCE_RESET_DELAY = 0.3f; // Reset after 300ms if stuck
 
     // Track which component we're using
     private enum ComponentType { None, Button, Toggle }
@@ -100,6 +102,70 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         {
             UpdateTextColor();
             lastInteractable = currentInteractable;
+        }
+
+        // Force reset if hovered state is stuck
+        if (isHovered)
+        {
+            forceResetTimer += Time.unscaledDeltaTime;
+            if (forceResetTimer > FORCE_RESET_DELAY)
+            {
+                // Check if mouse is actually over this object
+                if (!IsMouseOverUI())
+                {
+                    // Mouse is not over UI - force reset
+                    ForceReset();
+                }
+            }
+        }
+        else
+        {
+            forceResetTimer = 0f;
+        }
+    }
+
+    /// <summary>
+    /// Check if mouse is actually over this UI element
+    /// </summary>
+    private bool IsMouseOverUI()
+    {
+        // Use EventSystem to check if pointer is over this object
+        if (EventSystem.current == null)
+            return false;
+
+        PointerEventData pointerData = new PointerEventData(EventSystem.current)
+        {
+            position = Input.mousePosition
+        };
+
+        var results = new System.Collections.Generic.List<RaycastResult>();
+        EventSystem.current.RaycastAll(pointerData, results);
+
+        foreach (var result in results)
+        {
+            if (result.gameObject == gameObject)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Force reset the hover state (used when stuck)
+    /// </summary>
+    private void ForceReset()
+    {
+        isHovered = false;
+        forceResetTimer = 0f;
+        UpdateTextColor();
+
+        if (IsToggleOn())
+        {
+            targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle * 0.5f);
+        }
+        else
+        {
+            targetRotation = originalRotation;
         }
     }
 
@@ -171,6 +237,7 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         lastHoverEventTime = Time.unscaledTime;
 
         isHovered = true;
+        forceResetTimer = 0f; // Reset the stuck timer
         txt.color = highlightedColor;
         targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle);
 
@@ -184,6 +251,7 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     {
         if (!IsInteractable() || txt == null) return;
 
+        forceResetTimer = 0f; // Reset the stuck timer
         txt.color = pressedColor;
         targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle * 1.5f);
     }
@@ -192,6 +260,7 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     {
         if (!IsInteractable() || txt == null) return;
 
+        forceResetTimer = 0f; // Reset the stuck timer
         txt.color = highlightedColor;
         targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle);
     }
@@ -207,6 +276,7 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         lastHoverEventTime = Time.unscaledTime;
 
         isHovered = false;
+        forceResetTimer = 0f; // Reset the stuck timer
         UpdateTextColor();
 
         // For toggles, maintain slight rotation if toggled on
