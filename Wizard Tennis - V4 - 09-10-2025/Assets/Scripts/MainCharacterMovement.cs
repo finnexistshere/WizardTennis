@@ -13,6 +13,11 @@ public class MainCharacterMovement : MonoBehaviour
     public float bounceAmplitude = 0.05f; // How high it bounces
     public float bounceFrequency = 8.0f;  // How fast it bounces
 
+    [Header("Dust Effect")]
+    public ParticleSystem dustParticles;  // Assign particle system here
+    public float dustSpeedThreshold = 0.1f; // Minimum speed to trigger dust
+    public float dustLagAmount = 0.2f;     // How much the dust lags behind (0-1)
+
     private Vector3 moveDirection = Vector3.zero;
     public CharacterController controller;
     public Rigidbody rb;
@@ -56,6 +61,7 @@ public class MainCharacterMovement : MonoBehaviour
             moveDirection.y = gravityOnly.y;
 
             HandleMeshBounce();
+            HandleDustEffect();
             return;
         }
 
@@ -103,6 +109,9 @@ public class MainCharacterMovement : MonoBehaviour
 
         // Bounce effect when moving
         HandleMeshBounce();
+
+        // Dust effect when moving
+        HandleDustEffect();
     }
 
     /// <summary>
@@ -137,6 +146,39 @@ public class MainCharacterMovement : MonoBehaviour
                 meshOriginalLocalPos,
                 Time.deltaTime * 10f
             );
+        }
+    }
+
+    private void HandleDustEffect()
+    {
+        if (dustParticles == null)
+            return;
+
+        Vector3 horizontalVelocity = new Vector3(controller.velocity.x, 0, controller.velocity.z);
+        float moveSpeed = horizontalVelocity.magnitude;
+
+        // Play dust when moving on ground
+        if (moveSpeed > dustSpeedThreshold && controller.isGrounded)
+        {
+            if (!dustParticles.isPlaying)
+                dustParticles.Play();
+
+            // Make dust lag behind movement direction
+            if (horizontalVelocity.sqrMagnitude > 0.01f)
+            {
+                Vector3 oppositeDirection = -horizontalVelocity.normalized;
+                Vector3 targetPosition = transform.position + (oppositeDirection * dustLagAmount);
+                dustParticles.transform.position = Vector3.Lerp(
+                    dustParticles.transform.position,
+                    targetPosition,
+                    Time.deltaTime * 10f
+                );
+            }
+        }
+        else
+        {
+            if (dustParticles.isPlaying)
+                dustParticles.Stop();
         }
     }
 

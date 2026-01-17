@@ -12,6 +12,7 @@ public class SceneChanger : MonoBehaviour
     public GameObject OptionsMenu;
     public GameObject SpellbookMenu;
     public GameObject MultiplayerMenu;
+    public GameObject CustomisationMenu;
 
     [Header("Options Menu UI References")]
     public Slider volumeSlider;
@@ -24,6 +25,8 @@ public class SceneChanger : MonoBehaviour
     public Transform creditsCamPos;                 // Camera position for Credits
     public Transform optionsCamPos;                 // Camera position for Options
     public Transform MultiplayerCamPos;
+    public Transform CustomisationCamPos;
+
     [Tooltip("Higher values = slower camera movement")]
     public float cameraMoveDuration = 1.5f;
 
@@ -104,6 +107,20 @@ public class SceneChanger : MonoBehaviour
     {
         MainMenu.SetActive(true);
         SpellbookMenu.SetActive(false);
+    }
+
+    public void OpenCustomisationMenu()
+    {
+        MainMenu.SetActive(false);
+        CustomisationMenu.SetActive(true);
+        MoveCameraTo(CustomisationCamPos);
+    }
+
+    public void BackToMainFromCustomisation()
+    {
+        MainMenu.SetActive(true);
+        CustomisationMenu.SetActive(false);
+        MoveCameraTo(mainMenuCamPos);
     }
 
     private void MoveCameraTo(Transform target)

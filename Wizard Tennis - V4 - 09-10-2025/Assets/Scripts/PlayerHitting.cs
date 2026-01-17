@@ -85,6 +85,11 @@ public class Ball : MonoBehaviour
         // Only try to find the ball if one exists
         if (currentBall == null)
             currentBall = GameObject.FindWithTag("Ball");
+
+        if (CustomisationManager.Instance != null)
+        {
+            CustomisationManager.Instance.RegisterAsPlayer(gameObject);
+        }
     }
 
     private void Awake()
