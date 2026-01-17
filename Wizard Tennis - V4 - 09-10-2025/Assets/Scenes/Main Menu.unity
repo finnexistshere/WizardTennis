@@ -24907,7 +24907,7 @@ MonoBehaviour:
   selectedMaterialIndex: 0
   playerTag: Player
   applyToChildren: 1
-  childFilterTag: 
+  childFilterTag: Player
   customizationLayerMask:
     serializedVersion: 2
     m_Bits: 256
