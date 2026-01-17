@@ -6577,7 +6577,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &214632190
 RectTransform:
   m_ObjectHideFlags: 0
@@ -17452,7 +17452,7 @@ GameObject:
   - component: {fileID: 1187409246}
   - component: {fileID: 1187409245}
   m_Layer: 5
-  m_Name: Image
+  m_Name: MaterialPreviewImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -22994,7 +22994,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1254094511
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -23649,7 +23649,7 @@ GameObject:
   - component: {fileID: 1300174694}
   - component: {fileID: 1300174696}
   m_Layer: 5
-  m_Name: Customisation DropDown
+  m_Name: MaterialDropdown
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -23770,6 +23770,24 @@ MonoBehaviour:
       m_Image: {fileID: 0}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
     - m_Text: Red
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Green
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Light Blue
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Orange
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Purple
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Yellow
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Black
       m_Image: {fileID: 0}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_OnValueChanged:
@@ -24365,14 +24383,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   materialDropdown: {fileID: 1300174696}
   materialPreviewImage: {fileID: 1187409245}
+  materialDropdownName: MaterialDropdown
+  materialPreviewImageName: MaterialPreviewImage
+  autoFindUI: 1
   availableMaterials:
   - {fileID: 2100000, guid: 22c97c6396e55fa4d812081da485cb9b, type: 2}
   - {fileID: 2100000, guid: 901bfca4358e27247aa38e2f689ebb73, type: 2}
+  - {fileID: 2100000, guid: 823f5f6af7216664abd3b71dc8532179, type: 2}
+  - {fileID: 2100000, guid: b939f522afa587e40b38dd99ee5af06e, type: 2}
+  - {fileID: 2100000, guid: b831bd9c0ab346e46a31e4abd1124876, type: 2}
+  - {fileID: 2100000, guid: d33a83c34a5757b46b9e93b7669e83db, type: 2}
+  - {fileID: 2100000, guid: 035e60458dd653e46952cd65bf1e7b0d, type: 2}
+  - {fileID: 2100000, guid: 9459588eceb212742bf78c8fb2482131, type: 2}
   materialNames:
   - wizardBlue
   - wizardRed
+  - wizardGreen
+  - wizardLightblue
+  - wizardOrange
+  - wizardPurple
+  - wizardYellow
+  - wizardBlack
   materialPreviewSprites:
   - {fileID: 21300000, guid: 5ba409f59f4e9524b81bda7ca7755063, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
   - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
   selectedMaterialIndex: 0
   playerTag: Player

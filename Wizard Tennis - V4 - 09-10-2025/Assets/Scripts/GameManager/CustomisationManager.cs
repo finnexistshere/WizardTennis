@@ -14,6 +14,16 @@ public class CustomisationManager : MonoBehaviour
     [Tooltip("Preview image for selected material (optional)")]
     [SerializeField] private Image materialPreviewImage;
 
+    [Header("=== UI Auto-Find Settings ===")]
+    [Tooltip("Name of the material dropdown GameObject (for auto-finding)")]
+    [SerializeField] private string materialDropdownName = "MaterialDropdown";
+
+    [Tooltip("Name of the preview image GameObject (for auto-finding)")]
+    [SerializeField] private string materialPreviewImageName = "MaterialPreviewImage";
+
+    [Tooltip("Enable automatic UI finding when references are lost")]
+    [SerializeField] private bool autoFindUI = true;
+
     [Header("=== Material Settings ===")]
     [Tooltip("Array of available materials for player customisation")]
     [SerializeField] private Material[] availableMaterials;
@@ -67,6 +77,9 @@ public class CustomisationManager : MonoBehaviour
 
         LoadSettings();
         ValidateMaterialArrays();
+
+        // Subscribe to scene loaded event
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     private void Start()
@@ -81,10 +94,45 @@ public class CustomisationManager : MonoBehaviour
         ApplyMaterialToPlayer();
     }
 
+    private void Update()
+    {
+        // Auto-find and hook UI if enabled and references are lost
+        if (autoFindUI && !isUIHooked)
+        {
+            TryFindAndHookUI();
+        }
+
+        // Check if hooked UI has become null (destroyed)
+        if (isUIHooked && !HasValidUIReferences())
+        {
+            Debug.LogWarning("[CustomisationManager] UI references lost. Will attempt to re-find...");
+            UnhookUI();
+        }
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        Debug.Log($"[CustomisationManager] Scene loaded: {scene.name}. Searching for UI...");
+
+        // Clear UI references on scene change
+        UnhookUI();
+
+        // Try to find UI in new scene if auto-find is enabled
+        if (autoFindUI)
+        {
+            TryFindAndHookUI();
+        }
+
+        // Apply saved material to player if in scene
+        ApplyMaterialToPlayer();
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)
         {
+            // Unsubscribe from scene loaded event
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
             UnhookUI();
             Instance = null;
         }
@@ -131,6 +179,20 @@ public class CustomisationManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Check if currently hooked UI references are still valid (not destroyed)
+    /// </summary>
+    private bool HasValidUIReferences()
+    {
+        // Check if dropdown still exists
+        if (materialDropdown != null && materialDropdown.gameObject != null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Hook UI elements for runtime control
     /// </summary>
     public void OnCustomisationMenuOpened(TMP_Dropdown dropdown = null, Image previewImage = null)
@@ -147,6 +209,67 @@ public class CustomisationManager : MonoBehaviour
     public void OnCustomisationMenuClosed()
     {
         // Don't unhook if UI was assigned in inspector
+    }
+
+    /// <summary>
+    /// Manually force UI to re-hook (useful after scene changes or UI rebuilds)
+    /// </summary>
+    public void ForceRehookUI()
+    {
+        if (HasUIReferences())
+        {
+            Debug.Log("[CustomisationManager] Forcing UI re-hook...");
+            UnhookUI();
+            HookUI();
+        }
+        else
+        {
+            Debug.LogWarning("[CustomisationManager] Cannot re-hook UI - no UI references available.");
+        }
+    }
+
+    /// <summary>
+    /// Attempt to find UI elements by name and hook them
+    /// </summary>
+    private void TryFindAndHookUI()
+    {
+        bool foundAny = false;
+
+        // Try to find material dropdown
+        if (materialDropdown == null && !string.IsNullOrEmpty(materialDropdownName))
+        {
+            GameObject dropdownObj = GameObject.Find(materialDropdownName);
+            if (dropdownObj != null)
+            {
+                materialDropdown = dropdownObj.GetComponent<TMP_Dropdown>();
+                if (materialDropdown != null)
+                {
+                    Debug.Log($"[CustomisationManager] Found material dropdown: {materialDropdownName}");
+                    foundAny = true;
+                }
+            }
+        }
+
+        // Try to find preview image
+        if (materialPreviewImage == null && !string.IsNullOrEmpty(materialPreviewImageName))
+        {
+            GameObject previewObj = GameObject.Find(materialPreviewImageName);
+            if (previewObj != null)
+            {
+                materialPreviewImage = previewObj.GetComponent<Image>();
+                if (materialPreviewImage != null)
+                {
+                    Debug.Log($"[CustomisationManager] Found material preview image: {materialPreviewImageName}");
+                    foundAny = true;
+                }
+            }
+        }
+
+        // Hook UI if we found any elements
+        if (foundAny && HasUIReferences())
+        {
+            HookUI();
+        }
     }
 
     private void HookUI()
@@ -370,12 +493,18 @@ public class CustomisationManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Clear cached player reference (call this when player is destroyed/respawned)
+    /// </summary>
+    public void ClearPlayerCache()
+    {
+        cachedPlayer = null;
+    }
+
+    /// <summary>
     /// Register the calling GameObject as the player target for material customization.
     /// Call this from the player's Start() or Awake() method to ensure materials are applied.
     /// </summary>
     /// <param name="player">The GameObject registering itself as the player</param>
-    /// 
-    // this is currently being called in Ball.cs or PlayerHitting.
     public void RegisterAsPlayer(GameObject player)
     {
         if (player == null)
@@ -389,14 +518,6 @@ public class CustomisationManager : MonoBehaviour
 
         // Immediately apply the selected material
         ApplyMaterialToGameObject(player);
-    }
-
-    /// <summary>
-    /// Clear cached player reference (call this when player is destroyed/respawned)
-    /// </summary>
-    public void ClearPlayerCache()
-    {
-        cachedPlayer = null;
     }
 
     #endregion
