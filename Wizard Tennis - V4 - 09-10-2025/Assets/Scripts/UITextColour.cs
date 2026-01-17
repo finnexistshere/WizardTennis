@@ -3,7 +3,6 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
-[RequireComponent(typeof(Button))]
 [RequireComponent(typeof(AudioSource))]
 public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
 {
@@ -12,6 +11,7 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     public Color highlightedColor = Color.yellow;
     public Color pressedColor = Color.gray;
     public Color disabledColor = Color.grey;
+    public Color toggledOnColor = Color.green;
 
     [Header("Hover Animation")]
     [Tooltip("How much to rotate the button when hovered.")]
@@ -24,8 +24,13 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     public AudioClip creakSFX;
     public AudioClip sparkleSFX;
 
+    [Header("Toggle Settings")]
+    [Tooltip("Use toggle-specific colors when toggle is on")]
+    public bool useToggleColors = true;
+
     private TMP_Text txt;
     private Button btn;
+    private Toggle toggle;
     private bool lastInteractable;
     private bool isHovered;
     private Quaternion originalRotation;
@@ -34,10 +39,34 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     private float hoverCooldown = 0.05f; // 50ms stability window
     private float lastHoverEventTime = -1f;
 
+    // Track which component we're using
+    private enum ComponentType { None, Button, Toggle }
+    private ComponentType componentType = ComponentType.None;
+
     void Awake()
     {
-        btn = GetComponent<Button>();
         audioSource = GetComponent<AudioSource>();
+
+        // Check for Button first, then Toggle
+        btn = GetComponent<Button>();
+        toggle = GetComponent<Toggle>();
+
+        if (btn != null)
+        {
+            componentType = ComponentType.Button;
+            lastInteractable = btn.interactable;
+            btn.onClick.AddListener(ResetButton);
+        }
+        else if (toggle != null)
+        {
+            componentType = ComponentType.Toggle;
+            lastInteractable = toggle.interactable;
+            toggle.onValueChanged.AddListener(OnToggleValueChanged);
+        }
+        else
+        {
+            Debug.LogWarning($"UITextColour: No Button or Toggle found on {gameObject.name}!");
+        }
 
         // Find TMP_Text in children
         txt = GetComponentInChildren<TMP_Text>(true);
@@ -45,14 +74,19 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         if (txt == null)
             Debug.LogWarning($"UITextColour: No TMP_Text found on {gameObject.name}!");
 
-        lastInteractable = btn.interactable;
         originalRotation = transform.localRotation;
         targetRotation = originalRotation;
 
         UpdateTextColor();
+    }
 
-        // Optional: hook ResetButton to button click
-        btn.onClick.AddListener(ResetButton);
+    void OnDestroy()
+    {
+        // Clean up listeners
+        if (btn != null)
+            btn.onClick.RemoveListener(ResetButton);
+        if (toggle != null)
+            toggle.onValueChanged.RemoveListener(OnToggleValueChanged);
     }
 
     void Update()
@@ -61,28 +95,74 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         transform.localRotation = Quaternion.Lerp(transform.localRotation, targetRotation, Time.unscaledDeltaTime * twistSpeed);
 
         // Detect interactable change
-        if (btn.interactable != lastInteractable)
+        bool currentInteractable = IsInteractable();
+        if (currentInteractable != lastInteractable)
         {
             UpdateTextColor();
-            lastInteractable = btn.interactable;
+            lastInteractable = currentInteractable;
         }
+    }
+
+    private bool IsInteractable()
+    {
+        switch (componentType)
+        {
+            case ComponentType.Button:
+                return btn != null && btn.interactable;
+            case ComponentType.Toggle:
+                return toggle != null && toggle.interactable;
+            default:
+                return false;
+        }
+    }
+
+    private bool IsToggleOn()
+    {
+        return componentType == ComponentType.Toggle && toggle != null && toggle.isOn;
     }
 
     void UpdateTextColor()
     {
         if (txt == null) return;
 
-        if (!btn.interactable)
+        if (!IsInteractable())
+        {
             txt.color = disabledColor;
+        }
+        else if (useToggleColors && IsToggleOn())
+        {
+            // Toggle is on - use special color
+            txt.color = isHovered ? highlightedColor : toggledOnColor;
+        }
         else if (isHovered)
+        {
             txt.color = highlightedColor;
+        }
         else
+        {
             txt.color = normalColor;
+        }
+    }
+
+    private void OnToggleValueChanged(bool isOn)
+    {
+        // Update color when toggle state changes
+        UpdateTextColor();
+
+        // Optional: Add a subtle rotation pulse when toggled
+        if (isOn)
+        {
+            targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle * 0.5f);
+        }
+        else
+        {
+            targetRotation = originalRotation;
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (!btn.interactable || txt == null) return;
+        if (!IsInteractable() || txt == null) return;
 
         // Prevent edge jitter from spamming enter/exit events
         if (Time.unscaledTime - lastHoverEventTime < hoverCooldown)
@@ -102,7 +182,7 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (!btn.interactable || txt == null) return;
+        if (!IsInteractable() || txt == null) return;
 
         txt.color = pressedColor;
         targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle * 1.5f);
@@ -110,7 +190,7 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (!btn.interactable || txt == null) return;
+        if (!IsInteractable() || txt == null) return;
 
         txt.color = highlightedColor;
         targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle);
@@ -128,18 +208,35 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
         isHovered = false;
         UpdateTextColor();
-        targetRotation = originalRotation;
+
+        // For toggles, maintain slight rotation if toggled on
+        if (IsToggleOn())
+        {
+            targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle * 0.5f);
+        }
+        else
+        {
+            targetRotation = originalRotation;
+        }
     }
 
     /// <summary>
-    /// Resets the button to its normal color and rotation.
+    /// Resets the button/toggle to its normal color and rotation.
     /// Can be called from the button's OnClick event.
     /// </summary>
     public void ResetButton()
     {
         isHovered = false;
-        targetRotation = originalRotation;
-        if (txt != null)
-            txt.color = normalColor;
+
+        if (IsToggleOn())
+        {
+            targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle * 0.5f);
+        }
+        else
+        {
+            targetRotation = originalRotation;
+        }
+
+        UpdateTextColor();
     }
 }
