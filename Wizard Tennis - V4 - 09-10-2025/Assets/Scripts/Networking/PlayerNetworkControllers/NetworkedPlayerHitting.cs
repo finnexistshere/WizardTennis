@@ -91,6 +91,11 @@ public class NetworkedBall : NetworkBehaviour
         if (opponent == null)
             opponent = GameObject.Find("Opponent");
 
+        if (CustomisationManager.Instance != null)
+        {
+            CustomisationManager.Instance.RegisterAsPlayer(gameObject);
+        }
+
         // DON'T search for generic "ServingBarriers" - let it be assigned in inspector
         // or find it by being a child of this player
         if (servingBarriers == null)
