@@ -21,8 +21,18 @@ public class CustomisationManager : MonoBehaviour
     [Tooltip("Name of the preview image GameObject (for auto-finding)")]
     [SerializeField] private string materialPreviewImageName = "MaterialPreviewImage";
 
+    [Tooltip("Name of the display object GameObject (for auto-finding)")]
+    [SerializeField] private string displayObjectName = "MaterialDisplayObject";
+
     [Tooltip("Enable automatic UI finding when references are lost")]
     [SerializeField] private bool autoFindUI = true;
+
+    [Header("=== Display Object Settings ===")]
+    [Tooltip("3D object to display material preview (assign in inspector or auto-find by name)")]
+    [SerializeField] private GameObject displayObject;
+
+    [Tooltip("Apply material to display object's children as well")]
+    [SerializeField] private bool applyToDisplayChildren = true;
 
     [Header("=== Material Settings ===")]
     [Tooltip("Array of available materials for player customisation")]
@@ -102,6 +112,12 @@ public class CustomisationManager : MonoBehaviour
             TryFindAndHookUI();
         }
 
+        // Auto-find display object if enabled and reference is lost
+        if (autoFindUI && displayObject == null)
+        {
+            TryFindDisplayObject();
+        }
+
         // Check if hooked UI has become null (destroyed)
         if (isUIHooked && !HasValidUIReferences())
         {
@@ -116,11 +132,13 @@ public class CustomisationManager : MonoBehaviour
 
         // Clear UI references on scene change
         UnhookUI();
+        displayObject = null; // Clear display object reference
 
         // Try to find UI in new scene if auto-find is enabled
         if (autoFindUI)
         {
             TryFindAndHookUI();
+            TryFindDisplayObject();
         }
 
         // Apply saved material to player if in scene
@@ -272,6 +290,137 @@ public class CustomisationManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Attempt to find the display object by name
+    /// </summary>
+    private void TryFindDisplayObject()
+    {
+        if (displayObject == null && !string.IsNullOrEmpty(displayObjectName))
+        {
+            displayObject = GameObject.Find(displayObjectName);
+            if (displayObject != null)
+            {
+                Debug.Log($"[CustomisationManager] Found display object: {displayObjectName}");
+                // Deactivate on find (it should start hidden)
+                displayObject.SetActive(false);
+                // Apply current material to display object
+                ApplyMaterialToDisplayObject();
+            }
+        }
+    }
+
+    #endregion
+
+    #region Display Object Management
+
+    /// <summary>
+    /// Set the display object reference manually
+    /// </summary>
+    public void SetDisplayObject(GameObject obj)
+    {
+        displayObject = obj;
+        if (displayObject != null)
+        {
+            Debug.Log($"[CustomisationManager] Display object set to: {displayObject.name}");
+            // Deactivate when manually set
+            displayObject.SetActive(false);
+            ApplyMaterialToDisplayObject();
+        }
+    }
+
+    /// <summary>
+    /// Activate the display object (make it visible)
+    /// </summary>
+    public void ActivateDisplayObject()
+    {
+        if (displayObject != null)
+        {
+            displayObject.SetActive(true);
+            Debug.Log($"[CustomisationManager] Display object activated: {displayObject.name}");
+        }
+        else
+        {
+            Debug.LogWarning("[CustomisationManager] Cannot activate display object - reference is null.");
+        }
+    }
+
+    /// <summary>
+    /// Deactivate the display object (hide it)
+    /// </summary>
+    public void DeactivateDisplayObject()
+    {
+        if (displayObject != null)
+        {
+            displayObject.SetActive(false);
+            Debug.Log($"[CustomisationManager] Display object deactivated: {displayObject.name}");
+        }
+        else
+        {
+            Debug.LogWarning("[CustomisationManager] Cannot deactivate display object - reference is null.");
+        }
+    }
+
+    /// <summary>
+    /// Toggle the display object's active state
+    /// </summary>
+    public void ToggleDisplayObject()
+    {
+        if (displayObject != null)
+        {
+            displayObject.SetActive(!displayObject.activeSelf);
+            Debug.Log($"[CustomisationManager] Display object toggled to: {displayObject.activeSelf}");
+        }
+        else
+        {
+            Debug.LogWarning("[CustomisationManager] Cannot toggle display object - reference is null.");
+        }
+    }
+
+    /// <summary>
+    /// Apply the selected material to the display object
+    /// </summary>
+    private void ApplyMaterialToDisplayObject()
+    {
+        if (displayObject == null || SelectedMaterial == null)
+        {
+            return;
+        }
+
+        int appliedCount = 0;
+
+        // Apply to display object itself
+        appliedCount += ApplyMaterialToRenderers(displayObject);
+
+        // Apply to children if enabled
+        if (applyToDisplayChildren)
+        {
+            Renderer[] childRenderers = displayObject.GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer renderer in childRenderers)
+            {
+                // Apply to all renderers including the parent
+                appliedCount += ApplyMaterialToRenderer(renderer);
+            }
+        }
+
+        Debug.Log($"[CustomisationManager] Applied '{materialNames[selectedMaterialIndex]}' to {appliedCount} renderer(s) on display object '{displayObject.name}'");
+    }
+
+    /// <summary>
+    /// Get the current display object reference
+    /// </summary>
+    public GameObject GetDisplayObject()
+    {
+        return displayObject;
+    }
+
+    /// <summary>
+    /// Check if display object is currently active
+    /// </summary>
+    public bool IsDisplayObjectActive()
+    {
+        return displayObject != null && displayObject.activeSelf;
+    }
+
     private void HookUI()
     {
         if (isUIHooked) return;
@@ -287,18 +436,27 @@ public class CustomisationManager : MonoBehaviour
             }
 
             materialDropdown.value = selectedMaterialIndex;
-            materialDropdown.onValueChanged.AddListener(SetMaterial);
+            // Use AddListener for real-time updates as dropdown changes
+            materialDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
         }
 
         UpdateMaterialPreview();
         isUIHooked = true;
     }
 
+    /// <summary>
+    /// Called when dropdown value changes - updates material in real-time
+    /// </summary>
+    private void OnDropdownValueChanged(int index)
+    {
+        SetMaterial(index);
+    }
+
     private void UnhookUI()
     {
         if (!isUIHooked) return;
 
-        materialDropdown?.onValueChanged.RemoveListener(SetMaterial);
+        materialDropdown?.onValueChanged.RemoveListener(OnDropdownValueChanged);
 
         isUIHooked = false;
     }
@@ -361,6 +519,9 @@ public class CustomisationManager : MonoBehaviour
 
         // Fire event
         OnMaterialChanged?.Invoke(SelectedMaterial, selectedMaterialIndex);
+
+        // Apply to display object if it exists
+        ApplyMaterialToDisplayObject();
     }
 
     /// <summary>

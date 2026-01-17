@@ -114,6 +114,7 @@ public class SceneChanger : MonoBehaviour
         MainMenu.SetActive(false);
         CustomisationMenu.SetActive(true);
         MoveCameraTo(CustomisationCamPos);
+        CustomisationManager.Instance.ActivateDisplayObject();
     }
 
     public void BackToMainFromCustomisation()
@@ -121,6 +122,7 @@ public class SceneChanger : MonoBehaviour
         MainMenu.SetActive(true);
         CustomisationMenu.SetActive(false);
         MoveCameraTo(mainMenuCamPos);
+        CustomisationManager.Instance.DeactivateDisplayObject();
     }
 
     private void MoveCameraTo(Transform target)
