@@ -24278,6 +24278,15 @@ MonoBehaviour:
     - m_Text: Black
       m_Image: {fileID: 0}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Dark Green
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Dark Yellow
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
+    - m_Text: Wireframe
+      m_Image: {fileID: 0}
+      m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -24886,6 +24895,9 @@ MonoBehaviour:
   - {fileID: 2100000, guid: d33a83c34a5757b46b9e93b7669e83db, type: 2}
   - {fileID: 2100000, guid: 035e60458dd653e46952cd65bf1e7b0d, type: 2}
   - {fileID: 2100000, guid: 9459588eceb212742bf78c8fb2482131, type: 2}
+  - {fileID: 2100000, guid: 900afb76854840941a8a42fc3456fd7a, type: 2}
+  - {fileID: 2100000, guid: 1956e1d036f861b489d7db199992313c, type: 2}
+  - {fileID: 2100000, guid: 86e29ff00b40f6144a053d83aab12400, type: 2}
   materialNames:
   - wizardBlue
   - wizardRed
@@ -24895,8 +24907,14 @@ MonoBehaviour:
   - wizardPurple
   - wizardYellow
   - wizardBlack
+  - wizardDarkGreen
+  - wizardDarkYellow
+  - wizard_Wireframe
   materialPreviewSprites:
   - {fileID: 21300000, guid: 5ba409f59f4e9524b81bda7ca7755063, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
+  - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
   - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
   - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
   - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
@@ -24907,7 +24925,7 @@ MonoBehaviour:
   selectedMaterialIndex: 0
   playerTag: Player
   applyToChildren: 1
-  childFilterTag: Player
+  childFilterTag: 
   customizationLayerMask:
     serializedVersion: 2
     m_Bits: 256
