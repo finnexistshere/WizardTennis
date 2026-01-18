@@ -15701,11 +15701,13 @@ MonoBehaviour:
   highlightedColor: {r: 0.7843138, g: 0.7803922, b: 1, a: 1}
   pressedColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
+  toggledOnColor: {r: 0, g: 1, b: 0, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
   audioSource: {fileID: 1136450470}
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
+  useToggleColors: 1
 --- !u!82 &126685021
 AudioSource:
   m_ObjectHideFlags: 0
@@ -16002,11 +16004,13 @@ MonoBehaviour:
   highlightedColor: {r: 0.7843138, g: 0.7803922, b: 1, a: 1}
   pressedColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
+  toggledOnColor: {r: 0, g: 1, b: 0, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
   audioSource: {fileID: 1136450470}
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
+  useToggleColors: 1
 --- !u!82 &152661690
 AudioSource:
   m_ObjectHideFlags: 0
@@ -16304,7 +16308,6 @@ GameObject:
   - component: {fileID: 168140769}
   - component: {fileID: 168140768}
   - component: {fileID: 168140767}
-  - component: {fileID: 168140770}
   m_Layer: 5
   m_Name: GameOverText
   m_TagString: Untagged
@@ -16430,29 +16433,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 81.799995}
   m_SizeDelta: {x: 400, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &168140770
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 168140766}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: New Text
-  localizedTexts:
-  - language: 0
-    text: New Text
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!1 &177295368
 GameObject:
   m_ObjectHideFlags: 0
@@ -16783,7 +16763,6 @@ GameObject:
   - component: {fileID: 212450836}
   - component: {fileID: 212450838}
   - component: {fileID: 212450837}
-  - component: {fileID: 212450839}
   m_Layer: 5
   m_Name: OpponentScoreText
   m_TagString: Untagged
@@ -16912,29 +16891,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 212450835}
   m_CullTransparentMesh: 1
---- !u!114 &212450839
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 212450835}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: 0
-  localizedTexts:
-  - language: 0
-    text: 0
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!4 &216367065 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 233c1d04373bad24f9fea80911a837ef, type: 3}
@@ -17365,7 +17321,6 @@ GameObject:
   - component: {fileID: 260133491}
   - component: {fileID: 260133493}
   - component: {fileID: 260133492}
-  - component: {fileID: 260133494}
   m_Layer: 5
   m_Name: RallyCounter
   m_TagString: Untagged
@@ -17492,29 +17447,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 260133490}
   m_CullTransparentMesh: 1
---- !u!114 &260133494
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 260133490}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: 'Rally Count:'
-  localizedTexts:
-  - language: 0
-    text: 'Rally Count:'
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!1 &265330815
 GameObject:
   m_ObjectHideFlags: 0
@@ -17660,7 +17592,6 @@ GameObject:
   - component: {fileID: 276903873}
   - component: {fileID: 276903872}
   - component: {fileID: 276903871}
-  - component: {fileID: 276903874}
   m_Layer: 5
   m_Name: CLIENT
   m_TagString: Untagged
@@ -17782,23 +17713,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 276903869}
   m_CullTransparentMesh: 1
---- !u!114 &276903874
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 276903869}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3e820fbb6e836c4aa2458221a12adb1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedButton
-  defaultText: Button
-  localizedTexts:
-  - language: 0
-    text: Client
-    fontSize: 0
 --- !u!1 &298555667
 GameObject:
   m_ObjectHideFlags: 0
@@ -18117,11 +18031,13 @@ MonoBehaviour:
   highlightedColor: {r: 0.7843138, g: 0.7803922, b: 1, a: 1}
   pressedColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
+  toggledOnColor: {r: 0, g: 1, b: 0, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
   audioSource: {fileID: 1136450470}
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
+  useToggleColors: 1
 --- !u!82 &302547066
 AudioSource:
   m_ObjectHideFlags: 0
@@ -24145,11 +24061,13 @@ MonoBehaviour:
   highlightedColor: {r: 0.7843138, g: 0.7803922, b: 1, a: 1}
   pressedColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
+  toggledOnColor: {r: 0, g: 1, b: 0, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
   audioSource: {fileID: 1136450470}
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
+  useToggleColors: 1
 --- !u!82 &440953816
 AudioSource:
   m_ObjectHideFlags: 0
@@ -24301,7 +24219,6 @@ GameObject:
   - component: {fileID: 450155298}
   - component: {fileID: 450155297}
   - component: {fileID: 450155296}
-  - component: {fileID: 450155299}
   m_Layer: 5
   m_Name: HOST
   m_TagString: Untagged
@@ -24423,23 +24340,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 450155294}
   m_CullTransparentMesh: 1
---- !u!114 &450155299
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 450155294}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3e820fbb6e836c4aa2458221a12adb1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedButton
-  defaultText: Button
-  localizedTexts:
-  - language: 0
-    text: Host
-    fontSize: 0
 --- !u!1 &469096393
 GameObject:
   m_ObjectHideFlags: 0
@@ -25932,11 +25832,13 @@ MonoBehaviour:
   highlightedColor: {r: 0.7843138, g: 0.7803922, b: 1, a: 1}
   pressedColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
+  toggledOnColor: {r: 0, g: 1, b: 0, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
   audioSource: {fileID: 1136450470}
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
+  useToggleColors: 1
 --- !u!82 &571976422
 AudioSource:
   m_ObjectHideFlags: 0
@@ -27563,7 +27465,6 @@ GameObject:
   - component: {fileID: 838355078}
   - component: {fileID: 838355080}
   - component: {fileID: 838355079}
-  - component: {fileID: 838355081}
   m_Layer: 5
   m_Name: SpellStatusText
   m_TagString: Untagged
@@ -27689,29 +27590,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 838355077}
   m_CullTransparentMesh: 1
---- !u!114 &838355081
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 838355077}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: New Text
-  localizedTexts:
-  - language: 0
-    text: New Text
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!1 &842105361
 GameObject:
   m_ObjectHideFlags: 0
@@ -28898,7 +28776,6 @@ GameObject:
   - component: {fileID: 983659999}
   - component: {fileID: 983660001}
   - component: {fileID: 983660000}
-  - component: {fileID: 983660002}
   m_Layer: 5
   m_Name: PlayerScoreText
   m_TagString: Untagged
@@ -29025,29 +28902,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 983659998}
   m_CullTransparentMesh: 1
---- !u!114 &983660002
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 983659998}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: 0
-  localizedTexts:
-  - language: 0
-    text: 0
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!1001 &994187377
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -37053,7 +36907,6 @@ GameObject:
   - component: {fileID: 1379234392}
   - component: {fileID: 1379234394}
   - component: {fileID: 1379234393}
-  - component: {fileID: 1379234395}
   m_Layer: 5
   m_Name: GreenNumbers
   m_TagString: Untagged
@@ -37179,29 +37032,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1379234391}
   m_CullTransparentMesh: 1
---- !u!114 &1379234395
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1379234391}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: 0
-  localizedTexts:
-  - language: 0
-    text: 0
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!1001 &1383997553
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -37712,11 +37542,13 @@ MonoBehaviour:
   highlightedColor: {r: 0.7843138, g: 0.7803922, b: 1, a: 1}
   pressedColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
+  toggledOnColor: {r: 0, g: 1, b: 0, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
   audioSource: {fileID: 1136450470}
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
+  useToggleColors: 1
 --- !u!82 &1437665136
 AudioSource:
   m_ObjectHideFlags: 0
@@ -49633,7 +49465,6 @@ GameObject:
   - component: {fileID: 1708105518}
   - component: {fileID: 1708105520}
   - component: {fileID: 1708105519}
-  - component: {fileID: 1708105521}
   m_Layer: 5
   m_Name: GreenPointsText
   m_TagString: Untagged
@@ -49760,29 +49591,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1708105517}
   m_CullTransparentMesh: 1
---- !u!114 &1708105521
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1708105517}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: 'Green Points:'
-  localizedTexts:
-  - language: 0
-    text: 'Green Points:'
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!4 &1710648335 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: dcb581a0dd811d844bf5807c2a463c22, type: 3}
@@ -49799,7 +49607,6 @@ GameObject:
   - component: {fileID: 1727571494}
   - component: {fileID: 1727571496}
   - component: {fileID: 1727571495}
-  - component: {fileID: 1727571497}
   m_Layer: 5
   m_Name: PlayerNumber
   m_TagString: Untagged
@@ -49925,29 +49732,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1727571493}
   m_CullTransparentMesh: 1
---- !u!114 &1727571497
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1727571493}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0459f65526030284a8aa593e689c7d4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
-  defaultText: P1
-  localizedTexts:
-  - language: 0
-    text: P1
-    fontSize: 0
-  legacyText: {fileID: 0}
-  tmpText: {fileID: 0}
-  tmp3DText: {fileID: 0}
-  updateOnStart: 1
-  useFormatting: 0
-  defaultFontSize: 0
 --- !u!1001 &1745898137
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -57156,11 +56940,13 @@ MonoBehaviour:
   highlightedColor: {r: 0.7843138, g: 0.7803922, b: 1, a: 1}
   pressedColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
   disabledColor: {r: 0.78431374, g: 0.78039217, b: 1, a: 1}
+  toggledOnColor: {r: 0, g: 1, b: 0, a: 1}
   hoverTwistAngle: 8
   twistSpeed: 10
   audioSource: {fileID: 1136450470}
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
+  useToggleColors: 1
 --- !u!82 &2101770634
 AudioSource:
   m_ObjectHideFlags: 0
