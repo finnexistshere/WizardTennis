@@ -47,6 +47,7 @@ public class CustomisationManager : MonoBehaviour
     [SerializeField] private int selectedMaterialIndex = 0;
 
     [Header("=== Custom Colour Base ===")]
+    [Tooltip("Base material for custom coloring (must have _Color property)")]
     [SerializeField] private Material customColourBaseMaterial;
 
     [Header("=== Player References ===")]
@@ -63,16 +64,17 @@ public class CustomisationManager : MonoBehaviour
     [SerializeField] private LayerMask customizationLayerMask = ~0;
 
     [Header("=== Material Channels ===")]
+    [Tooltip("Define color channels for custom material mode")]
     [SerializeField] private List<MaterialChannel> materialChannels = new();
 
     [System.Serializable]
     public class MaterialChannel
     {
         [Tooltip("Editor-friendly name")]
-        public string channelName;
+        public string channelName = "Channel";
 
         [Tooltip("Only apply to objects with this tag (leave empty for any)")]
-        public string targetTag;
+        public string targetTag = "";
 
         [Tooltip("Only apply to objects on these layers")]
         public LayerMask targetLayers = ~0;
@@ -80,29 +82,58 @@ public class CustomisationManager : MonoBehaviour
         [Tooltip("Material slot index (-1 = all slots)")]
         public int materialSlot = -1;
 
-        [Tooltip("Colour applied to this channel")]
+        [Tooltip("Color applied to this channel (always includes alpha = 1)")]
         public Color color = Color.white;
     }
 
-    private readonly Dictionary<(Material, Color), Material> recolouredMaterialCache
-    = new();
+    private readonly Dictionary<(Material, Color), Material> recolouredMaterialCache = new();
 
     // Public Properties
     public int SelectedMaterialIndex => selectedMaterialIndex;
-    public Material SelectedMaterial => (availableMaterials != null && selectedMaterialIndex >= 0 && selectedMaterialIndex < availableMaterials.Length)
-        ? availableMaterials[selectedMaterialIndex]
-        : null;
+
+    [Header("=== Custom Colour Filtering ===")]
+    [SerializeField] private string customColourTargetTag = "CustomColour";
+    [SerializeField] private LayerMask customColourLayerMask = ~0;
+    [SerializeField] private int customColourMaterialSlot = -1; // -1 = all slots
+
+    public Material SelectedMaterial
+    {
+        get
+        {
+            if (IsCustomColourSelected)
+            {
+                EnsureRuntimeCustomMaterial();
+                ApplyCustomColourToMaterial();
+                return runtimeCustomMaterial;
+            }
+
+            if (availableMaterials != null &&
+                selectedMaterialIndex >= 0 &&
+                selectedMaterialIndex < availableMaterials.Length)
+            {
+                return availableMaterials[selectedMaterialIndex];
+            }
+
+            return null;
+        }
+    }
+
+    // Check if custom color mode is selected
+    public bool IsCustomColourSelected => selectedMaterialIndex >= availableMaterials.Length;
 
     // Events
     public delegate void MaterialChangedHandler(Material newMaterial, int index);
     public event MaterialChangedHandler OnMaterialChanged;
 
-    private bool IsCustomColourSelected =>
-    selectedMaterialIndex == materialNames.Length - 1;
+    public delegate void CustomColourModeChanged(bool active);
+    public event CustomColourModeChanged OnCustomColourModeChanged;
 
     // Track if UI is currently hooked
     private bool isUIHooked = false;
     private GameObject cachedPlayer;
+
+    private Material runtimeCustomMaterial;
+    [SerializeField] private Color customColour = Color.white;
 
     private void Awake()
     {
@@ -122,6 +153,22 @@ public class CustomisationManager : MonoBehaviour
         // Subscribe to scene loaded event
         UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
     }
+
+    private void EnsureRuntimeCustomMaterial()
+    {
+        if (runtimeCustomMaterial != null)
+            return;
+
+        if (customColourBaseMaterial == null)
+        {
+            Debug.LogError("[CustomisationManager] No Custom Colour Base Material assigned!");
+            return;
+        }
+
+        runtimeCustomMaterial = new Material(customColourBaseMaterial);
+        runtimeCustomMaterial.name = customColourBaseMaterial.name + "_RuntimeInstance";
+    }
+
 
     private void Start()
     {
@@ -163,7 +210,7 @@ public class CustomisationManager : MonoBehaviour
 
         // Clear UI references on scene change
         UnhookUI();
-        displayObject = null; // Clear display object reference
+        displayObject = null;
 
         // Try to find UI in new scene if auto-find is enabled
         if (autoFindUI)
@@ -180,9 +227,23 @@ public class CustomisationManager : MonoBehaviour
     {
         if (Instance == this)
         {
-            // Unsubscribe from scene loaded event
             UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
             UnhookUI();
+
+            // Clean up cached materials
+            foreach (var mat in recolouredMaterialCache.Values)
+            {
+                if (mat != null)
+                    Destroy(mat);
+            }
+            recolouredMaterialCache.Clear();
+
+            if (runtimeCustomMaterial != null)
+            {
+                Destroy(runtimeCustomMaterial);
+                runtimeCustomMaterial = null;
+            }
+
             Instance = null;
         }
     }
@@ -194,28 +255,37 @@ public class CustomisationManager : MonoBehaviour
         if (availableMaterials == null || availableMaterials.Length == 0)
         {
             Debug.LogWarning("[CustomisationManager] No materials assigned! Please assign materials in the inspector.");
-            return;
+            availableMaterials = new Material[0];
         }
 
-        // Auto-generate material names if not provided
-        if (materialNames == null || materialNames.Length != availableMaterials.Length)
+        // Create material names array (base materials + "Custom Colors")
+        int totalOptions = availableMaterials.Length + (customColourBaseMaterial != null ? 1 : 0);
+
+        if (materialNames == null || materialNames.Length != totalOptions)
         {
-            Debug.LogWarning("[CustomisationManager] Material names array doesn't match materials array. Auto-generating names.");
-            materialNames = new string[availableMaterials.Length];
+            Debug.LogWarning("[CustomisationManager] Material names array doesn't match. Auto-generating names.");
+            materialNames = new string[totalOptions];
+
             for (int i = 0; i < availableMaterials.Length; i++)
             {
                 materialNames[i] = availableMaterials[i] != null ? availableMaterials[i].name : $"Material {i}";
             }
+
+            // Add custom color option at the end
+            if (customColourBaseMaterial != null)
+            {
+                materialNames[availableMaterials.Length] = "Custom Colors";
+            }
         }
 
         // Validate preview sprites array
-        if (materialPreviewSprites != null && materialPreviewSprites.Length != availableMaterials.Length)
+        if (materialPreviewSprites != null && materialPreviewSprites.Length != totalOptions)
         {
             Debug.LogWarning("[CustomisationManager] Material preview sprites array doesn't match materials array length.");
         }
 
         // Clamp selected index
-        selectedMaterialIndex = Mathf.Clamp(selectedMaterialIndex, 0, availableMaterials.Length - 1);
+        selectedMaterialIndex = Mathf.Clamp(selectedMaterialIndex, 0, totalOptions - 1);
     }
 
     #endregion
@@ -227,40 +297,19 @@ public class CustomisationManager : MonoBehaviour
         return materialDropdown != null;
     }
 
-    /// <summary>
-    /// Check if currently hooked UI references are still valid (not destroyed)
-    /// </summary>
     private bool HasValidUIReferences()
     {
-        // Check if dropdown still exists
-        if (materialDropdown != null && materialDropdown.gameObject != null)
-        {
-            return true;
-        }
-
-        return false;
+        return materialDropdown != null && materialDropdown.gameObject != null;
     }
 
-    /// <summary>
-    /// Hook UI elements for runtime control
-    /// </summary>
     public void OnCustomisationMenuOpened(TMP_Dropdown dropdown = null, Image previewImage = null)
     {
         UnhookUI();
 
-        // Override inspector references if runtime references provided
         if (dropdown != null) materialDropdown = dropdown;
         if (previewImage != null) materialPreviewImage = previewImage;
 
         HookUI();
-    }
-
-    private Material GetBaseMaterial()
-    {
-        if (IsCustomColourSelected)
-            return customColourBaseMaterial;
-
-        return SelectedMaterial;
     }
 
     public void OnCustomisationMenuClosed()
@@ -268,9 +317,6 @@ public class CustomisationManager : MonoBehaviour
         // Don't unhook if UI was assigned in inspector
     }
 
-    /// <summary>
-    /// Manually force UI to re-hook (useful after scene changes or UI rebuilds)
-    /// </summary>
     public void ForceRehookUI()
     {
         if (HasUIReferences())
@@ -285,14 +331,10 @@ public class CustomisationManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Attempt to find UI elements by name and hook them
-    /// </summary>
     private void TryFindAndHookUI()
     {
         bool foundAny = false;
 
-        // Try to find material dropdown
         if (materialDropdown == null && !string.IsNullOrEmpty(materialDropdownName))
         {
             GameObject dropdownObj = GameObject.Find(materialDropdownName);
@@ -307,7 +349,6 @@ public class CustomisationManager : MonoBehaviour
             }
         }
 
-        // Try to find preview image
         if (materialPreviewImage == null && !string.IsNullOrEmpty(materialPreviewImageName))
         {
             GameObject previewObj = GameObject.Find(materialPreviewImageName);
@@ -322,16 +363,12 @@ public class CustomisationManager : MonoBehaviour
             }
         }
 
-        // Hook UI if we found any elements
         if (foundAny && HasUIReferences())
         {
             HookUI();
         }
     }
 
-    /// <summary>
-    /// Attempt to find the display object by name
-    /// </summary>
     private void TryFindDisplayObject()
     {
         if (displayObject == null && !string.IsNullOrEmpty(displayObjectName))
@@ -340,124 +377,10 @@ public class CustomisationManager : MonoBehaviour
             if (displayObject != null)
             {
                 Debug.Log($"[CustomisationManager] Found display object: {displayObjectName}");
-                // Deactivate on find (it should start hidden)
                 displayObject.SetActive(false);
-                // Apply current material to display object
                 ApplyMaterialToDisplayObject();
             }
         }
-    }
-
-    #endregion
-
-    #region Display Object Management
-
-    /// <summary>
-    /// Set the display object reference manually
-    /// </summary>
-    public void SetDisplayObject(GameObject obj)
-    {
-        displayObject = obj;
-        if (displayObject != null)
-        {
-            Debug.Log($"[CustomisationManager] Display object set to: {displayObject.name}");
-            // Deactivate when manually set
-            displayObject.SetActive(false);
-            ApplyMaterialToDisplayObject();
-        }
-    }
-
-    /// <summary>
-    /// Activate the display object (make it visible)
-    /// </summary>
-    public void ActivateDisplayObject()
-    {
-        if (displayObject != null)
-        {
-            displayObject.SetActive(true);
-            Debug.Log($"[CustomisationManager] Display object activated: {displayObject.name}");
-        }
-        else
-        {
-            Debug.LogWarning("[CustomisationManager] Cannot activate display object - reference is null.");
-        }
-    }
-
-    /// <summary>
-    /// Deactivate the display object (hide it)
-    /// </summary>
-    public void DeactivateDisplayObject()
-    {
-        if (displayObject != null)
-        {
-            displayObject.SetActive(false);
-            Debug.Log($"[CustomisationManager] Display object deactivated: {displayObject.name}");
-        }
-        else
-        {
-            Debug.LogWarning("[CustomisationManager] Cannot deactivate display object - reference is null.");
-        }
-    }
-
-    /// <summary>
-    /// Toggle the display object's active state
-    /// </summary>
-    public void ToggleDisplayObject()
-    {
-        if (displayObject != null)
-        {
-            displayObject.SetActive(!displayObject.activeSelf);
-            Debug.Log($"[CustomisationManager] Display object toggled to: {displayObject.activeSelf}");
-        }
-        else
-        {
-            Debug.LogWarning("[CustomisationManager] Cannot toggle display object - reference is null.");
-        }
-    }
-
-    /// <summary>
-    /// Apply the selected material to the display object
-    /// </summary>
-    private void ApplyMaterialToDisplayObject()
-    {
-        if (displayObject == null || SelectedMaterial == null)
-        {
-            return;
-        }
-
-        int appliedCount = 0;
-
-        // Apply to display object itself
-        appliedCount += ApplyMaterialToRenderers(displayObject);
-
-        // Apply to children if enabled
-        if (applyToDisplayChildren)
-        {
-            Renderer[] childRenderers = displayObject.GetComponentsInChildren<Renderer>(true);
-            foreach (Renderer renderer in childRenderers)
-            {
-                // Apply to all renderers including the parent
-                appliedCount += ApplyMaterialToRenderer(renderer);
-            }
-        }
-
-        Debug.Log($"[CustomisationManager] Applied '{materialNames[selectedMaterialIndex]}' to {appliedCount} renderer(s) on display object '{displayObject.name}'");
-    }
-
-    /// <summary>
-    /// Get the current display object reference
-    /// </summary>
-    public GameObject GetDisplayObject()
-    {
-        return displayObject;
-    }
-
-    /// <summary>
-    /// Check if display object is currently active
-    /// </summary>
-    public bool IsDisplayObjectActive()
-    {
-        return displayObject != null && displayObject.activeSelf;
     }
 
     private void HookUI()
@@ -468,14 +391,12 @@ public class CustomisationManager : MonoBehaviour
         {
             materialDropdown.onValueChanged.RemoveAllListeners();
 
-            // Populate dropdown if empty
             if (materialDropdown.options.Count == 0)
             {
                 PopulateMaterialDropdown();
             }
 
             materialDropdown.value = selectedMaterialIndex;
-            // Use AddListener for real-time updates as dropdown changes
             materialDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
         }
 
@@ -483,9 +404,6 @@ public class CustomisationManager : MonoBehaviour
         isUIHooked = true;
     }
 
-    /// <summary>
-    /// Called when dropdown value changes - updates material in real-time
-    /// </summary>
     private void OnDropdownValueChanged(int index)
     {
         SetMaterial(index);
@@ -495,7 +413,10 @@ public class CustomisationManager : MonoBehaviour
     {
         if (!isUIHooked) return;
 
-        materialDropdown?.onValueChanged.RemoveListener(OnDropdownValueChanged);
+        if (materialDropdown != null)
+        {
+            materialDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
+        }
 
         isUIHooked = false;
     }
@@ -527,26 +448,123 @@ public class CustomisationManager : MonoBehaviour
         }
     }
 
+    private bool ShouldApplyCustomColour(Renderer renderer)
+    {
+        if (renderer == null)
+            return false;
+
+        GameObject obj = renderer.gameObject;
+
+        // Tag filter
+        if (!string.IsNullOrEmpty(customColourTargetTag) &&
+            !obj.CompareTag(customColourTargetTag))
+            return false;
+
+        // Layer filter
+        if (((1 << obj.layer) & customColourLayerMask) == 0)
+            return false;
+
+        return true;
+    }
+
+    #endregion
+
+    #region Display Object Management
+
+    public void SetDisplayObject(GameObject obj)
+    {
+        displayObject = obj;
+        if (displayObject != null)
+        {
+            Debug.Log($"[CustomisationManager] Display object set to: {displayObject.name}");
+            displayObject.SetActive(false);
+            ApplyMaterialToDisplayObject();
+        }
+    }
+
+    public void ActivateDisplayObject()
+    {
+        if (displayObject != null)
+        {
+            displayObject.SetActive(true);
+            Debug.Log($"[CustomisationManager] Display object activated: {displayObject.name}");
+        }
+        else
+        {
+            Debug.LogWarning("[CustomisationManager] Cannot activate display object - reference is null.");
+        }
+    }
+
+    public void DeactivateDisplayObject()
+    {
+        if (displayObject != null)
+        {
+            displayObject.SetActive(false);
+            Debug.Log($"[CustomisationManager] Display object deactivated: {displayObject.name}");
+        }
+        else
+        {
+            Debug.LogWarning("[CustomisationManager] Cannot deactivate display object - reference is null.");
+        }
+    }
+
+    public void ToggleDisplayObject()
+    {
+        if (displayObject != null)
+        {
+            displayObject.SetActive(!displayObject.activeSelf);
+            Debug.Log($"[CustomisationManager] Display object toggled to: {displayObject.activeSelf}");
+        }
+        else
+        {
+            Debug.LogWarning("[CustomisationManager] Cannot toggle display object - reference is null.");
+        }
+    }
+
+    private void ApplyMaterialToDisplayObject()
+    {
+        if (displayObject == null || SelectedMaterial == null)
+        {
+            return;
+        }
+
+        int appliedCount = 0;
+
+        // Apply to display object itself
+        appliedCount += ApplyMaterialToRenderers(displayObject);
+
+        // Apply to children if enabled
+        if (applyToDisplayChildren)
+        {
+            Renderer[] childRenderers = displayObject.GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer renderer in childRenderers)
+            {
+                appliedCount += ApplyMaterialToRenderer(renderer);
+            }
+        }
+
+        Debug.Log($"[CustomisationManager] Applied material to {appliedCount} renderer(s) on display object '{displayObject.name}'");
+    }
+
+    public GameObject GetDisplayObject()
+    {
+        return displayObject;
+    }
+
+    public bool IsDisplayObjectActive()
+    {
+        return displayObject != null && displayObject.activeSelf;
+    }
+
     #endregion
 
     #region Material Management
 
-    /// <summary>
-    /// Set the selected material by index
-    /// </summary>
     public void SetMaterial(int index)
     {
         bool wasCustom = IsCustomColourSelected;
 
-        selectedMaterialIndex = index;
-
-        bool isCustom = IsCustomColourSelected;
-        if (wasCustom != isCustom)
-        {
-            OnCustomColourModeChanged?.Invoke(isCustom);
-        }
-
-        if (availableMaterials == null || index < 0 || index >= availableMaterials.Length)
+        if (index < 0 || index >= materialNames.Length)
         {
             Debug.LogWarning($"[CustomisationManager] Invalid material index: {index}");
             return;
@@ -556,7 +574,9 @@ public class CustomisationManager : MonoBehaviour
         PlayerPrefs.SetInt("SelectedMaterial", selectedMaterialIndex);
         PlayerPrefs.Save();
 
-        Debug.Log($"[CustomisationManager] Material changed to: {materialNames[index]}");
+        bool isCustom = IsCustomColourSelected;
+
+        Debug.Log($"[CustomisationManager] Material changed to: {materialNames[index]} (Custom Mode: {isCustom})");
 
         UpdateMaterialPreview();
 
@@ -566,16 +586,53 @@ public class CustomisationManager : MonoBehaviour
         // Apply to player if in scene
         ApplyMaterialToPlayer();
 
-        // Fire event
+        // Fire events
         OnMaterialChanged?.Invoke(SelectedMaterial, selectedMaterialIndex);
+
+        if (wasCustom != isCustom)
+        {
+            OnCustomColourModeChanged?.Invoke(isCustom);
+        }
 
         // Apply to display object if it exists
         ApplyMaterialToDisplayObject();
     }
 
-    /// <summary>
-    /// Set material by material reference (finds index automatically)
-    /// </summary>
+    private void ApplyCustomColourToMaterial()
+    {
+        if (runtimeCustomMaterial == null)
+            return;
+
+        Color c = customColour;
+        c.a = 1f;
+
+        if (runtimeCustomMaterial.HasProperty("_BaseColor"))
+            runtimeCustomMaterial.SetColor("_BaseColor", c);
+
+        if (runtimeCustomMaterial.HasProperty("_Color"))
+            runtimeCustomMaterial.SetColor("_Color", c);
+
+        if (runtimeCustomMaterial.HasProperty("_TintColor"))
+            runtimeCustomMaterial.SetColor("_TintColor", c);
+    }
+
+    public void SetCustomColour(Color color)
+    {
+        if (!IsCustomColourSelected)
+            return;
+
+        color.a = 1f;
+        customColour = color;
+
+        EnsureRuntimeCustomMaterial();
+        ApplyCustomColourToMaterial();
+
+        ApplyMaterialToPlayer();
+        ApplyMaterialToDisplayObject();
+    }
+
+    public Color GetCustomColour() => customColour;
+
     public void SetMaterial(Material material)
     {
         if (material == null || availableMaterials == null) return;
@@ -592,23 +649,51 @@ public class CustomisationManager : MonoBehaviour
         Debug.LogWarning($"[CustomisationManager] Material '{material.name}' not found in available materials.");
     }
 
-    public void SetChannelColor(int channelIndex, Color color)
+    public MaterialChannel GetChannel(int index)
     {
-        if (channelIndex < 0 || channelIndex >= materialChannels.Count)
-            return;
+        if (materialChannels == null || index < 0 || index >= materialChannels.Count)
+            return null;
 
-        materialChannels[channelIndex].color = color;
-
-        if (IsCustomColourSelected)
-        {
-            ApplyMaterialToPlayer();
-            ApplyMaterialToDisplayObject();
-        }
+        return materialChannels[index];
     }
 
-    /// <summary>
-    /// Apply the selected material to the player GameObject and its children
-    /// </summary>
+    public void SetChannelColor(int channelIndex, Color color)
+    {
+        if (!IsCustomColourSelected)
+            return;
+
+        if (materialChannels == null || materialChannels.Count == 0)
+        {
+            Debug.LogWarning("[CustomisationManager] No material channels defined.");
+            return;
+        }
+
+        if (channelIndex < 0 || channelIndex >= materialChannels.Count)
+        {
+            Debug.LogWarning(
+                $"[CustomisationManager] Invalid channel index: {channelIndex} (Channel count: {materialChannels.Count})"
+            );
+            return;
+        }
+
+        color.a = 1f;
+        materialChannels[channelIndex].color = color;
+
+        ClearMaterialCache();
+        ApplyMaterialToPlayer();
+        ApplyMaterialToDisplayObject();
+    }
+
+    private void ClearMaterialCache()
+    {
+        foreach (var mat in recolouredMaterialCache.Values)
+        {
+            if (mat != null && mat != customColourBaseMaterial)
+                Destroy(mat);
+        }
+        recolouredMaterialCache.Clear();
+    }
+
     public void ApplyMaterialToPlayer()
     {
         GameObject player = FindPlayer();
@@ -617,13 +702,10 @@ public class CustomisationManager : MonoBehaviour
             Debug.LogWarning("[CustomisationManager] Player not found in scene. Material will be applied when player spawns.");
             return;
         }
-        
+
         ApplyMaterialToGameObject(player);
     }
 
-    /// <summary>
-    /// Apply material to a specific GameObject and optionally its children
-    /// </summary>
     public void ApplyMaterialToGameObject(GameObject target)
     {
         if (target == null || SelectedMaterial == null)
@@ -653,18 +735,16 @@ public class CustomisationManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"[CustomisationManager] Applied '{materialNames[selectedMaterialIndex]}' to {appliedCount} renderer(s) on {target.name}");
+        Debug.Log($"[CustomisationManager] Applied material to {appliedCount} renderer(s) on {target.name}");
     }
 
     private bool ShouldApplyToObject(GameObject obj)
     {
-        // Check layer mask
         if (customizationLayerMask != ~0 && ((1 << obj.layer) & customizationLayerMask) == 0)
         {
             return false;
         }
 
-        // Check child filter tag if specified
         if (!string.IsNullOrEmpty(childFilterTag) && !obj.CompareTag(childFilterTag))
         {
             return false;
@@ -689,36 +769,41 @@ public class CustomisationManager : MonoBehaviour
         if (renderer == null)
             return 0;
 
-        Material baseMat = GetBaseMaterial();
+        Material baseMat = SelectedMaterial;
         if (baseMat == null)
             return 0;
 
         Material[] mats = renderer.sharedMaterials;
 
-        // Step 1: Apply base material everywhere
-        for (int i = 0; i < mats.Length; i++)
-            mats[i] = baseMat;
-
-        // Step 2: Apply channel overrides (only if Custom Colour selected)
-        if (IsCustomColourSelected)
+        // NON-custom mode: apply normally
+        if (!IsCustomColourSelected)
         {
-            foreach (var channel in materialChannels)
+            for (int i = 0; i < mats.Length; i++)
+                mats[i] = baseMat;
+
+            renderer.sharedMaterials = mats;
+            return mats.Length;
+        }
+
+        // CUSTOM COLOUR MODE
+        EnsureRuntimeCustomMaterial();
+        ApplyCustomColourToMaterial();
+
+        bool shouldRecolour = ShouldApplyCustomColour(renderer);
+
+        for (int i = 0; i < mats.Length; i++)
+        {
+            // If slot filtering is enabled
+            if (customColourMaterialSlot >= 0 && i != customColourMaterialSlot)
+                continue;
+
+            if (shouldRecolour)
             {
-                if (!ChannelMatches(renderer, channel))
-                    continue;
-
-                Material recoloured =
-                    GetRecolouredMaterial(baseMat, channel.color);
-
-                if (channel.materialSlot < 0)
-                {
-                    for (int i = 0; i < mats.Length; i++)
-                        mats[i] = recoloured;
-                }
-                else if (channel.materialSlot < mats.Length)
-                {
-                    mats[channel.materialSlot] = recoloured;
-                }
+                mats[i] = runtimeCustomMaterial;
+            }
+            else
+            {
+                mats[i] = baseMat;
             }
         }
 
@@ -730,8 +815,7 @@ public class CustomisationManager : MonoBehaviour
     {
         GameObject obj = renderer.gameObject;
 
-        if (!string.IsNullOrEmpty(channel.targetTag) &&
-            !obj.CompareTag(channel.targetTag))
+        if (!string.IsNullOrEmpty(channel.targetTag) && !obj.CompareTag(channel.targetTag))
             return false;
 
         if (((1 << obj.layer) & channel.targetLayers) == 0)
@@ -740,17 +824,42 @@ public class CustomisationManager : MonoBehaviour
         return true;
     }
 
-    public delegate void CustomColourModeChanged(bool active);
-    public event CustomColourModeChanged OnCustomColourModeChanged;
+    private Material GetRecolouredMaterial(Material baseMaterial, Color color)
+    {
+        if (baseMaterial == null) return null;
+
+        // Ensure alpha is 1
+        color.a = 1f;
+
+        var key = (baseMaterial, color);
+
+        if (recolouredMaterialCache.TryGetValue(key, out var cached))
+            return cached;
+
+        Material instance = new Material(baseMaterial);
+        instance.name = $"{baseMaterial.name}_Recolor_{ColorUtility.ToHtmlStringRGBA(color)}";
+
+        // Try multiple common color properties
+        if (instance.HasProperty("_Color"))
+            instance.SetColor("_Color", color);
+        if (instance.HasProperty("_BaseColor"))
+            instance.SetColor("_BaseColor", color);
+        if (instance.HasProperty("_TintColor"))
+            instance.SetColor("_TintColor", color);
+
+        recolouredMaterialCache[key] = instance;
+        return instance;
+    }
 
     private GameObject FindPlayer()
     {
-        // Use cached player if still valid
         if (cachedPlayer != null)
             return cachedPlayer;
 
-        // Find by tag
-        cachedPlayer = GameObject.FindGameObjectWithTag(playerTag);
+        if (playerTag != null)
+        {
+            cachedPlayer = GameObject.FindGameObjectWithTag(playerTag);
+        }
 
         if (cachedPlayer == null)
         {
@@ -760,19 +869,11 @@ public class CustomisationManager : MonoBehaviour
         return cachedPlayer;
     }
 
-    /// <summary>
-    /// Clear cached player reference (call this when player is destroyed/respawned)
-    /// </summary>
     public void ClearPlayerCache()
     {
         cachedPlayer = null;
     }
 
-    /// <summary>
-    /// Register the calling GameObject as the player target for material customization.
-    /// Call this from the player's Start() or Awake() method to ensure materials are applied.
-    /// </summary>
-    /// <param name="player">The GameObject registering itself as the player</param>
     public void RegisterAsPlayer(GameObject player)
     {
         if (player == null)
@@ -784,7 +885,6 @@ public class CustomisationManager : MonoBehaviour
         cachedPlayer = player;
         Debug.Log($"[CustomisationManager] Registered '{player.name}' as player target.");
 
-        // Immediately apply the selected material
         ApplyMaterialToGameObject(player);
     }
 
@@ -796,18 +896,15 @@ public class CustomisationManager : MonoBehaviour
     {
         selectedMaterialIndex = PlayerPrefs.GetInt("SelectedMaterial", 0);
 
-        // Validate loaded index
         if (availableMaterials != null)
         {
-            selectedMaterialIndex = Mathf.Clamp(selectedMaterialIndex, 0, availableMaterials.Length - 1);
+            int maxIndex = availableMaterials.Length + (customColourBaseMaterial != null ? 1 : 0) - 1;
+            selectedMaterialIndex = Mathf.Clamp(selectedMaterialIndex, 0, maxIndex);
         }
 
         Debug.Log($"[CustomisationManager] Loaded material index: {selectedMaterialIndex}");
     }
 
-    /// <summary>
-    /// Reset to default material (index 0)
-    /// </summary>
     public void ResetToDefault()
     {
         SetMaterial(0);
@@ -818,9 +915,6 @@ public class CustomisationManager : MonoBehaviour
 
     #region Public Utility Methods
 
-    /// <summary>
-    /// Get the name of the currently selected material
-    /// </summary>
     public string GetSelectedMaterialName()
     {
         if (materialNames != null && selectedMaterialIndex >= 0 && selectedMaterialIndex < materialNames.Length)
@@ -830,17 +924,11 @@ public class CustomisationManager : MonoBehaviour
         return "Unknown";
     }
 
-    /// <summary>
-    /// Get total number of available materials
-    /// </summary>
     public int GetMaterialCount()
     {
         return availableMaterials?.Length ?? 0;
     }
 
-    /// <summary>
-    /// Get material by index
-    /// </summary>
     public Material GetMaterialAtIndex(int index)
     {
         if (availableMaterials != null && index >= 0 && index < availableMaterials.Length)
@@ -850,9 +938,6 @@ public class CustomisationManager : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Get material name by index
-    /// </summary>
     public string GetMaterialNameAtIndex(int index)
     {
         if (materialNames != null && index >= 0 && index < materialNames.Length)
@@ -862,27 +947,5 @@ public class CustomisationManager : MonoBehaviour
         return "Unknown";
     }
 
-    #endregion
-
-    #region Dynamic Material Recolouring
-
-    private Material GetRecolouredMaterial(Material baseMaterial, Color color)
-    {
-        if (baseMaterial == null) return null;
-
-        var key = (baseMaterial, color);
-
-        if (recolouredMaterialCache.TryGetValue(key, out var cached))
-            return cached;
-
-        Material instance = new Material(baseMaterial);
-        instance.name = $"{baseMaterial.name}_Recolor_{ColorUtility.ToHtmlStringRGBA(color)}";
-
-        if (instance.HasProperty("_Color"))
-            instance.color = color;
-
-        recolouredMaterialCache[key] = instance;
-        return instance;
-    }
     #endregion
 }
