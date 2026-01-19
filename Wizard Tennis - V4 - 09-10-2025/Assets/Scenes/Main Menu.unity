@@ -24923,12 +24923,21 @@ MonoBehaviour:
   - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
   - {fileID: 21300000, guid: bd4c43b8648fec144a46587d6c4086b7, type: 3}
   selectedMaterialIndex: 0
-  playerTag: Player
+  customColourBaseMaterial: {fileID: 2100000, guid: 17afeeb4b90496b4c8ff5ee8f8a724e2, type: 2}
+  playerTag: Robe
   applyToChildren: 1
   childFilterTag: 
   customizationLayerMask:
     serializedVersion: 2
     m_Bits: 256
+  materialChannels:
+  - channelName: 
+    targetTag: 
+    targetLayers:
+      serializedVersion: 2
+      m_Bits: 0
+    materialSlot: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
 --- !u!4 &1349044235
 Transform:
   m_ObjectHideFlags: 0

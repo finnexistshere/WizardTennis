@@ -421,7 +421,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7662498866985008880, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: -6961174258486564032, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -429,7 +429,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -6961174258486564032, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: -3678314229024665422, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -437,7 +437,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -3678314229024665422, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: -3430642942773135763, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -445,7 +445,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -3430642942773135763, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: -2053539009349443656, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -465,7 +465,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -636946495831327182, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: 14812349164387354, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -473,7 +473,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 14812349164387354, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: 275982136203575179, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -481,7 +481,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 275982136203575179, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: 894911902937897465, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -489,7 +489,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 894911902937897465, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: 919132149155446097, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -501,7 +501,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4455620287957064996, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: 5817319864028207630, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -509,7 +509,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5817319864028207630, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: 5979813710970728894, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -517,7 +517,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5979813710970728894, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8c562ad624647ad4395f43f0c2777b1c, type: 2}
     - target: {fileID: 7709464105945008981, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
@@ -525,7 +525,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7709464105945008981, guid: 88950419678e1204a8da295975e8eb5e, type: 3}
-      propertyPath: m_Materials.Array.data[0]
+      propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
     m_RemovedComponents: []
@@ -576,7 +576,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
 --- !u!95 &4139147192337721799
 Animator:
-  serializedVersion: 5
+  serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -590,6 +590,7 @@ Animator:
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
