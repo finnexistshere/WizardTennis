@@ -63,38 +63,28 @@ public class CustomisationManager : MonoBehaviour
     [Tooltip("Layer mask for objects to customize (0 = all layers)")]
     [SerializeField] private LayerMask customizationLayerMask = ~0;
 
-    [Header("=== Material Channels ===")]
-    [Tooltip("Define color channels for custom material mode")]
-    [SerializeField] private List<MaterialChannel> materialChannels = new();
+    [Header("=== Custom Colour Filtering ===")]
+    [Tooltip("Tag for objects that should receive custom coloring")]
+    [SerializeField] private string customColourTargetTag = "CustomColour";
 
-    [System.Serializable]
-    public class MaterialChannel
-    {
-        [Tooltip("Editor-friendly name")]
-        public string channelName = "Channel";
+    [Tooltip("Layers for objects that should receive custom coloring")]
+    [SerializeField] private LayerMask customColourLayerMask = ~0;
 
-        [Tooltip("Only apply to objects with this tag (leave empty for any)")]
-        public string targetTag = "";
-
-        [Tooltip("Only apply to objects on these layers")]
-        public LayerMask targetLayers = ~0;
-
-        [Tooltip("Material slot index (-1 = all slots)")]
-        public int materialSlot = -1;
-
-        [Tooltip("Color applied to this channel (always includes alpha = 1)")]
-        public Color color = Color.white;
-    }
-
-    private readonly Dictionary<(Material, Color), Material> recolouredMaterialCache = new();
+    [Tooltip("Material slot index to apply custom color (-1 = all slots)")]
+    [SerializeField] private int customColourMaterialSlot = -1;
 
     // Public Properties
     public int SelectedMaterialIndex => selectedMaterialIndex;
+    public bool IsCustomColourSelected => selectedMaterialIndex >= availableMaterials.Length;
 
-    [Header("=== Custom Colour Filtering ===")]
-    [SerializeField] private string customColourTargetTag = "CustomColour";
-    [SerializeField] private LayerMask customColourLayerMask = ~0;
-    [SerializeField] private int customColourMaterialSlot = -1; // -1 = all slots
+    // Custom color values (HSV)
+    private float customHue = 0f;
+    private float customSaturation = 1f;
+    private float customValue = 1f;
+    private float customAlpha = 1f;
+
+    private Material runtimeCustomMaterial;
+    private readonly Dictionary<(Material, Color), Material> recolouredMaterialCache = new();
 
     public Material SelectedMaterial
     {
@@ -118,9 +108,6 @@ public class CustomisationManager : MonoBehaviour
         }
     }
 
-    // Check if custom color mode is selected
-    public bool IsCustomColourSelected => selectedMaterialIndex >= availableMaterials.Length;
-
     // Events
     public delegate void MaterialChangedHandler(Material newMaterial, int index);
     public event MaterialChangedHandler OnMaterialChanged;
@@ -128,16 +115,15 @@ public class CustomisationManager : MonoBehaviour
     public delegate void CustomColourModeChanged(bool active);
     public event CustomColourModeChanged OnCustomColourModeChanged;
 
+    public delegate void CustomColourChanged(Color color);
+    public event CustomColourChanged OnCustomColourChanged;
+
     // Track if UI is currently hooked
     private bool isUIHooked = false;
     private GameObject cachedPlayer;
 
-    private Material runtimeCustomMaterial;
-    [SerializeField] private Color customColour = Color.white;
-
     private void Awake()
     {
-        // Singleton
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -150,53 +136,31 @@ public class CustomisationManager : MonoBehaviour
         LoadSettings();
         ValidateMaterialArrays();
 
-        // Subscribe to scene loaded event
         UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    private void EnsureRuntimeCustomMaterial()
-    {
-        if (runtimeCustomMaterial != null)
-            return;
-
-        if (customColourBaseMaterial == null)
-        {
-            Debug.LogError("[CustomisationManager] No Custom Colour Base Material assigned!");
-            return;
-        }
-
-        runtimeCustomMaterial = new Material(customColourBaseMaterial);
-        runtimeCustomMaterial.name = customColourBaseMaterial.name + "_RuntimeInstance";
-    }
-
-
     private void Start()
     {
-        // Auto-hook UI if references are assigned in inspector
         if (HasUIReferences())
         {
             HookUI();
         }
 
-        // Apply saved material to player if in scene
         ApplyMaterialToPlayer();
     }
 
     private void Update()
     {
-        // Auto-find and hook UI if enabled and references are lost
         if (autoFindUI && !isUIHooked)
         {
             TryFindAndHookUI();
         }
 
-        // Auto-find display object if enabled and reference is lost
         if (autoFindUI && displayObject == null)
         {
             TryFindDisplayObject();
         }
 
-        // Check if hooked UI has become null (destroyed)
         if (isUIHooked && !HasValidUIReferences())
         {
             Debug.LogWarning("[CustomisationManager] UI references lost. Will attempt to re-find...");
@@ -208,18 +172,15 @@ public class CustomisationManager : MonoBehaviour
     {
         Debug.Log($"[CustomisationManager] Scene loaded: {scene.name}. Searching for UI...");
 
-        // Clear UI references on scene change
         UnhookUI();
         displayObject = null;
 
-        // Try to find UI in new scene if auto-find is enabled
         if (autoFindUI)
         {
             TryFindAndHookUI();
             TryFindDisplayObject();
         }
 
-        // Apply saved material to player if in scene
         ApplyMaterialToPlayer();
     }
 
@@ -230,7 +191,6 @@ public class CustomisationManager : MonoBehaviour
             UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
             UnhookUI();
 
-            // Clean up cached materials
             foreach (var mat in recolouredMaterialCache.Values)
             {
                 if (mat != null)
@@ -254,11 +214,10 @@ public class CustomisationManager : MonoBehaviour
     {
         if (availableMaterials == null || availableMaterials.Length == 0)
         {
-            Debug.LogWarning("[CustomisationManager] No materials assigned! Please assign materials in the inspector.");
+            Debug.LogWarning("[CustomisationManager] No materials assigned!");
             availableMaterials = new Material[0];
         }
 
-        // Create material names array (base materials + "Custom Colors")
         int totalOptions = availableMaterials.Length + (customColourBaseMaterial != null ? 1 : 0);
 
         if (materialNames == null || materialNames.Length != totalOptions)
@@ -271,20 +230,17 @@ public class CustomisationManager : MonoBehaviour
                 materialNames[i] = availableMaterials[i] != null ? availableMaterials[i].name : $"Material {i}";
             }
 
-            // Add custom color option at the end
             if (customColourBaseMaterial != null)
             {
                 materialNames[availableMaterials.Length] = "Custom Colors";
             }
         }
 
-        // Validate preview sprites array
         if (materialPreviewSprites != null && materialPreviewSprites.Length != totalOptions)
         {
-            Debug.LogWarning("[CustomisationManager] Material preview sprites array doesn't match materials array length.");
+            Debug.LogWarning("[CustomisationManager] Material preview sprites array doesn't match.");
         }
 
-        // Clamp selected index
         selectedMaterialIndex = Mathf.Clamp(selectedMaterialIndex, 0, totalOptions - 1);
     }
 
@@ -292,30 +248,18 @@ public class CustomisationManager : MonoBehaviour
 
     #region UI Management
 
-    private bool HasUIReferences()
-    {
-        return materialDropdown != null;
-    }
-
-    private bool HasValidUIReferences()
-    {
-        return materialDropdown != null && materialDropdown.gameObject != null;
-    }
+    private bool HasUIReferences() => materialDropdown != null;
+    private bool HasValidUIReferences() => materialDropdown != null && materialDropdown.gameObject != null;
 
     public void OnCustomisationMenuOpened(TMP_Dropdown dropdown = null, Image previewImage = null)
     {
         UnhookUI();
-
         if (dropdown != null) materialDropdown = dropdown;
         if (previewImage != null) materialPreviewImage = previewImage;
-
         HookUI();
     }
 
-    public void OnCustomisationMenuClosed()
-    {
-        // Don't unhook if UI was assigned in inspector
-    }
+    public void OnCustomisationMenuClosed() { }
 
     public void ForceRehookUI()
     {
@@ -324,10 +268,6 @@ public class CustomisationManager : MonoBehaviour
             Debug.Log("[CustomisationManager] Forcing UI re-hook...");
             UnhookUI();
             HookUI();
-        }
-        else
-        {
-            Debug.LogWarning("[CustomisationManager] Cannot re-hook UI - no UI references available.");
         }
     }
 
@@ -448,25 +388,6 @@ public class CustomisationManager : MonoBehaviour
         }
     }
 
-    private bool ShouldApplyCustomColour(Renderer renderer)
-    {
-        if (renderer == null)
-            return false;
-
-        GameObject obj = renderer.gameObject;
-
-        // Tag filter
-        if (!string.IsNullOrEmpty(customColourTargetTag) &&
-            !obj.CompareTag(customColourTargetTag))
-            return false;
-
-        // Layer filter
-        if (((1 << obj.layer) & customColourLayerMask) == 0)
-            return false;
-
-        return true;
-    }
-
     #endregion
 
     #region Display Object Management
@@ -487,11 +408,7 @@ public class CustomisationManager : MonoBehaviour
         if (displayObject != null)
         {
             displayObject.SetActive(true);
-            Debug.Log($"[CustomisationManager] Display object activated: {displayObject.name}");
-        }
-        else
-        {
-            Debug.LogWarning("[CustomisationManager] Cannot activate display object - reference is null.");
+            Debug.Log($"[CustomisationManager] Display object activated");
         }
     }
 
@@ -500,11 +417,7 @@ public class CustomisationManager : MonoBehaviour
         if (displayObject != null)
         {
             displayObject.SetActive(false);
-            Debug.Log($"[CustomisationManager] Display object deactivated: {displayObject.name}");
-        }
-        else
-        {
-            Debug.LogWarning("[CustomisationManager] Cannot deactivate display object - reference is null.");
+            Debug.Log($"[CustomisationManager] Display object deactivated");
         }
     }
 
@@ -513,48 +426,39 @@ public class CustomisationManager : MonoBehaviour
         if (displayObject != null)
         {
             displayObject.SetActive(!displayObject.activeSelf);
-            Debug.Log($"[CustomisationManager] Display object toggled to: {displayObject.activeSelf}");
-        }
-        else
-        {
-            Debug.LogWarning("[CustomisationManager] Cannot toggle display object - reference is null.");
         }
     }
 
     private void ApplyMaterialToDisplayObject()
     {
         if (displayObject == null || SelectedMaterial == null)
-        {
             return;
-        }
 
         int appliedCount = 0;
 
-        // Apply to display object itself
-        appliedCount += ApplyMaterialToRenderers(displayObject);
+        // Apply to display object with same filtering as player
+        if (ShouldApplyToObject(displayObject))
+        {
+            appliedCount += ApplyMaterialToRenderers(displayObject, true);
+        }
 
-        // Apply to children if enabled
         if (applyToDisplayChildren)
         {
             Renderer[] childRenderers = displayObject.GetComponentsInChildren<Renderer>(true);
             foreach (Renderer renderer in childRenderers)
             {
-                appliedCount += ApplyMaterialToRenderer(renderer);
+                if (renderer.gameObject != displayObject && ShouldApplyToObject(renderer.gameObject))
+                {
+                    appliedCount += ApplyMaterialToRenderer(renderer, true);
+                }
             }
         }
 
-        Debug.Log($"[CustomisationManager] Applied material to {appliedCount} renderer(s) on display object '{displayObject.name}'");
+        Debug.Log($"[CustomisationManager] Applied to {appliedCount} renderer(s) on display object");
     }
 
-    public GameObject GetDisplayObject()
-    {
-        return displayObject;
-    }
-
-    public bool IsDisplayObjectActive()
-    {
-        return displayObject != null && displayObject.activeSelf;
-    }
+    public GameObject GetDisplayObject() => displayObject;
+    public bool IsDisplayObjectActive() => displayObject != null && displayObject.activeSelf;
 
     #endregion
 
@@ -583,10 +487,8 @@ public class CustomisationManager : MonoBehaviour
         if (materialDropdown != null && materialDropdown.value != index)
             materialDropdown.value = index;
 
-        // Apply to player if in scene
         ApplyMaterialToPlayer();
 
-        // Fire events
         OnMaterialChanged?.Invoke(SelectedMaterial, selectedMaterialIndex);
 
         if (wasCustom != isCustom)
@@ -594,8 +496,26 @@ public class CustomisationManager : MonoBehaviour
             OnCustomColourModeChanged?.Invoke(isCustom);
         }
 
-        // Apply to display object if it exists
         ApplyMaterialToDisplayObject();
+    }
+
+    #endregion
+
+    #region Custom Color (HSV)
+
+    private void EnsureRuntimeCustomMaterial()
+    {
+        if (runtimeCustomMaterial != null)
+            return;
+
+        if (customColourBaseMaterial == null)
+        {
+            Debug.LogError("[CustomisationManager] No Custom Colour Base Material assigned!");
+            return;
+        }
+
+        runtimeCustomMaterial = new Material(customColourBaseMaterial);
+        runtimeCustomMaterial.name = customColourBaseMaterial.name + "_RuntimeInstance";
     }
 
     private void ApplyCustomColourToMaterial()
@@ -603,95 +523,113 @@ public class CustomisationManager : MonoBehaviour
         if (runtimeCustomMaterial == null)
             return;
 
-        Color c = customColour;
-        c.a = 1f;
+        Color c = Color.HSVToRGB(customHue, customSaturation, customValue);
+        c.a = customAlpha;
 
         if (runtimeCustomMaterial.HasProperty("_BaseColor"))
             runtimeCustomMaterial.SetColor("_BaseColor", c);
-
         if (runtimeCustomMaterial.HasProperty("_Color"))
             runtimeCustomMaterial.SetColor("_Color", c);
-
         if (runtimeCustomMaterial.HasProperty("_TintColor"))
             runtimeCustomMaterial.SetColor("_TintColor", c);
     }
 
-    public void SetCustomColour(Color color)
+    public void SetCustomColorHSV(float h, float s, float v, float a = 1f)
     {
         if (!IsCustomColourSelected)
             return;
 
-        color.a = 1f;
-        customColour = color;
+        customHue = Mathf.Clamp01(h);
+        customSaturation = Mathf.Clamp01(s);
+        customValue = Mathf.Clamp01(v);
+        customAlpha = Mathf.Clamp01(a);
+
+        SaveCustomColor();
+
+        EnsureRuntimeCustomMaterial();
+        ApplyCustomColourToMaterial();
+
+        Color rgb = Color.HSVToRGB(customHue, customSaturation, customValue);
+        rgb.a = customAlpha;
+
+        ApplyMaterialToPlayer();
+        ApplyMaterialToDisplayObject();
+
+        OnCustomColourChanged?.Invoke(rgb);
+    }
+
+    public void SetCustomColorRGB(Color color)
+    {
+        if (!IsCustomColourSelected)
+            return;
+
+        Color.RGBToHSV(color, out customHue, out customSaturation, out customValue);
+        customAlpha = color.a;
+
+        SaveCustomColor();
 
         EnsureRuntimeCustomMaterial();
         ApplyCustomColourToMaterial();
 
         ApplyMaterialToPlayer();
         ApplyMaterialToDisplayObject();
+
+        OnCustomColourChanged?.Invoke(color);
     }
 
-    public Color GetCustomColour() => customColour;
-
-    public void SetMaterial(Material material)
+    public Color GetCustomColorRGB()
     {
-        if (material == null || availableMaterials == null) return;
-
-        for (int i = 0; i < availableMaterials.Length; i++)
-        {
-            if (availableMaterials[i] == material)
-            {
-                SetMaterial(i);
-                return;
-            }
-        }
-
-        Debug.LogWarning($"[CustomisationManager] Material '{material.name}' not found in available materials.");
+        Color c = Color.HSVToRGB(customHue, customSaturation, customValue);
+        c.a = customAlpha;
+        return c;
     }
 
-    public MaterialChannel GetChannel(int index)
+    public void GetCustomColorHSV(out float h, out float s, out float v, out float a)
     {
-        if (materialChannels == null || index < 0 || index >= materialChannels.Count)
-            return null;
-
-        return materialChannels[index];
+        h = customHue;
+        s = customSaturation;
+        v = customValue;
+        a = customAlpha;
     }
 
-    public void SetChannelColor(int channelIndex, Color color)
+    private void SaveCustomColor()
     {
-        if (!IsCustomColourSelected)
-            return;
-
-        if (materialChannels == null || materialChannels.Count == 0)
-        {
-            Debug.LogWarning("[CustomisationManager] No material channels defined.");
-            return;
-        }
-
-        if (channelIndex < 0 || channelIndex >= materialChannels.Count)
-        {
-            Debug.LogWarning(
-                $"[CustomisationManager] Invalid channel index: {channelIndex} (Channel count: {materialChannels.Count})"
-            );
-            return;
-        }
-
-        color.a = 1f;
-        materialChannels[channelIndex].color = color;
-
-        ClearMaterialCache();
-        ApplyMaterialToPlayer();
-        ApplyMaterialToDisplayObject();
+        PlayerPrefs.SetFloat("CustomHue", customHue);
+        PlayerPrefs.SetFloat("CustomSaturation", customSaturation);
+        PlayerPrefs.SetFloat("CustomValue", customValue);
+        PlayerPrefs.SetFloat("CustomAlpha", customAlpha);
+        PlayerPrefs.Save();
     }
 
-    private void ClearMaterialCache()
+    private void LoadCustomColor()
     {
-        foreach (var mat in recolouredMaterialCache.Values)
-        {
-            if (mat != null && mat != customColourBaseMaterial)
-                Destroy(mat);
-        }
-        recolouredMaterialCache.Clear();
+        customHue = PlayerPrefs.GetFloat("CustomHue", 0f);
+        customSaturation = PlayerPrefs.GetFloat("CustomSaturation", 1f);
+        customValue = PlayerPrefs.GetFloat("CustomValue", 1f);
+        customAlpha = PlayerPrefs.GetFloat("CustomAlpha", 1f);
+    }
+
+    #endregion
+
+    #region Material Application
+
+    private bool ShouldApplyCustomColour(Renderer renderer)
+    {
+        if (renderer == null)
+            return false;
+
+        GameObject obj = renderer.gameObject;
+
+        // Tag filter
+        if (!string.IsNullOrEmpty(customColourTargetTag) &&
+            !obj.CompareTag(customColourTargetTag))
+            return false;
+
+        // Layer filter
+        if (((1 << obj.layer) & customColourLayerMask) == 0)
+            return false;
+
+        return true;
     }
 
     public void ApplyMaterialToPlayer()
@@ -699,7 +637,7 @@ public class CustomisationManager : MonoBehaviour
         GameObject player = FindPlayer();
         if (player == null)
         {
-            Debug.LogWarning("[CustomisationManager] Player not found in scene. Material will be applied when player spawns.");
+            Debug.LogWarning("[CustomisationManager] Player not found.");
             return;
         }
 
@@ -716,13 +654,11 @@ public class CustomisationManager : MonoBehaviour
 
         int appliedCount = 0;
 
-        // Apply to target object
         if (ShouldApplyToObject(target))
         {
-            appliedCount += ApplyMaterialToRenderers(target);
+            appliedCount += ApplyMaterialToRenderers(target, false);
         }
 
-        // Apply to children if enabled
         if (applyToChildren)
         {
             Renderer[] childRenderers = target.GetComponentsInChildren<Renderer>(true);
@@ -730,41 +666,37 @@ public class CustomisationManager : MonoBehaviour
             {
                 if (renderer.gameObject != target && ShouldApplyToObject(renderer.gameObject))
                 {
-                    appliedCount += ApplyMaterialToRenderer(renderer);
+                    appliedCount += ApplyMaterialToRenderer(renderer, false);
                 }
             }
         }
 
-        Debug.Log($"[CustomisationManager] Applied material to {appliedCount} renderer(s) on {target.name}");
+        Debug.Log($"[CustomisationManager] Applied to {appliedCount} renderer(s) on {target.name}");
     }
 
     private bool ShouldApplyToObject(GameObject obj)
     {
         if (customizationLayerMask != ~0 && ((1 << obj.layer) & customizationLayerMask) == 0)
-        {
             return false;
-        }
 
         if (!string.IsNullOrEmpty(childFilterTag) && !obj.CompareTag(childFilterTag))
-        {
             return false;
-        }
 
         return true;
     }
 
-    private int ApplyMaterialToRenderers(GameObject obj)
+    private int ApplyMaterialToRenderers(GameObject obj, bool isDisplayObject)
     {
         int count = 0;
         Renderer[] renderers = obj.GetComponents<Renderer>();
         foreach (Renderer renderer in renderers)
         {
-            count += ApplyMaterialToRenderer(renderer);
+            count += ApplyMaterialToRenderer(renderer, isDisplayObject);
         }
         return count;
     }
 
-    private int ApplyMaterialToRenderer(Renderer renderer)
+    private int ApplyMaterialToRenderer(Renderer renderer, bool isDisplayObject)
     {
         if (renderer == null)
             return 0;
@@ -795,7 +727,10 @@ public class CustomisationManager : MonoBehaviour
         {
             // If slot filtering is enabled
             if (customColourMaterialSlot >= 0 && i != customColourMaterialSlot)
+            {
+                mats[i] = baseMat;
                 continue;
+            }
 
             if (shouldRecolour)
             {
@@ -811,59 +746,14 @@ public class CustomisationManager : MonoBehaviour
         return mats.Length;
     }
 
-    private bool ChannelMatches(Renderer renderer, MaterialChannel channel)
-    {
-        GameObject obj = renderer.gameObject;
-
-        if (!string.IsNullOrEmpty(channel.targetTag) && !obj.CompareTag(channel.targetTag))
-            return false;
-
-        if (((1 << obj.layer) & channel.targetLayers) == 0)
-            return false;
-
-        return true;
-    }
-
-    private Material GetRecolouredMaterial(Material baseMaterial, Color color)
-    {
-        if (baseMaterial == null) return null;
-
-        // Ensure alpha is 1
-        color.a = 1f;
-
-        var key = (baseMaterial, color);
-
-        if (recolouredMaterialCache.TryGetValue(key, out var cached))
-            return cached;
-
-        Material instance = new Material(baseMaterial);
-        instance.name = $"{baseMaterial.name}_Recolor_{ColorUtility.ToHtmlStringRGBA(color)}";
-
-        // Try multiple common color properties
-        if (instance.HasProperty("_Color"))
-            instance.SetColor("_Color", color);
-        if (instance.HasProperty("_BaseColor"))
-            instance.SetColor("_BaseColor", color);
-        if (instance.HasProperty("_TintColor"))
-            instance.SetColor("_TintColor", color);
-
-        recolouredMaterialCache[key] = instance;
-        return instance;
-    }
-
     private GameObject FindPlayer()
     {
         if (cachedPlayer != null)
             return cachedPlayer;
 
-        if (playerTag != null)
+        if (!string.IsNullOrEmpty(playerTag))
         {
             cachedPlayer = GameObject.FindGameObjectWithTag(playerTag);
-        }
-
-        if (cachedPlayer == null)
-        {
-            Debug.LogWarning($"[CustomisationManager] No GameObject found with tag '{playerTag}'");
         }
 
         return cachedPlayer;
@@ -878,7 +768,7 @@ public class CustomisationManager : MonoBehaviour
     {
         if (player == null)
         {
-            Debug.LogWarning("[CustomisationManager] Attempted to register null GameObject as player.");
+            Debug.LogWarning("[CustomisationManager] Attempted to register null GameObject.");
             return;
         }
 
@@ -902,13 +792,15 @@ public class CustomisationManager : MonoBehaviour
             selectedMaterialIndex = Mathf.Clamp(selectedMaterialIndex, 0, maxIndex);
         }
 
+        LoadCustomColor();
+
         Debug.Log($"[CustomisationManager] Loaded material index: {selectedMaterialIndex}");
     }
 
     public void ResetToDefault()
     {
         SetMaterial(0);
-        Debug.Log("[CustomisationManager] Reset to default material");
+        Debug.Log("[CustomisationManager] Reset to default");
     }
 
     #endregion
@@ -924,10 +816,7 @@ public class CustomisationManager : MonoBehaviour
         return "Unknown";
     }
 
-    public int GetMaterialCount()
-    {
-        return availableMaterials?.Length ?? 0;
-    }
+    public int GetMaterialCount() => availableMaterials?.Length ?? 0;
 
     public Material GetMaterialAtIndex(int index)
     {
