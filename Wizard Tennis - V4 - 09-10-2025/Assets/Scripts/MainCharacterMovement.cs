@@ -14,9 +14,12 @@ public class MainCharacterMovement : MonoBehaviour
     public float bounceFrequency = 8.0f;  // How fast it bounces
 
     [Header("Dust Effect")]
-    public ParticleSystem dustParticles;  // Assign particle system here
-    public float dustSpeedThreshold = 0.1f; // Minimum speed to trigger dust
-    public float dustLagAmount = 0.2f;     // How much the dust lags behind (0-1)
+    public ParticleSystem dustParticles;     // Assign particle system here
+    public float dustSpeedThreshold = 0.1f;  // Minimum speed to trigger dust
+    public float dustLagDistance = 0.2f;     // How far behind the player (in meters)
+    public float dustPositionSmoothing = 5f; // How smoothly dust follows player
+    public float dustRotationSmoothing = 10f; // How smoothly dust rotates
+    public float dustHeightOffset = 0.1f;    // Height above ground
 
     private Vector3 moveDirection = Vector3.zero;
     public CharacterController controller;
@@ -26,9 +29,13 @@ public class MainCharacterMovement : MonoBehaviour
 
     public bool gemini = false;
 
-    // ADD THESE for multiplayer knockback support
+    // Multiplayer knockback support
     [HideInInspector] public bool inputDisabled = false;
-    private NetworkObject netObj; // Cache the NetworkObject if present
+    private NetworkObject netObj;
+
+    // Dust tracking
+    private bool isDustPlaying = false;
+    private Vector3 lastMovementDirection = Vector3.forward;
 
     private void Awake()
     {
@@ -40,24 +47,33 @@ public class MainCharacterMovement : MonoBehaviour
 
         // Check if we're in multiplayer
         netObj = GetComponent<NetworkObject>();
+
+        // Initialize dust particle system settings
+        if (dustParticles != null)
+        {
+            // Ensure particle system is set to looping
+            var main = dustParticles.main;
+            main.loop = true;
+
+            // Start with dust stopped
+            if (dustParticles.isPlaying)
+                dustParticles.Stop();
+        }
     }
 
     void Update()
     {
-        //In multiplayer, only run on owner
+        // In multiplayer, only run on owner
         if (netObj != null && !netObj.IsOwner)
             return;
 
         // Skip input if disabled (for knockback)
         if (inputDisabled)
         {
-            // DON'T apply moveDirection here - it contains knockback velocity
-            // Only apply gravity separately
+            // Only apply gravity
             Vector3 gravityOnly = Vector3.zero;
             gravityOnly.y = moveDirection.y - (gravity * Time.deltaTime);
             controller.Move(gravityOnly * Time.deltaTime);
-
-            // Keep the y component for gravity continuity
             moveDirection.y = gravityOnly.y;
 
             HandleMeshBounce();
@@ -157,38 +173,79 @@ public class MainCharacterMovement : MonoBehaviour
         Vector3 horizontalVelocity = new Vector3(controller.velocity.x, 0, controller.velocity.z);
         float moveSpeed = horizontalVelocity.magnitude;
 
-        // Play dust when moving on ground
-        if (moveSpeed > dustSpeedThreshold && controller.isGrounded)
-        {
-            if (!dustParticles.isPlaying)
-                dustParticles.Play();
+        // Determine if we should be playing dust
+        bool shouldPlayDust = moveSpeed > dustSpeedThreshold && controller.isGrounded;
 
-            // Make dust lag behind movement direction
+        if (shouldPlayDust)
+        {
+            // Start dust if not already playing
+            if (!isDustPlaying)
+            {
+                dustParticles.Play();
+                isDustPlaying = true;
+            }
+
+            // Update last movement direction
             if (horizontalVelocity.sqrMagnitude > 0.01f)
             {
-                Vector3 oppositeDirection = -horizontalVelocity.normalized;
-                Vector3 targetPosition = transform.position + (oppositeDirection * dustLagAmount);
-                dustParticles.transform.position = Vector3.Lerp(
-                    dustParticles.transform.position,
-                    targetPosition,
-                    Time.deltaTime * 10f
-                );
+                lastMovementDirection = horizontalVelocity.normalized;
             }
+
+            // Position: Trail behind player
+            Vector3 oppositeDirection = -lastMovementDirection;
+            Vector3 targetPosition = transform.position + (oppositeDirection * dustLagDistance);
+            targetPosition.y = transform.position.y + dustHeightOffset; // Keep at ground level
+
+            dustParticles.transform.position = Vector3.Lerp(
+                dustParticles.transform.position,
+                targetPosition,
+                Time.deltaTime * dustPositionSmoothing
+            );
+
+            // Rotation: Face away from movement direction (dust trails behind)
+            Quaternion targetRotation = Quaternion.LookRotation(oppositeDirection, Vector3.up);
+            dustParticles.transform.rotation = Quaternion.Slerp(
+                dustParticles.transform.rotation,
+                targetRotation,
+                Time.deltaTime * dustRotationSmoothing
+            );
         }
         else
         {
-            if (dustParticles.isPlaying)
+            // Stop dust if playing
+            if (isDustPlaying)
+            {
                 dustParticles.Stop();
+                isDustPlaying = false;
+            }
         }
     }
 
-    // These two bits of code are for forcing this script to reposition the client during a round reset
+    /// <summary>
+    /// Force stop dust particles (useful for teleports, respawns, etc.)
+    /// </summary>
+    public void StopDust()
+    {
+        if (dustParticles != null && isDustPlaying)
+        {
+            dustParticles.Stop();
+            isDustPlaying = false;
+        }
+    }
 
-    // Is this a bad way of doing this?
+    /// <summary>
+    /// Reset dust position to player (useful after teleports)
+    /// </summary>
+    public void ResetDustPosition()
+    {
+        if (dustParticles != null)
+        {
+            Vector3 resetPosition = transform.position + (-lastMovementDirection * dustLagDistance);
+            resetPosition.y = transform.position.y + dustHeightOffset;
+            dustParticles.transform.position = resetPosition;
+        }
+    }
 
-    // Yes!
-
-    // But I'm beyond giving a shit
     public void ForceMovementRefresh()
     {
         // Reset velocity so no lingering fall/gravity momentum after teleport
@@ -196,6 +253,10 @@ public class MainCharacterMovement : MonoBehaviour
 
         // Reset bounce so mesh doesn't snap
         bounceTimer = 0f;
+
+        // Stop dust and reset position
+        StopDust();
+        ResetDustPosition();
 
         // Force CharacterController to update grounding state
         if (controller != null)
@@ -216,5 +277,17 @@ public class MainCharacterMovement : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Mud")) speed = 6f;
+    }
+
+    private void OnDisable()
+    {
+        // Stop dust when character is disabled
+        StopDust();
+    }
+
+    private void OnDestroy()
+    {
+        // Stop dust when character is destroyed
+        StopDust();
     }
 }
