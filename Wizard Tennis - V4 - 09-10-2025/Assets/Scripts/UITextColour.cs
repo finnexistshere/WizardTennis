@@ -28,11 +28,16 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     [Tooltip("Use toggle-specific colors when toggle is on")]
     public bool useToggleColors = true;
 
+    [Header("Selection Settings")]
+    [Tooltip("Maintain highlighted state when selected via keyboard")]
+    public bool maintainSelectionHighlight = true;
+
     private TMP_Text txt;
     private Button btn;
     private Toggle toggle;
     private bool lastInteractable;
     private bool isHovered;
+    private bool isKeyboardSelected;
     private Quaternion originalRotation;
     private Quaternion targetRotation;
 
@@ -104,8 +109,39 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
             lastInteractable = currentInteractable;
         }
 
+        // Check if this is the currently selected UI element
+        bool isCurrentlySelected = EventSystem.current != null &&
+                                   EventSystem.current.currentSelectedGameObject == gameObject;
+
+        // Update keyboard selection state
+        if (isCurrentlySelected != isKeyboardSelected)
+        {
+            isKeyboardSelected = isCurrentlySelected;
+
+            if (isKeyboardSelected && maintainSelectionHighlight)
+            {
+                // Apply highlight when selected via keyboard
+                txt.color = highlightedColor;
+                targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle);
+            }
+            else if (!isHovered)
+            {
+                // Remove highlight when deselected (and not hovered)
+                UpdateTextColor();
+
+                if (IsToggleOn())
+                {
+                    targetRotation = originalRotation * Quaternion.Euler(0f, 0f, hoverTwistAngle * 0.5f);
+                }
+                else
+                {
+                    targetRotation = originalRotation;
+                }
+            }
+        }
+
         // Force reset if hovered state is stuck
-        if (isHovered)
+        if (isHovered && !isKeyboardSelected)
         {
             forceResetTimer += Time.unscaledDeltaTime;
             if (forceResetTimer > FORCE_RESET_DELAY)
@@ -194,6 +230,11 @@ public class UITextColour : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         if (!IsInteractable())
         {
             txt.color = disabledColor;
+        }
+        else if (isKeyboardSelected && maintainSelectionHighlight)
+        {
+            // Keyboard selected - always highlighted
+            txt.color = highlightedColor;
         }
         else if (useToggleColors && IsToggleOn())
         {
