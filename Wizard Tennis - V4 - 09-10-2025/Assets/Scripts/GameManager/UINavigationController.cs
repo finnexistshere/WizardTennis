@@ -511,59 +511,64 @@ public class UINavigationController : MonoBehaviour
         RectTransform selectableRect = selectable.GetComponent<RectTransform>();
         if (selectableRect == null) return;
 
-        // Get the canvas for this indicator
+        // Ensure indicator is in the same canvas as the selectable
+        Canvas selectableCanvas = selectable.GetComponentInParent<Canvas>();
         Canvas indicatorCanvas = indicatorRect.GetComponentInParent<Canvas>();
-        if (indicatorCanvas == null)
+
+        if (selectableCanvas == null || indicatorCanvas == null)
         {
-            Debug.LogWarning("[UINavigation] Indicator must be child of a Canvas!");
+            Debug.LogWarning("[UINavigation] Both indicator and selectable must be children of a Canvas!");
             return;
         }
 
-        // Get world corners of the selectable
-        Vector3[] corners = new Vector3[4];
-        selectableRect.GetWorldCorners(corners);
+        // If they're in different canvases, parent the indicator to the selectable's canvas
+        if (selectableCanvas != indicatorCanvas)
+        {
+            indicatorRect.SetParent(selectableCanvas.transform, false);
+        }
 
-        Vector3 worldAnchorPosition = Vector3.zero;
+        // Calculate position based on the selectable's rect
+        Rect selectableScreenRect = selectableRect.rect;
+        Vector2 anchorPosition = Vector2.zero;
 
         switch (indicatorPosition)
         {
             case IndicatorPosition.Left:
-                worldAnchorPosition = (corners[0] + corners[1]) / 2f;
+                // Left edge, centered vertically
+                anchorPosition = new Vector2(selectableScreenRect.xMin, selectableScreenRect.center.y);
                 break;
             case IndicatorPosition.Right:
-                worldAnchorPosition = (corners[2] + corners[3]) / 2f;
+                // Right edge, centered vertically
+                anchorPosition = new Vector2(selectableScreenRect.xMax, selectableScreenRect.center.y);
                 break;
             case IndicatorPosition.Top:
-                worldAnchorPosition = (corners[1] + corners[2]) / 2f;
+                // Top edge, centered horizontally
+                anchorPosition = new Vector2(selectableScreenRect.center.x, selectableScreenRect.yMax);
                 break;
             case IndicatorPosition.Bottom:
-                worldAnchorPosition = (corners[0] + corners[3]) / 2f;
+                // Bottom edge, centered horizontally
+                anchorPosition = new Vector2(selectableScreenRect.center.x, selectableScreenRect.yMin);
                 break;
             case IndicatorPosition.Center:
-                worldAnchorPosition = (corners[0] + corners[2]) / 2f;
+                // Center of the element
+                anchorPosition = selectableScreenRect.center;
                 break;
         }
 
-        // Convert to canvas space
-        Camera cam = indicatorCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : indicatorCanvas.worldCamera;
-
-        Vector2 canvasPosition;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            indicatorCanvas.transform as RectTransform,
-            RectTransformUtility.WorldToScreenPoint(cam, worldAnchorPosition),
-            cam,
-            out canvasPosition
-        );
-
         // Apply offset
-        canvasPosition += indicatorOffset;
+        anchorPosition += indicatorOffset;
 
-        // Set indicator position
-        indicatorRect.anchoredPosition = canvasPosition;
+        // Set position relative to the selectable's position
+        indicatorRect.anchoredPosition = selectableRect.anchoredPosition + anchorPosition;
+
+        // Store base position for animation
+        storedBasePosition = indicatorRect.anchoredPosition;
 
         if (debugLog)
-            Debug.Log($"[UINavigation] Positioned indicator at {indicatorPosition} of {selectable.name}, offset: {indicatorOffset}");
+            Debug.Log($"[UINavigation] Positioned indicator at {indicatorPosition} of {selectable.name}, anchoredPos: {indicatorRect.anchoredPosition}");
     }
+
+    private Vector2 storedBasePosition;
 
     private void AnimateIndicator()
     {
@@ -571,29 +576,34 @@ public class UINavigationController : MonoBehaviour
 
         animationTimer += Time.unscaledDeltaTime * animationSpeed;
 
-        // Pulse animation
+        // Pulse animation on scale
         float scale = 1f + Mathf.Sin(animationTimer) * 0.1f;
         indicatorRect.localScale = indicatorBaseScale * scale;
 
-        // Horizontal bounce based on position
+        // Bounce animation on position
         float bounceOffset = Mathf.Sin(animationTimer * 2f) * 3f;
 
-        Vector2 currentPos = indicatorRect.anchoredPosition;
-        Vector2 basePos = currentPos;
+        Vector2 animatedPosition = storedBasePosition;
 
-        // Remove previous bounce
-        if (indicatorPosition == IndicatorPosition.Left || indicatorPosition == IndicatorPosition.Right)
+        // Apply bounce in the appropriate direction
+        if (indicatorPosition == IndicatorPosition.Left)
         {
-            basePos.x = currentPos.x - bounceOffset;
-            currentPos.x = basePos.x + bounceOffset;
+            animatedPosition.x += bounceOffset;
         }
-        else if (indicatorPosition == IndicatorPosition.Top || indicatorPosition == IndicatorPosition.Bottom)
+        else if (indicatorPosition == IndicatorPosition.Right)
         {
-            basePos.y = currentPos.y - bounceOffset;
-            currentPos.y = basePos.y + bounceOffset;
+            animatedPosition.x += bounceOffset;
+        }
+        else if (indicatorPosition == IndicatorPosition.Top)
+        {
+            animatedPosition.y += bounceOffset;
+        }
+        else if (indicatorPosition == IndicatorPosition.Bottom)
+        {
+            animatedPosition.y += bounceOffset;
         }
 
-        indicatorRect.anchoredPosition = currentPos;
+        indicatorRect.anchoredPosition = animatedPosition;
     }
 
     private void ShowIndicator()
