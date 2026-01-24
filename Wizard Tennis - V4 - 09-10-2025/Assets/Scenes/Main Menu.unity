@@ -8929,6 +8929,10 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: 4396517451795774783, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}
+      propertyPath: m_TagString
+      value: Player
+      objectReference: {fileID: 0}
     - target: {fileID: 4521146282567238780, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}
       propertyPath: m_Layer
       value: 8
@@ -20213,7 +20217,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1187409245
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27532,6 +27536,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1279
   customColourMaterialSlot: -1
+  debugLog: 0
 --- !u!4 &1349044235
 Transform:
   m_ObjectHideFlags: 0
@@ -27563,14 +27568,21 @@ MonoBehaviour:
   saturationSlider: {fileID: 633587436}
   valueSlider: {fileID: 875765711}
   alphaSlider: {fileID: 0}
+  hueSliderName: Hue
+  valueSliderName: Brightness
+  saturationSliderName: Saturation
+  alphaSliderName: Alpha
   redSlider: {fileID: 1738097632}
   greenSlider: {fileID: 1817127101}
   blueSlider: {fileID: 76807979}
+  redSliderName: R
+  greenSliderName: G
+  blueSliderName: B
   colorPreview: {fileID: 0}
   hueGradient: {fileID: 0}
   saturationGradient: {fileID: 0}
   valueGradient: {fileID: 0}
-  useRGBMode: 0
+  useRGBMode: 1
   debugLog: 0
 --- !u!1 &1351054872
 GameObject:

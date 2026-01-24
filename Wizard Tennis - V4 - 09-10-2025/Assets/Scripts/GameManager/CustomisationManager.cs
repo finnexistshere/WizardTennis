@@ -73,6 +73,9 @@ public class CustomisationManager : MonoBehaviour
     [Tooltip("Material slot index to apply custom color (-1 = all slots)")]
     [SerializeField] private int customColourMaterialSlot = -1;
 
+    [Header("=== Debug ===")]
+    [SerializeField] private bool debugLog = false;
+
     // Public Properties
     public int SelectedMaterialIndex => selectedMaterialIndex;
     public bool IsCustomColourSelected => selectedMaterialIndex >= availableMaterials.Length;
@@ -121,6 +124,9 @@ public class CustomisationManager : MonoBehaviour
     // Track if UI is currently hooked
     private bool isUIHooked = false;
     private GameObject cachedPlayer;
+    private ColorSliderUI_HSV colorSliderUI;
+    private float lastUICheckTime = 0f;
+    private const float UI_CHECK_INTERVAL = 0.5f;
 
     private void Awake()
     {
@@ -151,6 +157,12 @@ public class CustomisationManager : MonoBehaviour
 
     private void Update()
     {
+        // Throttle UI checks
+        if (Time.unscaledTime - lastUICheckTime < UI_CHECK_INTERVAL)
+            return;
+
+        lastUICheckTime = Time.unscaledTime;
+
         if (autoFindUI && !isUIHooked)
         {
             TryFindAndHookUI();
@@ -163,25 +175,83 @@ public class CustomisationManager : MonoBehaviour
 
         if (isUIHooked && !HasValidUIReferences())
         {
-            Debug.LogWarning("[CustomisationManager] UI references lost. Will attempt to re-find...");
+            if (debugLog)
+                Debug.LogWarning("[CustomisationManager] UI references lost. Will attempt to re-find...");
             UnhookUI();
+        }
+
+        // Find and update ColorSliderUI_HSV
+        if (colorSliderUI == null)
+        {
+            colorSliderUI = FindObjectOfType<ColorSliderUI_HSV>();
+            if (colorSliderUI != null && debugLog)
+                Debug.Log("[CustomisationManager] Found ColorSliderUI_HSV component");
+        }
+
+        if (colorSliderUI != null)
+        {
+            colorSliderUI.TryFindSliders();
         }
     }
 
     private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
     {
-        Debug.Log($"[CustomisationManager] Scene loaded: {scene.name}. Searching for UI...");
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Scene loaded: {scene.name}. Resetting UI references...");
 
+        // Force full reset of all UI references
         UnhookUI();
         displayObject = null;
+        colorSliderUI = null;
+        cachedPlayer = null;
+
+        // Wait a frame then try to reconnect
+        StartCoroutine(DelayedSceneSetup());
+    }
+
+    private System.Collections.IEnumerator DelayedSceneSetup()
+    {
+        TryFindDisplayObject();
+        // Wait for scene to fully load
+        yield return new WaitForEndOfFrame();
+        yield return null;
+
+        if (debugLog)
+            Debug.Log("[CustomisationManager] Attempting to reconnect UI after scene load...");
 
         if (autoFindUI)
         {
             TryFindAndHookUI();
-            TryFindDisplayObject();
+
+            // Find color slider UI
+            colorSliderUI = FindObjectOfType<ColorSliderUI_HSV>();
+            if (colorSliderUI != null)
+            {
+                if (debugLog)
+                    Debug.Log("[CustomisationManager] Found ColorSliderUI_HSV after scene load");
+
+                // Force it to reinitialize
+                colorSliderUI.TryFindSliders();
+                colorSliderUI.RefreshFromManager();
+            }
         }
 
         ApplyMaterialToPlayer();
+
+        // Broadcast current state to ensure everything is synced
+        if (IsCustomColourSelected)
+        {
+            OnCustomColourModeChanged?.Invoke(true);
+            Color currentColor = GetCustomColorRGB();
+            OnCustomColourChanged?.Invoke(currentColor);
+        }
+        else
+        {
+            OnCustomColourModeChanged?.Invoke(false);
+        }
+
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Scene setup complete. UI Hooked: {isUIHooked}, Custom Mode: {IsCustomColourSelected}");
     }
 
     private void OnDestroy()
@@ -253,21 +323,44 @@ public class CustomisationManager : MonoBehaviour
 
     public void OnCustomisationMenuOpened(TMP_Dropdown dropdown = null, Image previewImage = null)
     {
+        if (debugLog)
+            Debug.Log("[CustomisationManager] Customisation menu opened");
+
         UnhookUI();
         if (dropdown != null) materialDropdown = dropdown;
         if (previewImage != null) materialPreviewImage = previewImage;
         HookUI();
+
+        // Refresh color slider UI
+        if (colorSliderUI != null)
+        {
+            colorSliderUI.RefreshFromManager();
+        }
     }
 
-    public void OnCustomisationMenuClosed() { }
+    public void OnCustomisationMenuClosed()
+    {
+        if (debugLog)
+            Debug.Log("[CustomisationManager] Customisation menu closed");
+    }
 
     public void ForceRehookUI()
     {
+        if (debugLog)
+            Debug.Log("[CustomisationManager] Forcing UI re-hook...");
+
+        UnhookUI();
+
         if (HasUIReferences())
         {
-            Debug.Log("[CustomisationManager] Forcing UI re-hook...");
-            UnhookUI();
             HookUI();
+        }
+
+        // Refresh color sliders
+        if (colorSliderUI != null)
+        {
+            colorSliderUI.TryFindSliders();
+            colorSliderUI.RefreshFromManager();
         }
     }
 
@@ -283,7 +376,8 @@ public class CustomisationManager : MonoBehaviour
                 materialDropdown = dropdownObj.GetComponent<TMP_Dropdown>();
                 if (materialDropdown != null)
                 {
-                    Debug.Log($"[CustomisationManager] Found material dropdown: {materialDropdownName}");
+                    if (debugLog)
+                        Debug.Log($"[CustomisationManager] Found material dropdown: {materialDropdownName}");
                     foundAny = true;
                 }
             }
@@ -297,7 +391,8 @@ public class CustomisationManager : MonoBehaviour
                 materialPreviewImage = previewObj.GetComponent<Image>();
                 if (materialPreviewImage != null)
                 {
-                    Debug.Log($"[CustomisationManager] Found material preview image: {materialPreviewImageName}");
+                    if (debugLog)
+                        Debug.Log($"[CustomisationManager] Found material preview image: {materialPreviewImageName}");
                     foundAny = true;
                 }
             }
@@ -316,7 +411,8 @@ public class CustomisationManager : MonoBehaviour
             displayObject = GameObject.Find(displayObjectName);
             if (displayObject != null)
             {
-                Debug.Log($"[CustomisationManager] Found display object: {displayObjectName}");
+                if (debugLog)
+                    Debug.Log($"[CustomisationManager] Found display object: {displayObjectName}");
                 displayObject.SetActive(false);
                 ApplyMaterialToDisplayObject();
             }
@@ -325,27 +421,47 @@ public class CustomisationManager : MonoBehaviour
 
     private void HookUI()
     {
-        if (isUIHooked) return;
+        if (isUIHooked)
+        {
+            if (debugLog)
+                Debug.Log("[CustomisationManager] UI already hooked, unhooking first...");
+            UnhookUI();
+        }
 
         if (materialDropdown != null)
         {
+            // Remove ALL listeners first
             materialDropdown.onValueChanged.RemoveAllListeners();
 
-            if (materialDropdown.options.Count == 0)
+            if (materialDropdown.options.Count == 0 || materialDropdown.options.Count != materialNames.Length)
             {
                 PopulateMaterialDropdown();
             }
 
-            materialDropdown.value = selectedMaterialIndex;
+            // Set the value WITHOUT triggering the event
+            materialDropdown.SetValueWithoutNotify(selectedMaterialIndex);
+
+            // NOW add the listener
             materialDropdown.onValueChanged.AddListener(OnDropdownValueChanged);
+
+            if (debugLog)
+                Debug.Log($"[CustomisationManager] Hooked dropdown, set to index {selectedMaterialIndex}");
         }
 
         UpdateMaterialPreview();
         isUIHooked = true;
+
+        // Notify that we're in custom mode if applicable
+        if (IsCustomColourSelected)
+        {
+            OnCustomColourModeChanged?.Invoke(true);
+        }
     }
 
     private void OnDropdownValueChanged(int index)
     {
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Dropdown value changed to: {index}");
         SetMaterial(index);
     }
 
@@ -355,10 +471,13 @@ public class CustomisationManager : MonoBehaviour
 
         if (materialDropdown != null)
         {
-            materialDropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
+            materialDropdown.onValueChanged.RemoveAllListeners();
         }
 
         isUIHooked = false;
+
+        if (debugLog)
+            Debug.Log("[CustomisationManager] UI unhooked");
     }
 
     private void PopulateMaterialDropdown()
@@ -368,6 +487,9 @@ public class CustomisationManager : MonoBehaviour
         materialDropdown.ClearOptions();
         var options = new List<string>(materialNames);
         materialDropdown.AddOptions(options);
+
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Populated dropdown with {options.Count} options");
     }
 
     private void UpdateMaterialPreview()
@@ -397,7 +519,8 @@ public class CustomisationManager : MonoBehaviour
         displayObject = obj;
         if (displayObject != null)
         {
-            Debug.Log($"[CustomisationManager] Display object set to: {displayObject.name}");
+            if (debugLog)
+                Debug.Log($"[CustomisationManager] Display object set to: {displayObject.name}");
             displayObject.SetActive(false);
             ApplyMaterialToDisplayObject();
         }
@@ -408,7 +531,8 @@ public class CustomisationManager : MonoBehaviour
         if (displayObject != null)
         {
             displayObject.SetActive(true);
-            Debug.Log($"[CustomisationManager] Display object activated");
+            if (debugLog)
+                Debug.Log($"[CustomisationManager] Display object activated");
         }
     }
 
@@ -417,7 +541,8 @@ public class CustomisationManager : MonoBehaviour
         if (displayObject != null)
         {
             displayObject.SetActive(false);
-            Debug.Log($"[CustomisationManager] Display object deactivated");
+            if (debugLog)
+                Debug.Log($"[CustomisationManager] Display object deactivated");
         }
     }
 
@@ -436,7 +561,6 @@ public class CustomisationManager : MonoBehaviour
 
         int appliedCount = 0;
 
-        // Apply to display object with same filtering as player
         if (ShouldApplyToObject(displayObject))
         {
             appliedCount += ApplyMaterialToRenderers(displayObject, true);
@@ -454,7 +578,8 @@ public class CustomisationManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"[CustomisationManager] Applied to {appliedCount} renderer(s) on display object");
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Applied to {appliedCount} renderer(s) on display object");
     }
 
     public GameObject GetDisplayObject() => displayObject;
@@ -480,12 +605,15 @@ public class CustomisationManager : MonoBehaviour
 
         bool isCustom = IsCustomColourSelected;
 
-        Debug.Log($"[CustomisationManager] Material changed to: {materialNames[index]} (Custom Mode: {isCustom})");
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Material changed to: {materialNames[index]} (Custom Mode: {isCustom})");
 
         UpdateMaterialPreview();
 
         if (materialDropdown != null && materialDropdown.value != index)
-            materialDropdown.value = index;
+        {
+            materialDropdown.SetValueWithoutNotify(index);
+        }
 
         ApplyMaterialToPlayer();
 
@@ -494,6 +622,12 @@ public class CustomisationManager : MonoBehaviour
         if (wasCustom != isCustom)
         {
             OnCustomColourModeChanged?.Invoke(isCustom);
+
+            // Refresh color slider UI when mode changes
+            if (colorSliderUI != null)
+            {
+                colorSliderUI.RefreshFromManager();
+            }
         }
 
         ApplyMaterialToDisplayObject();
@@ -516,6 +650,9 @@ public class CustomisationManager : MonoBehaviour
 
         runtimeCustomMaterial = new Material(customColourBaseMaterial);
         runtimeCustomMaterial.name = customColourBaseMaterial.name + "_RuntimeInstance";
+
+        if (debugLog)
+            Debug.Log("[CustomisationManager] Created runtime custom material");
     }
 
     private void ApplyCustomColourToMaterial()
@@ -544,6 +681,9 @@ public class CustomisationManager : MonoBehaviour
         customValue = Mathf.Clamp01(v);
         customAlpha = Mathf.Clamp01(a);
 
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Custom color HSV set: H={h:F2}, S={s:F2}, V={v:F2}, A={a:F2}");
+
         SaveCustomColor();
 
         EnsureRuntimeCustomMaterial();
@@ -565,6 +705,9 @@ public class CustomisationManager : MonoBehaviour
 
         Color.RGBToHSV(color, out customHue, out customSaturation, out customValue);
         customAlpha = color.a;
+
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Custom color RGB set: {color}");
 
         SaveCustomColor();
 
@@ -607,6 +750,9 @@ public class CustomisationManager : MonoBehaviour
         customSaturation = PlayerPrefs.GetFloat("CustomSaturation", 1f);
         customValue = PlayerPrefs.GetFloat("CustomValue", 1f);
         customAlpha = PlayerPrefs.GetFloat("CustomAlpha", 1f);
+
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Loaded custom color: H={customHue:F2}, S={customSaturation:F2}, V={customValue:F2}");
     }
 
     #endregion
@@ -620,12 +766,10 @@ public class CustomisationManager : MonoBehaviour
 
         GameObject obj = renderer.gameObject;
 
-        // Tag filter
         if (!string.IsNullOrEmpty(customColourTargetTag) &&
             !obj.CompareTag(customColourTargetTag))
             return false;
 
-        // Layer filter
         if (((1 << obj.layer) & customColourLayerMask) == 0)
             return false;
 
@@ -637,7 +781,8 @@ public class CustomisationManager : MonoBehaviour
         GameObject player = FindPlayer();
         if (player == null)
         {
-            Debug.LogWarning("[CustomisationManager] Player not found.");
+            if (debugLog)
+                Debug.LogWarning("[CustomisationManager] Player not found.");
             return;
         }
 
@@ -648,7 +793,8 @@ public class CustomisationManager : MonoBehaviour
     {
         if (target == null || SelectedMaterial == null)
         {
-            Debug.LogWarning("[CustomisationManager] Cannot apply material - target or material is null.");
+            if (debugLog)
+                Debug.LogWarning("[CustomisationManager] Cannot apply material - target or material is null.");
             return;
         }
 
@@ -671,7 +817,8 @@ public class CustomisationManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"[CustomisationManager] Applied to {appliedCount} renderer(s) on {target.name}");
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Applied to {appliedCount} renderer(s) on {target.name}");
     }
 
     private bool ShouldApplyToObject(GameObject obj)
@@ -707,7 +854,6 @@ public class CustomisationManager : MonoBehaviour
 
         Material[] mats = renderer.sharedMaterials;
 
-        // NON-custom mode: apply normally
         if (!IsCustomColourSelected)
         {
             for (int i = 0; i < mats.Length; i++)
@@ -717,7 +863,6 @@ public class CustomisationManager : MonoBehaviour
             return mats.Length;
         }
 
-        // CUSTOM COLOUR MODE
         EnsureRuntimeCustomMaterial();
         ApplyCustomColourToMaterial();
 
@@ -725,7 +870,6 @@ public class CustomisationManager : MonoBehaviour
 
         for (int i = 0; i < mats.Length; i++)
         {
-            // If slot filtering is enabled
             if (customColourMaterialSlot >= 0 && i != customColourMaterialSlot)
             {
                 mats[i] = baseMat;
@@ -773,7 +917,8 @@ public class CustomisationManager : MonoBehaviour
         }
 
         cachedPlayer = player;
-        Debug.Log($"[CustomisationManager] Registered '{player.name}' as player target.");
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Registered '{player.name}' as player target.");
 
         ApplyMaterialToGameObject(player);
     }
@@ -794,13 +939,15 @@ public class CustomisationManager : MonoBehaviour
 
         LoadCustomColor();
 
-        Debug.Log($"[CustomisationManager] Loaded material index: {selectedMaterialIndex}");
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Loaded material index: {selectedMaterialIndex}");
     }
 
     public void ResetToDefault()
     {
         SetMaterial(0);
-        Debug.Log("[CustomisationManager] Reset to default");
+        if (debugLog)
+            Debug.Log("[CustomisationManager] Reset to default");
     }
 
     #endregion
