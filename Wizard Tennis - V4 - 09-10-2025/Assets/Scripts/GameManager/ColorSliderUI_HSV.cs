@@ -42,24 +42,38 @@ public class ColorSliderUI_HSV : MonoBehaviour
     [SerializeField] private bool debugLog = false;
 
     private bool suppressEvents;
-    private bool isHooked = false;
+    private float checkInterval = 0.5f;
+    private float lastCheckTime = 0f;
 
     private void OnEnable()
     {
+        suppressEvents = false;
         StartCoroutine(DelayedInitialize());
+    }
+
+    private void Update()
+    {
+        // Continuously check for sliders and hook them if found
+        if (Time.unscaledTime - lastCheckTime > checkInterval)
+        {
+            lastCheckTime = Time.unscaledTime;
+
+            TryFindSliders();
+            EnsureSlidersHooked();
+        }
     }
 
     private System.Collections.IEnumerator DelayedInitialize()
     {
         // Wait for UI to be fully loaded
-        yield return null;
         yield return new WaitForEndOfFrame();
+        yield return null;
 
         if (debugLog)
             Debug.Log("[ColorSliderUI] Starting delayed initialization...");
 
         TryFindSliders();
-        HookSliders();
+        EnsureSlidersHooked();
 
         if (CustomisationManager.Instance != null)
         {
@@ -85,21 +99,17 @@ public class ColorSliderUI_HSV : MonoBehaviour
 
     private void OnDisable()
     {
-        UnhookSliders();
+        UnhookAllSliders();
 
         if (CustomisationManager.Instance != null)
         {
             CustomisationManager.Instance.OnCustomColourModeChanged -= OnCustomModeChanged;
             CustomisationManager.Instance.OnCustomColourChanged -= OnCustomColourChanged;
         }
-
-        isHooked = false;
     }
 
     public void TryFindSliders()
     {
-        bool foundAny = false;
-
         // HSV Sliders
         if (hueSlider == null && !string.IsNullOrEmpty(hueSliderName))
         {
@@ -107,12 +117,8 @@ public class ColorSliderUI_HSV : MonoBehaviour
             if (hueObj != null)
             {
                 hueSlider = hueObj.GetComponent<Slider>();
-                if (hueSlider != null)
-                {
-                    foundAny = true;
-                    if (debugLog)
-                        Debug.Log($"[ColorSliderUI] Found hue slider: {hueSliderName}");
-                }
+                if (hueSlider != null && debugLog)
+                    Debug.Log($"[ColorSliderUI] Found hue slider: {hueSliderName}");
             }
         }
 
@@ -122,12 +128,8 @@ public class ColorSliderUI_HSV : MonoBehaviour
             if (satObj != null)
             {
                 saturationSlider = satObj.GetComponent<Slider>();
-                if (saturationSlider != null)
-                {
-                    foundAny = true;
-                    if (debugLog)
-                        Debug.Log($"[ColorSliderUI] Found saturation slider: {saturationSliderName}");
-                }
+                if (saturationSlider != null && debugLog)
+                    Debug.Log($"[ColorSliderUI] Found saturation slider: {saturationSliderName}");
             }
         }
 
@@ -137,12 +139,8 @@ public class ColorSliderUI_HSV : MonoBehaviour
             if (valObj != null)
             {
                 valueSlider = valObj.GetComponent<Slider>();
-                if (valueSlider != null)
-                {
-                    foundAny = true;
-                    if (debugLog)
-                        Debug.Log($"[ColorSliderUI] Found value slider: {valueSliderName}");
-                }
+                if (valueSlider != null && debugLog)
+                    Debug.Log($"[ColorSliderUI] Found value slider: {valueSliderName}");
             }
         }
 
@@ -152,12 +150,8 @@ public class ColorSliderUI_HSV : MonoBehaviour
             if (alphaObj != null)
             {
                 alphaSlider = alphaObj.GetComponent<Slider>();
-                if (alphaSlider != null)
-                {
-                    foundAny = true;
-                    if (debugLog)
-                        Debug.Log($"[ColorSliderUI] Found alpha slider: {alphaSliderName}");
-                }
+                if (alphaSlider != null && debugLog)
+                    Debug.Log($"[ColorSliderUI] Found alpha slider: {alphaSliderName}");
             }
         }
 
@@ -168,12 +162,8 @@ public class ColorSliderUI_HSV : MonoBehaviour
             if (redObj != null)
             {
                 redSlider = redObj.GetComponent<Slider>();
-                if (redSlider != null)
-                {
-                    foundAny = true;
-                    if (debugLog)
-                        Debug.Log($"[ColorSliderUI] Found red slider: {redSliderName}");
-                }
+                if (redSlider != null && debugLog)
+                    Debug.Log($"[ColorSliderUI] Found red slider: {redSliderName}");
             }
         }
 
@@ -183,12 +173,8 @@ public class ColorSliderUI_HSV : MonoBehaviour
             if (greenObj != null)
             {
                 greenSlider = greenObj.GetComponent<Slider>();
-                if (greenSlider != null)
-                {
-                    foundAny = true;
-                    if (debugLog)
-                        Debug.Log($"[ColorSliderUI] Found green slider: {greenSliderName}");
-                }
+                if (greenSlider != null && debugLog)
+                    Debug.Log($"[ColorSliderUI] Found green slider: {greenSliderName}");
             }
         }
 
@@ -198,90 +184,73 @@ public class ColorSliderUI_HSV : MonoBehaviour
             if (blueObj != null)
             {
                 blueSlider = blueObj.GetComponent<Slider>();
-                if (blueSlider != null)
-                {
-                    foundAny = true;
-                    if (debugLog)
-                        Debug.Log($"[ColorSliderUI] Found blue slider: {blueSliderName}");
-                }
+                if (blueSlider != null && debugLog)
+                    Debug.Log($"[ColorSliderUI] Found blue slider: {blueSliderName}");
             }
-        }
-
-        if (foundAny && !isHooked)
-        {
-            HookSliders();
         }
     }
 
-    private void HookSliders()
+    private void EnsureSlidersHooked()
     {
-        if (isHooked)
-        {
-            if (debugLog)
-                Debug.Log("[ColorSliderUI] Already hooked, unhooking first...");
-            UnhookSliders();
-        }
-
-        int hookedCount = 0;
-
-        // HSV sliders
-        if (hueSlider != null)
+        // Check each slider and hook if it has no listeners
+        if (hueSlider != null && hueSlider.onValueChanged.GetPersistentEventCount() == 0)
         {
             hueSlider.onValueChanged.RemoveAllListeners();
             hueSlider.onValueChanged.AddListener(OnHSVChanged);
-            hookedCount++;
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] Hooked hue slider");
         }
 
-        if (saturationSlider != null)
+        if (saturationSlider != null && saturationSlider.onValueChanged.GetPersistentEventCount() == 0)
         {
             saturationSlider.onValueChanged.RemoveAllListeners();
             saturationSlider.onValueChanged.AddListener(OnHSVChanged);
-            hookedCount++;
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] Hooked saturation slider");
         }
 
-        if (valueSlider != null)
+        if (valueSlider != null && valueSlider.onValueChanged.GetPersistentEventCount() == 0)
         {
             valueSlider.onValueChanged.RemoveAllListeners();
             valueSlider.onValueChanged.AddListener(OnHSVChanged);
-            hookedCount++;
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] Hooked value slider");
         }
 
-        if (alphaSlider != null)
+        if (alphaSlider != null && alphaSlider.onValueChanged.GetPersistentEventCount() == 0)
         {
             alphaSlider.onValueChanged.RemoveAllListeners();
             alphaSlider.onValueChanged.AddListener(OnHSVChanged);
-            hookedCount++;
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] Hooked alpha slider");
         }
 
-        // RGB sliders
-        if (redSlider != null)
+        if (redSlider != null && redSlider.onValueChanged.GetPersistentEventCount() == 0)
         {
             redSlider.onValueChanged.RemoveAllListeners();
             redSlider.onValueChanged.AddListener(OnRGBChanged);
-            hookedCount++;
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] Hooked red slider");
         }
 
-        if (greenSlider != null)
+        if (greenSlider != null && greenSlider.onValueChanged.GetPersistentEventCount() == 0)
         {
             greenSlider.onValueChanged.RemoveAllListeners();
             greenSlider.onValueChanged.AddListener(OnRGBChanged);
-            hookedCount++;
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] Hooked green slider");
         }
 
-        if (blueSlider != null)
+        if (blueSlider != null && blueSlider.onValueChanged.GetPersistentEventCount() == 0)
         {
             blueSlider.onValueChanged.RemoveAllListeners();
             blueSlider.onValueChanged.AddListener(OnRGBChanged);
-            hookedCount++;
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] Hooked blue slider");
         }
-
-        isHooked = hookedCount > 0;
-
-        if (debugLog)
-            Debug.Log($"[ColorSliderUI] Hooked {hookedCount} slider(s)");
     }
 
-    private void UnhookSliders()
+    private void UnhookAllSliders()
     {
         if (hueSlider != null) hueSlider.onValueChanged.RemoveAllListeners();
         if (saturationSlider != null) saturationSlider.onValueChanged.RemoveAllListeners();
@@ -291,16 +260,25 @@ public class ColorSliderUI_HSV : MonoBehaviour
         if (greenSlider != null) greenSlider.onValueChanged.RemoveAllListeners();
         if (blueSlider != null) blueSlider.onValueChanged.RemoveAllListeners();
 
-        isHooked = false;
-
         if (debugLog)
             Debug.Log("[ColorSliderUI] Unhooked all sliders");
     }
 
     private void OnHSVChanged(float _)
     {
-        if (suppressEvents || CustomisationManager.Instance == null)
+        if (suppressEvents)
+        {
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] HSV changed but events suppressed");
             return;
+        }
+
+        if (CustomisationManager.Instance == null)
+        {
+            if (debugLog)
+                Debug.LogWarning("[ColorSliderUI] HSV changed but CustomisationManager is null!");
+            return;
+        }
 
         if (!CustomisationManager.Instance.IsCustomColourSelected)
         {
@@ -315,19 +293,34 @@ public class ColorSliderUI_HSV : MonoBehaviour
         float a = alphaSlider != null ? alphaSlider.value : 1f;
 
         if (debugLog)
-            Debug.Log($"[ColorSliderUI] HSV changed: H={h:F2}, S={s:F2}, V={v:F2}, A={a:F2}");
+            Debug.Log($"[ColorSliderUI] *** HSV CHANGED AND APPLYING *** H={h:F2}, S={s:F2}, V={v:F2}, A={a:F2}");
 
+        // This should trigger the material update
         CustomisationManager.Instance.SetCustomColorHSV(h, s, v, a);
 
+        // Update preview without triggering events
+        suppressEvents = true;
         UpdateColorPreview(h, s, v, a);
         UpdateRGBSlidersFromHSV(h, s, v);
         UpdateGradients();
+        suppressEvents = false;
     }
 
     private void OnRGBChanged(float _)
     {
-        if (suppressEvents || CustomisationManager.Instance == null)
+        if (suppressEvents)
+        {
+            if (debugLog)
+                Debug.Log("[ColorSliderUI] RGB changed but events suppressed");
             return;
+        }
+
+        if (CustomisationManager.Instance == null)
+        {
+            if (debugLog)
+                Debug.LogWarning("[ColorSliderUI] RGB changed but CustomisationManager is null!");
+            return;
+        }
 
         if (!CustomisationManager.Instance.IsCustomColourSelected)
         {
@@ -343,13 +336,15 @@ public class ColorSliderUI_HSV : MonoBehaviour
         Color rgb = new Color(r, g, b, 1f);
 
         if (debugLog)
-            Debug.Log($"[ColorSliderUI] RGB changed: R={r:F2}, G={g:F2}, B={b:F2}");
+            Debug.Log($"[ColorSliderUI] *** RGB CHANGED AND APPLYING *** R={r:F2}, G={g:F2}, B={b:F2}");
 
         CustomisationManager.Instance.SetCustomColorRGB(rgb);
 
+        suppressEvents = true;
         UpdateHSVSlidersFromRGB(rgb);
         UpdateColorPreview(rgb);
         UpdateGradients();
+        suppressEvents = false;
     }
 
     private void OnCustomColourChanged(Color color)
@@ -357,8 +352,7 @@ public class ColorSliderUI_HSV : MonoBehaviour
         if (debugLog)
             Debug.Log($"[ColorSliderUI] Custom colour changed event received: {color}");
 
-        // This is called when the color changes from CustomisationManager
-        // We should sync our UI without triggering events
+        // External change - sync our UI
         SyncFromManager();
     }
 
@@ -375,15 +369,15 @@ public class ColorSliderUI_HSV : MonoBehaviour
 
         CustomisationManager.Instance.GetCustomColorHSV(out float h, out float s, out float v, out float a);
 
-        if (hueSlider != null) hueSlider.SetValueWithoutNotify(h);
-        if (saturationSlider != null) saturationSlider.SetValueWithoutNotify(s);
-        if (valueSlider != null) valueSlider.SetValueWithoutNotify(v);
-        if (alphaSlider != null) alphaSlider.SetValueWithoutNotify(a);
+        if (hueSlider != null) hueSlider.value = h;
+        if (saturationSlider != null) saturationSlider.value = s;
+        if (valueSlider != null) valueSlider.value = v;
+        if (alphaSlider != null) alphaSlider.value = a;
 
         Color rgb = CustomisationManager.Instance.GetCustomColorRGB();
-        if (redSlider != null) redSlider.SetValueWithoutNotify(rgb.r);
-        if (greenSlider != null) greenSlider.SetValueWithoutNotify(rgb.g);
-        if (blueSlider != null) blueSlider.SetValueWithoutNotify(rgb.b);
+        if (redSlider != null) redSlider.value = rgb.r;
+        if (greenSlider != null) greenSlider.value = rgb.g;
+        if (blueSlider != null) blueSlider.value = rgb.b;
 
         UpdateColorPreview(h, s, v, a);
         UpdateGradients();
@@ -391,7 +385,7 @@ public class ColorSliderUI_HSV : MonoBehaviour
         suppressEvents = false;
 
         if (debugLog)
-            Debug.Log($"[ColorSliderUI] Synced from manager: H={h:F2}, S={s:F2}, V={v:F2}");
+            Debug.Log($"[ColorSliderUI] *** SYNCED FROM MANAGER *** H={h:F2}, S={s:F2}, V={v:F2}, A={a:F2}");
     }
 
     private void UpdateColorPreview(float h, float s, float v, float a)
@@ -399,7 +393,7 @@ public class ColorSliderUI_HSV : MonoBehaviour
         if (colorPreview != null)
         {
             Color c = Color.HSVToRGB(h, s, v);
-            c.a = 1f; // Always show preview at full opacity
+            c.a = 1f;
             colorPreview.color = c;
         }
     }
@@ -414,28 +408,20 @@ public class ColorSliderUI_HSV : MonoBehaviour
 
     private void UpdateHSVSlidersFromRGB(Color rgb)
     {
-        suppressEvents = true;
-
         Color.RGBToHSV(rgb, out float h, out float s, out float v);
 
-        if (hueSlider != null) hueSlider.SetValueWithoutNotify(h);
-        if (saturationSlider != null) saturationSlider.SetValueWithoutNotify(s);
-        if (valueSlider != null) valueSlider.SetValueWithoutNotify(v);
-
-        suppressEvents = false;
+        if (hueSlider != null) hueSlider.value = h;
+        if (saturationSlider != null) saturationSlider.value = s;
+        if (valueSlider != null) valueSlider.value = v;
     }
 
     private void UpdateRGBSlidersFromHSV(float h, float s, float v)
     {
-        suppressEvents = true;
-
         Color rgb = Color.HSVToRGB(h, s, v);
 
-        if (redSlider != null) redSlider.SetValueWithoutNotify(rgb.r);
-        if (greenSlider != null) greenSlider.SetValueWithoutNotify(rgb.g);
-        if (blueSlider != null) blueSlider.SetValueWithoutNotify(rgb.b);
-
-        suppressEvents = false;
+        if (redSlider != null) redSlider.value = rgb.r;
+        if (greenSlider != null) greenSlider.value = rgb.g;
+        if (blueSlider != null) blueSlider.value = rgb.b;
     }
 
     private void UpdateGradients()
@@ -444,7 +430,6 @@ public class ColorSliderUI_HSV : MonoBehaviour
         float s = saturationSlider != null ? saturationSlider.value : 1f;
         float v = valueSlider != null ? valueSlider.value : 1f;
 
-        // Update saturation gradient (gray to full color at current hue/value)
         if (saturationGradient != null)
         {
             Color fullSat = Color.HSVToRGB(h, 1f, v);
@@ -452,7 +437,6 @@ public class ColorSliderUI_HSV : MonoBehaviour
             UpdateGradientImage(saturationGradient, noSat, fullSat);
         }
 
-        // Update value gradient (black to full brightness at current hue/sat)
         if (valueGradient != null)
         {
             Color fullValue = Color.HSVToRGB(h, s, 1f);
@@ -463,22 +447,27 @@ public class ColorSliderUI_HSV : MonoBehaviour
 
     private void UpdateGradientImage(Image img, Color startColor, Color endColor)
     {
-        // This requires a gradient texture or you can use a shader
-        // For simplicity, just set to end color
         img.color = endColor;
     }
 
     private void OnCustomModeChanged(bool isActive)
     {
         if (debugLog)
-            Debug.Log($"[ColorSliderUI] Custom mode changed to: {isActive}");
+            Debug.Log($"[ColorSliderUI] *** CUSTOM MODE CHANGED TO: {isActive} ***");
 
         UpdateEnabledState();
 
         if (isActive)
         {
-            SyncFromManager();
+            // Give it a frame to settle
+            StartCoroutine(DelayedSync());
         }
+    }
+
+    private System.Collections.IEnumerator DelayedSync()
+    {
+        yield return null;
+        SyncFromManager();
     }
 
     private void UpdateEnabledState()
@@ -496,7 +485,7 @@ public class ColorSliderUI_HSV : MonoBehaviour
         SetAllSlidersInteractable(shouldBeEnabled);
 
         if (debugLog)
-            Debug.Log($"[ColorSliderUI] Sliders enabled: {shouldBeEnabled}");
+            Debug.Log($"[ColorSliderUI] *** SLIDERS INTERACTABLE: {shouldBeEnabled} ***");
     }
 
     private void SetAllSlidersInteractable(bool interactable)
@@ -510,22 +499,17 @@ public class ColorSliderUI_HSV : MonoBehaviour
         if (blueSlider != null) blueSlider.interactable = interactable;
     }
 
-    /// <summary>
-    /// Public method to manually refresh from manager
-    /// </summary>
     public void RefreshFromManager()
     {
         if (debugLog)
-            Debug.Log("[ColorSliderUI] Manual refresh requested");
+            Debug.Log("[ColorSliderUI] *** MANUAL REFRESH REQUESTED ***");
 
         TryFindSliders();
+        EnsureSlidersHooked();
         SyncFromManager();
         UpdateEnabledState();
     }
 
-    /// <summary>
-    /// Set to a preset color
-    /// </summary>
     public void SetPresetColor(Color color)
     {
         if (CustomisationManager.Instance != null && CustomisationManager.Instance.IsCustomColourSelected)

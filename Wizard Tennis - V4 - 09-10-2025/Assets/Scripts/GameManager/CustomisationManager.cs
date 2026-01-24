@@ -211,7 +211,6 @@ public class CustomisationManager : MonoBehaviour
 
     private System.Collections.IEnumerator DelayedSceneSetup()
     {
-        TryFindDisplayObject();
         // Wait for scene to fully load
         yield return new WaitForEndOfFrame();
         yield return null;
@@ -222,6 +221,7 @@ public class CustomisationManager : MonoBehaviour
         if (autoFindUI)
         {
             TryFindAndHookUI();
+            TryFindDisplayObject();
 
             // Find color slider UI
             colorSliderUI = FindObjectOfType<ColorSliderUI_HSV>();
@@ -674,7 +674,11 @@ public class CustomisationManager : MonoBehaviour
     public void SetCustomColorHSV(float h, float s, float v, float a = 1f)
     {
         if (!IsCustomColourSelected)
+        {
+            if (debugLog)
+                Debug.LogWarning($"[CustomisationManager] SetCustomColorHSV called but custom colour not selected! Current index: {selectedMaterialIndex}");
             return;
+        }
 
         customHue = Mathf.Clamp01(h);
         customSaturation = Mathf.Clamp01(s);
@@ -682,7 +686,7 @@ public class CustomisationManager : MonoBehaviour
         customAlpha = Mathf.Clamp01(a);
 
         if (debugLog)
-            Debug.Log($"[CustomisationManager] Custom color HSV set: H={h:F2}, S={s:F2}, V={v:F2}, A={a:F2}");
+            Debug.Log($"[CustomisationManager] *** SETTING CUSTOM COLOR HSV *** H={h:F2}, S={s:F2}, V={v:F2}, A={a:F2}");
 
         SaveCustomColor();
 
@@ -692,10 +696,16 @@ public class CustomisationManager : MonoBehaviour
         Color rgb = Color.HSVToRGB(customHue, customSaturation, customValue);
         rgb.a = customAlpha;
 
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Applying custom color to player and display object...");
+
         ApplyMaterialToPlayer();
         ApplyMaterialToDisplayObject();
 
         OnCustomColourChanged?.Invoke(rgb);
+
+        if (debugLog)
+            Debug.Log($"[CustomisationManager] Custom color applied successfully!");
     }
 
     public void SetCustomColorRGB(Color color)
