@@ -15646,6 +15646,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &126685021
 AudioSource:
   m_ObjectHideFlags: 0
@@ -15924,6 +15925,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &152661690
 AudioSource:
   m_ObjectHideFlags: 0
@@ -16439,7 +16441,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upKey: 273
   downKey: 274
+  leftKey: 276
+  rightKey: 275
   confirmKey: 101
+  cancelKey: 27
+  selectionIndicator: {fileID: 0}
+  indicatorPosition: 1
+  indicatorOffset: {x: 10, y: 0}
+  animateIndicator: 1
+  animationSpeed: 2
+  maintainSelectionHighlight: 1
+  includeInactive: 0
+  autoRefresh: 1
+  refreshInterval: 0.5
+  debugLog: 0
 --- !u!1 &212450835
 GameObject:
   m_ObjectHideFlags: 0
@@ -17465,6 +17480,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &302547066
 AudioSource:
   m_ObjectHideFlags: 0
@@ -23551,6 +23567,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &440953816
 AudioSource:
   m_ObjectHideFlags: 0
@@ -24864,6 +24881,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &571976422
 AudioSource:
   m_ObjectHideFlags: 0
@@ -32484,7 +32502,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upKey: 273
   downKey: 274
+  leftKey: 276
+  rightKey: 275
   confirmKey: 101
+  cancelKey: 27
+  selectionIndicator: {fileID: 0}
+  indicatorPosition: 1
+  indicatorOffset: {x: 10, y: 0}
+  animateIndicator: 1
+  animationSpeed: 2
+  maintainSelectionHighlight: 1
+  includeInactive: 0
+  autoRefresh: 1
+  refreshInterval: 0.5
+  debugLog: 0
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -40936,6 +40967,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &1437665136
 AudioSource:
   m_ObjectHideFlags: 0
@@ -52882,6 +52914,42 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: TennisAi
+      value: 
+      objectReference: {fileID: 1594825194}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: audioSource
+      value: 
+      objectReference: {fileID: 546744925}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: SpellEffects
+      value: 
+      objectReference: {fileID: 1594825195}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: ikController
+      value: 
+      objectReference: {fileID: 1756418953}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: arrowKeyPrefab
+      value: 
+      objectReference: {fileID: 7946335307351082077, guid: f23a5f0d933501545b23a8c4e4691e72, type: 3}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: spellBookPanel
+      value: 
+      objectReference: {fileID: 1596896129}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: arrowSpawnPoint
+      value: 
+      objectReference: {fileID: 1851608629}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: spellFloorImage
+      value: 
+      objectReference: {fileID: 1076509792}
+    - target: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: spellAddressText
+      value: 
+      objectReference: {fileID: 3126104}
     - target: {fileID: 2787582609171418438, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
       propertyPath: m_Layer
       value: 10
@@ -52894,6 +52962,34 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 3237792337622575043, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: OppIKRig
+      value: 
+      objectReference: {fileID: 1207922161}
+    - target: {fileID: 3237792337622575043, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: Opponent
+      value: 
+      objectReference: {fileID: 2092549635}
+    - target: {fileID: 3237792337622575043, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: aimTarget
+      value: 
+      objectReference: {fileID: 319551048}
+    - target: {fileID: 3237792337622575043, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: audioSource
+      value: 
+      objectReference: {fileID: 546744925}
+    - target: {fileID: 3237792337622575043, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: SpellEffects
+      value: 
+      objectReference: {fileID: 1594825195}
+    - target: {fileID: 3237792337622575043, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: scoreManager
+      value: 
+      objectReference: {fileID: 1578197341}
+    - target: {fileID: 3237792337622575043, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: servingBarriers
+      value: 
+      objectReference: {fileID: 584352478}
     - target: {fileID: 3696794507323943539, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.3
@@ -52936,12 +53032,24 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5204431051756436574, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
       propertyPath: m_Name
-      value: Player_Singleplayer (1)
+      value: Player_Singleplayer
       objectReference: {fileID: 0}
     - target: {fileID: 5394291728553716567, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
       propertyPath: m_Layer
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 5882348409635838742, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: rallyCountText
+      value: 
+      objectReference: {fileID: 400132960}
+    - target: {fileID: 5882348409635838742, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: greenPointsText
+      value: 
+      objectReference: {fileID: 1379234393}
+    - target: {fileID: 5882348409635838742, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+      propertyPath: greenPointsParent
+      value: 
+      objectReference: {fileID: 1708105519}
     - target: {fileID: 7462753759647055444, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
       propertyPath: m_Layer
       value: 10
@@ -52962,8 +53070,10 @@ PrefabInstance:
       propertyPath: dustHeightOffset
       value: -0.5
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedComponents:
+    - {fileID: 1934950018735972318, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+    m_RemovedGameObjects:
+    - {fileID: 7622253368131758672, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 3696794507323943539, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
       insertIndex: -1
@@ -53068,6 +53178,22 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3fef29261fda45942952b496e299da7f, type: 3}
   m_PrefabInstance: {fileID: 1077570817}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1756418948 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5204431051756436574, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+  m_PrefabInstance: {fileID: 1708906520}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1756418953 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8430910821969062501, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+  m_PrefabInstance: {fileID: 1708906520}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1756418948}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 176bd9ce00496244888d9dd9b71ad1bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1765981366
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -53673,6 +53799,11 @@ Transform:
 Transform:
   m_CorrespondingSourceObject: {fileID: 2136447803942275444, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}
   m_PrefabInstance: {fileID: 624805299}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1851608629 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6610033044667899900, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+  m_PrefabInstance: {fileID: 1708906520}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &1860939168 stripped
 Transform:
@@ -59884,7 +60015,7 @@ MonoBehaviour:
   TennisAI: {fileID: 1594825194}
   SpellEffects: {fileID: 1594825195}
   CollisionTracker: {fileID: 0}
-  Player: {fileID: 0}
+  Player: {fileID: 1756418948}
   PlayerName: Player_Singleplayer
   audioSource: {fileID: 1580895398}
   hitsounds:
@@ -60385,6 +60516,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &2101770634
 AudioSource:
   m_ObjectHideFlags: 0

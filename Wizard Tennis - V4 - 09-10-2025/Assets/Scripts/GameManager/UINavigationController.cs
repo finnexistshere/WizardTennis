@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 using System.Collections.Generic;
+using System.Linq;
 
 public class UINavigationController : MonoBehaviour
 {
@@ -12,6 +13,7 @@ public class UINavigationController : MonoBehaviour
     public KeyCode leftKey = KeyCode.LeftArrow;
     public KeyCode rightKey = KeyCode.RightArrow;
     public KeyCode confirmKey = KeyCode.E;
+    public KeyCode cancelKey = KeyCode.Escape;
 
     [Header("Selection Indicator")]
     [Tooltip("Indicator object that appears next to selected element")]
@@ -43,11 +45,14 @@ public class UINavigationController : MonoBehaviour
     public bool maintainSelectionHighlight = true;
 
     [Header("Detection Settings")]
-    [Tooltip("Search depth for finding UI elements (higher = more thorough)")]
-    public int searchDepth = 10;
-
     [Tooltip("Include inactive selectables in search")]
     public bool includeInactive = false;
+
+    [Tooltip("Auto-refresh when UI changes")]
+    public bool autoRefresh = true;
+
+    [Tooltip("Refresh check interval (seconds)")]
+    public float refreshInterval = 0.5f;
 
     [Header("Debug")]
     public bool debugLog = false;
@@ -57,12 +62,15 @@ public class UINavigationController : MonoBehaviour
     private GameObject currentPanel;
     private bool selectionActivated = false;
     private bool isMouseMode = false;
-    private float lastMouseMoveTime = -1f;
     private Vector3 lastMousePosition;
 
     private RectTransform indicatorRect;
     private Vector3 indicatorBaseScale;
     private float animationTimer = 0f;
+    private float lastRefreshTime = 0f;
+    private int lastSelectableCount = 0;
+
+    private Canvas currentCanvas;
 
     private void Awake()
     {
@@ -82,6 +90,13 @@ public class UINavigationController : MonoBehaviour
     {
         DetectInputMode();
 
+        // Auto-refresh check
+        if (autoRefresh && Time.unscaledTime - lastRefreshTime > refreshInterval)
+        {
+            CheckForUIChanges();
+            lastRefreshTime = Time.unscaledTime;
+        }
+
         if (currentPanel == null || !currentPanel.activeInHierarchy)
         {
             UpdateActivePanel();
@@ -100,8 +115,6 @@ public class UINavigationController : MonoBehaviour
             {
                 isMouseMode = false;
                 selectionActivated = true;
-
-                // Select first element
                 SelectElement(0);
             }
             return;
@@ -113,6 +126,7 @@ public class UINavigationController : MonoBehaviour
         bool left = Input.GetKeyDown(leftKey);
         bool right = Input.GetKeyDown(rightKey);
         bool confirm = Input.GetKeyDown(confirmKey);
+        bool cancel = Input.GetKeyDown(cancelKey);
 
         // First input activates selection
         if (!selectionActivated)
@@ -131,6 +145,7 @@ public class UINavigationController : MonoBehaviour
         else if (left) HandleLeftRight(-1);
         else if (right) HandleLeftRight(1);
         else if (confirm) ConfirmSelection();
+        else if (cancel) HandleCancel();
 
         // Animate indicator
         if (animateIndicator && selectionIndicator != null && selectionIndicator.activeSelf)
@@ -147,6 +162,12 @@ public class UINavigationController : MonoBehaviour
             if (indicatorRect != null)
             {
                 indicatorBaseScale = indicatorRect.localScale;
+
+                // Ensure indicator has a canvas parent or add one
+                if (indicatorRect.GetComponentInParent<Canvas>() == null)
+                {
+                    Debug.LogWarning("[UINavigation] Selection indicator must be a child of a Canvas!");
+                }
             }
             selectionIndicator.SetActive(false);
         }
@@ -158,7 +179,6 @@ public class UINavigationController : MonoBehaviour
         if (Input.mousePosition != lastMousePosition)
         {
             lastMousePosition = Input.mousePosition;
-            lastMouseMoveTime = Time.unscaledTime;
 
             // Switch to mouse mode if mouse moved
             if (!isMouseMode && selectionActivated)
@@ -173,47 +193,125 @@ public class UINavigationController : MonoBehaviour
         }
     }
 
-    private void UpdateActivePanel()
+    private void CheckForUIChanges()
     {
-        Canvas[] canvases = FindObjectsOfType<Canvas>(true);
-        foreach (Canvas canvas in canvases)
+        if (currentPanel == null) return;
+
+        // Quick check if number of active selectables changed
+        Selectable[] allSelectables = currentPanel.GetComponentsInChildren<Selectable>(includeInactive);
+        int activeCount = 0;
+
+        foreach (Selectable s in allSelectables)
         {
-            if (canvas.gameObject.activeInHierarchy)
+            if (IsSelectableValid(s))
             {
-                Selectable[] selectables = canvas.GetComponentsInChildren<Selectable>(true);
-                List<Selectable> activeSelectables = new List<Selectable>();
-
-                foreach (Selectable s in selectables)
-                {
-                    if (s.gameObject.activeInHierarchy && s.interactable && s.IsActive())
-                    {
-                        activeSelectables.Add(s);
-                    }
-                }
-
-                if (activeSelectables.Count > 0)
-                {
-                    currentPanel = canvas.gameObject;
-                    currentSelectables = activeSelectables;
-                    currentIndex = -1;
-
-                    if (!isMouseMode)
-                    {
-                        EventSystem.current.SetSelectedGameObject(null);
-                    }
-
-                    if (debugLog)
-                        Debug.Log($"[UINavigation] Found {activeSelectables.Count} interactive elements");
-
-                    return;
-                }
+                activeCount++;
             }
         }
 
-        currentPanel = null;
-        currentSelectables.Clear();
-        currentIndex = -1;
-        HideIndicator();
+        if (activeCount != lastSelectableCount)
+        {
+            if (debugLog)
+                Debug.Log($"[UINavigation] UI changed: {lastSelectableCount} -> {activeCount} elements");
+
+            UpdateActivePanel();
+        }
+    }
+
+    private void UpdateActivePanel()
+    {
+        Canvas[] canvases = FindObjectsOfType<Canvas>();
+        Canvas bestCanvas = null;
+        List<Selectable> bestSelectables = new List<Selectable>();
+
+        foreach (Canvas canvas in canvases)
+        {
+            if (!canvas.gameObject.activeInHierarchy) continue;
+
+            List<Selectable> activeSelectables = new List<Selectable>();
+            Selectable[] selectables = canvas.GetComponentsInChildren<Selectable>(includeInactive);
+
+            foreach (Selectable s in selectables)
+            {
+                if (IsSelectableValid(s))
+                {
+                    activeSelectables.Add(s);
+                }
+            }
+
+            // Prefer canvases with more selectables or higher sort order
+            if (activeSelectables.Count > bestSelectables.Count ||
+                (activeSelectables.Count == bestSelectables.Count &&
+                 bestCanvas != null && canvas.sortingOrder > bestCanvas.sortingOrder))
+            {
+                bestCanvas = canvas;
+                bestSelectables = activeSelectables;
+            }
+        }
+
+        if (bestSelectables.Count > 0)
+        {
+            currentPanel = bestCanvas.gameObject;
+            currentCanvas = bestCanvas;
+
+            // Sort selectables by Y position (top to bottom), then X (left to right)
+            currentSelectables = bestSelectables.OrderByDescending(s => s.transform.position.y)
+                                                .ThenBy(s => s.transform.position.x)
+                                                .ToList();
+
+            lastSelectableCount = currentSelectables.Count;
+
+            // Try to maintain selection if possible
+            if (currentIndex >= currentSelectables.Count)
+            {
+                currentIndex = -1;
+            }
+
+            if (!isMouseMode && selectionActivated && currentIndex >= 0)
+            {
+                SelectElement(currentIndex);
+            }
+            else if (!isMouseMode)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
+
+            if (debugLog)
+                Debug.Log($"[UINavigation] Found {currentSelectables.Count} interactive elements on {currentPanel.name}");
+        }
+        else
+        {
+            currentPanel = null;
+            currentCanvas = null;
+            currentSelectables.Clear();
+            currentIndex = -1;
+            lastSelectableCount = 0;
+            HideIndicator();
+        }
+    }
+
+    private bool IsSelectableValid(Selectable s)
+    {
+        if (s == null) return false;
+        if (!includeInactive && !s.gameObject.activeInHierarchy) return false;
+        if (!s.interactable) return false;
+        if (!s.IsActive()) return false;
+
+        // Check if any parent is disabled
+        Transform current = s.transform;
+        while (current != null)
+        {
+            if (!current.gameObject.activeInHierarchy)
+                return false;
+
+            CanvasGroup cg = current.GetComponent<CanvasGroup>();
+            if (cg != null && (!cg.interactable || cg.alpha == 0))
+                return false;
+
+            current = current.parent;
+        }
+
+        return true;
     }
 
     private void MoveSelection(int direction)
@@ -235,6 +333,13 @@ public class UINavigationController : MonoBehaviour
     private void SelectElement(int index)
     {
         if (index < 0 || index >= currentSelectables.Count) return;
+
+        // Verify the element is still valid
+        if (!IsSelectableValid(currentSelectables[index]))
+        {
+            UpdateActivePanel();
+            return;
+        }
 
         currentIndex = index;
         Selectable selectable = currentSelectables[currentIndex];
@@ -279,37 +384,57 @@ public class UINavigationController : MonoBehaviour
         // Handle Slider
         if (current is Slider slider)
         {
-            float step = (slider.maxValue - slider.minValue) * 0.05f; // 5% steps
-            slider.value += direction * step;
+            float step = (slider.maxValue - slider.minValue) * 0.05f;
+            slider.value = Mathf.Clamp(slider.value + direction * step, slider.minValue, slider.maxValue);
             return;
         }
 
         // Handle Scrollbar
         if (current is Scrollbar scrollbar)
         {
-            scrollbar.value += direction * 0.1f;
+            scrollbar.value = Mathf.Clamp01(scrollbar.value + direction * 0.1f);
             return;
         }
 
-        // Handle Dropdown
-        if (current is TMP_Dropdown dropdown)
+        // Handle TMP_Dropdown
+        if (current is TMP_Dropdown tmpDropdown)
+        {
+            int newValue = tmpDropdown.value + direction;
+            if (newValue >= 0 && newValue < tmpDropdown.options.Count)
+            {
+                tmpDropdown.value = newValue;
+                tmpDropdown.RefreshShownValue();
+            }
+            return;
+        }
+
+        // Handle standard Dropdown
+        if (current is Dropdown dropdown)
         {
             int newValue = dropdown.value + direction;
             if (newValue >= 0 && newValue < dropdown.options.Count)
             {
                 dropdown.value = newValue;
+                dropdown.RefreshShownValue();
             }
             return;
         }
 
-        // Handle Toggle (left/right toggles it)
+        // Handle Toggle
         if (current is Toggle toggle)
         {
             toggle.isOn = !toggle.isOn;
             return;
         }
 
-        // For other elements, left/right does vertical navigation
+        // Handle InputField
+        if (current is TMP_InputField || current is InputField)
+        {
+            // For input fields, left/right doesn't navigate, it's for text editing
+            return;
+        }
+
+        // For other elements, left/right does horizontal navigation
         MoveSelection(direction);
     }
 
@@ -331,9 +456,21 @@ public class UINavigationController : MonoBehaviour
         {
             toggle.isOn = !toggle.isOn;
         }
-        else if (selectable is TMP_Dropdown dropdown)
+        else if (selectable is TMP_Dropdown tmpDropdown)
+        {
+            tmpDropdown.Show();
+        }
+        else if (selectable is Dropdown dropdown)
         {
             dropdown.Show();
+        }
+        else if (selectable is TMP_InputField tmpInputField)
+        {
+            tmpInputField.ActivateInputField();
+        }
+        else if (selectable is InputField inputField)
+        {
+            inputField.ActivateInputField();
         }
 
         if (debugLog)
@@ -341,6 +478,24 @@ public class UINavigationController : MonoBehaviour
 
         // Trigger release
         StartCoroutine(DelayedPointerUp(selectable));
+    }
+
+    private void HandleCancel()
+    {
+        // Handle dropdown closing
+        if (currentIndex >= 0 && currentIndex < currentSelectables.Count)
+        {
+            Selectable current = currentSelectables[currentIndex];
+
+            if (current is TMP_Dropdown tmpDropdown)
+            {
+                tmpDropdown.Hide();
+            }
+            else if (current is Dropdown dropdown)
+            {
+                dropdown.Hide();
+            }
+        }
     }
 
     private System.Collections.IEnumerator DelayedPointerUp(Selectable selectable)
@@ -356,49 +511,58 @@ public class UINavigationController : MonoBehaviour
         RectTransform selectableRect = selectable.GetComponent<RectTransform>();
         if (selectableRect == null) return;
 
+        // Get the canvas for this indicator
+        Canvas indicatorCanvas = indicatorRect.GetComponentInParent<Canvas>();
+        if (indicatorCanvas == null)
+        {
+            Debug.LogWarning("[UINavigation] Indicator must be child of a Canvas!");
+            return;
+        }
+
         // Get world corners of the selectable
         Vector3[] corners = new Vector3[4];
         selectableRect.GetWorldCorners(corners);
-        // corners[0] = bottom-left, corners[1] = top-left, corners[2] = top-right, corners[3] = bottom-right
 
-        Vector3 anchorPosition = Vector3.zero;
+        Vector3 worldAnchorPosition = Vector3.zero;
 
         switch (indicatorPosition)
         {
             case IndicatorPosition.Left:
-                // Left-middle
-                anchorPosition = (corners[0] + corners[1]) / 2f;
+                worldAnchorPosition = (corners[0] + corners[1]) / 2f;
                 break;
-
             case IndicatorPosition.Right:
-                // Right-middle
-                anchorPosition = (corners[2] + corners[3]) / 2f;
+                worldAnchorPosition = (corners[2] + corners[3]) / 2f;
                 break;
-
             case IndicatorPosition.Top:
-                // Top-center
-                anchorPosition = (corners[1] + corners[2]) / 2f;
+                worldAnchorPosition = (corners[1] + corners[2]) / 2f;
                 break;
-
             case IndicatorPosition.Bottom:
-                // Bottom-center
-                anchorPosition = (corners[0] + corners[3]) / 2f;
+                worldAnchorPosition = (corners[0] + corners[3]) / 2f;
                 break;
-
             case IndicatorPosition.Center:
-                // Center of element
-                anchorPosition = (corners[0] + corners[2]) / 2f;
+                worldAnchorPosition = (corners[0] + corners[2]) / 2f;
                 break;
         }
 
+        // Convert to canvas space
+        Camera cam = indicatorCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : indicatorCanvas.worldCamera;
+
+        Vector2 canvasPosition;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            indicatorCanvas.transform as RectTransform,
+            RectTransformUtility.WorldToScreenPoint(cam, worldAnchorPosition),
+            cam,
+            out canvasPosition
+        );
+
         // Apply offset
-        Vector3 finalPosition = anchorPosition + (Vector3)indicatorOffset;
+        canvasPosition += indicatorOffset;
 
         // Set indicator position
-        indicatorRect.position = finalPosition;
+        indicatorRect.anchoredPosition = canvasPosition;
 
         if (debugLog)
-            Debug.Log($"[UINavigation] Positioned indicator at {indicatorPosition} of {selectable.name}");
+            Debug.Log($"[UINavigation] Positioned indicator at {indicatorPosition} of {selectable.name}, offset: {indicatorOffset}");
     }
 
     private void AnimateIndicator()
@@ -411,11 +575,25 @@ public class UINavigationController : MonoBehaviour
         float scale = 1f + Mathf.Sin(animationTimer) * 0.1f;
         indicatorRect.localScale = indicatorBaseScale * scale;
 
-        // Optional: Horizontal bounce
-        float bounce = Mathf.Sin(animationTimer * 2f) * 3f;
-        Vector3 pos = indicatorRect.localPosition;
-        pos.x = bounce;
-        indicatorRect.localPosition = pos;
+        // Horizontal bounce based on position
+        float bounceOffset = Mathf.Sin(animationTimer * 2f) * 3f;
+
+        Vector2 currentPos = indicatorRect.anchoredPosition;
+        Vector2 basePos = currentPos;
+
+        // Remove previous bounce
+        if (indicatorPosition == IndicatorPosition.Left || indicatorPosition == IndicatorPosition.Right)
+        {
+            basePos.x = currentPos.x - bounceOffset;
+            currentPos.x = basePos.x + bounceOffset;
+        }
+        else if (indicatorPosition == IndicatorPosition.Top || indicatorPosition == IndicatorPosition.Bottom)
+        {
+            basePos.y = currentPos.y - bounceOffset;
+            currentPos.y = basePos.y + bounceOffset;
+        }
+
+        indicatorRect.anchoredPosition = currentPos;
     }
 
     private void ShowIndicator()
@@ -484,6 +662,8 @@ public class UINavigationController : MonoBehaviour
         int index = currentSelectables.IndexOf(selectable);
         if (index >= 0)
         {
+            isMouseMode = false;
+            selectionActivated = true;
             SelectElement(index);
         }
     }
@@ -496,6 +676,19 @@ public class UINavigationController : MonoBehaviour
         if (currentIndex >= 0 && currentIndex < currentSelectables.Count)
             return currentSelectables[currentIndex];
         return null;
+    }
+
+    /// <summary>
+    /// Enable or disable keyboard navigation
+    /// </summary>
+    public void SetNavigationEnabled(bool enabled)
+    {
+        this.enabled = enabled;
+        if (!enabled)
+        {
+            HideIndicator();
+            ClearKeyboardSelection();
+        }
     }
 
     #endregion
