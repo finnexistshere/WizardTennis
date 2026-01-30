@@ -264,8 +264,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4278190080
-  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -15476,78 +15476,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: eddf4f6503d155140b629b4b70f65d61, type: 3}
---- !u!1 &118632204
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 118632205}
-  - component: {fileID: 118632207}
-  - component: {fileID: 118632206}
-  m_Layer: 5
-  m_Name: book display
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &118632205
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 118632204}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 1.387802}
-  m_LocalScale: {x: 13.91938, y: 9.040737, z: 0.0408622}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1882240445}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 1521.3881, y: -66.42083}
-  m_SizeDelta: {x: 158.5354, y: 154.493}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &118632206
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 118632204}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 5872711869570a54ba3f8c4b4caa76d9, type: 3}
-  m_UVRect:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 1
-    height: 1
---- !u!222 &118632207
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 118632204}
-  m_CullTransparentMesh: 1
 --- !u!1 &126685015
 GameObject:
   m_ObjectHideFlags: 0
@@ -15708,6 +15636,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &126685021
 AudioSource:
   m_ObjectHideFlags: 0
@@ -16011,6 +15940,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &152661690
 AudioSource:
   m_ObjectHideFlags: 0
@@ -16698,7 +16628,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upKey: 273
   downKey: 274
+  leftKey: 276
+  rightKey: 275
   confirmKey: 101
+  cancelKey: 27
+  selectionIndicator: {fileID: 0}
+  indicatorPosition: 1
+  indicatorOffset: {x: 10, y: 0}
+  animateIndicator: 1
+  animationSpeed: 2
+  manuallyExcludedSelectables: []
+  excludedObjects: []
+  maintainSelectionHighlight: 1
+  includeInactive: 0
+  autoRefresh: 1
+  refreshInterval: 0.5
+  navigateDropdownItems: 1
+  closeDropdownOnNavigateAway: 1
+  debugLog: 0
 --- !u!1 &206088087
 GameObject:
   m_ObjectHideFlags: 0
@@ -18038,6 +17985,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &302547066
 AudioSource:
   m_ObjectHideFlags: 0
@@ -24068,6 +24016,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &440953816
 AudioSource:
   m_ObjectHideFlags: 0
@@ -25839,6 +25788,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &571976422
 AudioSource:
   m_ObjectHideFlags: 0
@@ -28620,7 +28570,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upKey: 273
   downKey: 274
+  leftKey: 276
+  rightKey: 275
   confirmKey: 101
+  cancelKey: 27
+  selectionIndicator: {fileID: 0}
+  indicatorPosition: 1
+  indicatorOffset: {x: 10, y: 0}
+  animateIndicator: 1
+  animationSpeed: 2
+  manuallyExcludedSelectables: []
+  excludedObjects: []
+  maintainSelectionHighlight: 1
+  includeInactive: 0
+  autoRefresh: 1
+  refreshInterval: 0.5
+  navigateDropdownItems: 1
+  closeDropdownOnNavigateAway: 1
+  debugLog: 0
 --- !u!1001 &972412202
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -37549,6 +37516,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &1437665136
 AudioSource:
   m_ObjectHideFlags: 0
@@ -50548,7 +50516,6 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 118632205}
   - {fileID: 1596896130}
   m_Father: {fileID: 1265070138}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -50981,8 +50948,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4278190080
-  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -56947,6 +56914,7 @@ MonoBehaviour:
   creakSFX: {fileID: 8300000, guid: 8823e623cf94e6843843126fb27fc8cd, type: 3}
   sparkleSFX: {fileID: 8300000, guid: 6ce408764ce37c5459985d74d3367b81, type: 3}
   useToggleColors: 1
+  maintainSelectionHighlight: 1
 --- !u!82 &2101770634
 AudioSource:
   m_ObjectHideFlags: 0
