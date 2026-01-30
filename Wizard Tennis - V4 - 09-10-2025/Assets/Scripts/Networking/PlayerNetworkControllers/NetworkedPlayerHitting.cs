@@ -785,12 +785,6 @@ public class NetworkedBall : NetworkBehaviour
 
         nearBall = true;
 
-        if (!hitting)
-        {
-            Debug.Log($"[NetworkedBall] Player {OwnerClientId} can't hit - hitting is disabled");
-            return;
-        }
-
         lastHitTime = Time.time;
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} processing hit!");
 
