@@ -31,14 +31,6 @@ public class UINavigationController : MonoBehaviour
     [Tooltip("Animation speed (bounce/pulse)")]
     public float animationSpeed = 2f;
 
-    [Header("Manual Exclusions")]
-    [Tooltip("Selectables that should never be included in keyboard navigation")]
-    public List<Selectable> manuallyExcludedSelectables = new List<Selectable>();
-
-    [Header("Manual Exclusions")]
-    [Tooltip("GameObjects that should never be included in navigation")]
-    public List<GameObject> excludedObjects = new List<GameObject>();
-
     public enum IndicatorPosition
     {
         Left,
@@ -47,6 +39,13 @@ public class UINavigationController : MonoBehaviour
         Bottom,
         Center
     }
+
+    [Header("Manual Exclusions")]
+    [Tooltip("Selectables that should never be included in keyboard navigation")]
+    public List<Selectable> manuallyExcludedSelectables = new List<Selectable>();
+
+    [Tooltip("GameObjects that should never be included in navigation")]
+    public List<GameObject> excludedObjects = new List<GameObject>();
 
     [Header("Visual Feedback")]
     [Tooltip("Keep selected UI visually highlighted")]
@@ -61,6 +60,13 @@ public class UINavigationController : MonoBehaviour
 
     [Tooltip("Refresh check interval (seconds)")]
     public float refreshInterval = 0.5f;
+
+    [Header("Dropdown Settings")]
+    [Tooltip("Automatically navigate dropdown items when dropdown is open")]
+    public bool navigateDropdownItems = true;
+
+    [Tooltip("Close dropdown when navigating away")]
+    public bool closeDropdownOnNavigateAway = true;
 
     [Header("Debug")]
     public bool debugLog = false;
@@ -77,14 +83,15 @@ public class UINavigationController : MonoBehaviour
     private float animationTimer = 0f;
     private float lastRefreshTime = 0f;
     private int lastSelectableCount = 0;
+    private Vector2 storedBasePosition;
+
+    private Canvas currentCanvas;
 
     // Dropdown navigation state
     private bool dropdownOpen = false;
     private List<Selectable> dropdownOptions = new List<Selectable>();
     private int dropdownIndex = -1;
     private Selectable dropdownOwner;
-
-    private Canvas currentCanvas;
 
     private void Awake()
     {
@@ -104,7 +111,7 @@ public class UINavigationController : MonoBehaviour
     {
         DetectInputMode();
 
-        if (dropdownOpen)
+        if (dropdownOpen && navigateDropdownItems)
         {
             HandleDropdownNavigation();
             return;
@@ -128,7 +135,6 @@ public class UINavigationController : MonoBehaviour
         // Mouse mode: Don't navigate, just allow mouse hover
         if (isMouseMode)
         {
-            // If user presses keyboard, switch to keyboard mode
             if (Input.GetKeyDown(upKey) || Input.GetKeyDown(downKey) ||
                 Input.GetKeyDown(leftKey) || Input.GetKeyDown(rightKey) ||
                 Input.GetKeyDown(confirmKey))
@@ -183,7 +189,6 @@ public class UINavigationController : MonoBehaviour
             {
                 indicatorBaseScale = indicatorRect.localScale;
 
-                // Ensure indicator has a canvas parent or add one
                 if (indicatorRect.GetComponentInParent<Canvas>() == null)
                 {
                     Debug.LogWarning("[UINavigation] Selection indicator must be a child of a Canvas!");
@@ -195,12 +200,10 @@ public class UINavigationController : MonoBehaviour
 
     private void DetectInputMode()
     {
-        // Detect mouse movement
         if (Input.mousePosition != lastMousePosition)
         {
             lastMousePosition = Input.mousePosition;
 
-            // Switch to mouse mode if mouse moved
             if (!isMouseMode && selectionActivated)
             {
                 isMouseMode = true;
@@ -217,7 +220,6 @@ public class UINavigationController : MonoBehaviour
     {
         if (currentPanel == null) return;
 
-        // Quick check if number of active selectables changed
         Selectable[] allSelectables = currentPanel.GetComponentsInChildren<Selectable>(includeInactive);
         int activeCount = 0;
 
@@ -248,14 +250,6 @@ public class UINavigationController : MonoBehaviour
         {
             if (!canvas.gameObject.activeInHierarchy) continue;
 
-            if (bestCanvas != null)
-            {
-                LayoutRebuilder.ForceRebuildLayoutImmediate(
-                    bestCanvas.GetComponent<RectTransform>()
-                );
-            }
-
-
             List<Selectable> activeSelectables = new List<Selectable>();
             Selectable[] selectables = canvas.GetComponentsInChildren<Selectable>(includeInactive);
 
@@ -267,7 +261,6 @@ public class UINavigationController : MonoBehaviour
                 }
             }
 
-            // Prefer canvases with more selectables or higher sort order
             if (activeSelectables.Count > bestSelectables.Count ||
                 (activeSelectables.Count == bestSelectables.Count &&
                  bestCanvas != null && canvas.sortingOrder > bestCanvas.sortingOrder))
@@ -283,13 +276,12 @@ public class UINavigationController : MonoBehaviour
             currentCanvas = bestCanvas;
 
             currentSelectables = bestSelectables
-                .OrderByDescending(s => ((RectTransform)s.transform).anchoredPosition.y)
-                .ThenBy(s => ((RectTransform)s.transform).anchoredPosition.x)
+                .OrderByDescending(s => s.transform.position.y)
+                .ThenBy(s => s.transform.position.x)
                 .ToList();
 
             lastSelectableCount = currentSelectables.Count;
 
-            // Try to maintain selection if possible
             if (currentIndex >= currentSelectables.Count)
             {
                 currentIndex = -1;
@@ -323,8 +315,7 @@ public class UINavigationController : MonoBehaviour
         if (s == null) return false;
 
         // Manual exclusion list
-        if (manuallyExcludedSelectables != null &&
-            manuallyExcludedSelectables.Contains(s))
+        if (manuallyExcludedSelectables != null && manuallyExcludedSelectables.Contains(s))
             return false;
 
         // Per-element exclusion via marker
@@ -332,31 +323,34 @@ public class UINavigationController : MonoBehaviour
         if (marker != null && marker.excludeFromNavigation)
             return false;
 
-        // GameObject-level exclusions (templates, containers, etc.)
+        // GameObject-level exclusions
         if (excludedObjects != null)
         {
             foreach (GameObject go in excludedObjects)
             {
                 if (go == null) continue;
-
                 if (s.gameObject == go || s.transform.IsChildOf(go.transform))
                     return false;
             }
         }
+
+        // Exclude dropdown blockers and template objects
+        if (s.name.Contains("Blocker") || s.name.Contains("Template"))
+            return false;
 
         if (!s.IsActive() || !s.interactable) return false;
 
         RectTransform rect = s.GetComponent<RectTransform>();
         if (rect == null) return false;
 
-        // Ignore runtime dropdown options during normal navigation
+        // Ignore dropdown items during normal navigation
         if (!dropdownOpen && s is Toggle && s.GetComponentInParent<TMP_Dropdown>() != null)
             return false;
 
         if (!dropdownOpen && s is Toggle && s.GetComponentInParent<Dropdown>() != null)
             return false;
 
-        // Reject zero-size elements (layout placeholders)
+        // Reject zero-size elements
         if (rect.rect.width <= 1f || rect.rect.height <= 1f)
             return false;
 
@@ -374,6 +368,12 @@ public class UINavigationController : MonoBehaviour
     private void MoveSelection(int direction)
     {
         if (currentSelectables.Count == 0) return;
+
+        // Close dropdown if navigating away
+        if (closeDropdownOnNavigateAway && dropdownOpen)
+        {
+            CloseDropdown();
+        }
 
         if (currentIndex >= 0)
         {
@@ -417,7 +417,6 @@ public class UINavigationController : MonoBehaviour
         Selectable option = dropdownOptions[index];
         EventSystem.current.SetSelectedGameObject(option.gameObject);
 
-        // Move indicator to the option itself
         PositionIndicator(option);
         ShowIndicator();
     }
@@ -445,7 +444,11 @@ public class UINavigationController : MonoBehaviour
         dropdownIndex = -1;
 
         // Restore selection to dropdown control
-        SelectElement(currentSelectables.IndexOf(dropdownOwner));
+        int ownerIndex = currentSelectables.IndexOf(dropdownOwner);
+        if (ownerIndex >= 0)
+        {
+            SelectElement(ownerIndex);
+        }
 
         if (debugLog)
             Debug.Log("[UINavigation] Exited dropdown mode");
@@ -455,7 +458,6 @@ public class UINavigationController : MonoBehaviour
     {
         if (index < 0 || index >= currentSelectables.Count) return;
 
-        // Verify the element is still valid
         if (!IsSelectableValid(currentSelectables[index]))
         {
             UpdateActivePanel();
@@ -465,13 +467,9 @@ public class UINavigationController : MonoBehaviour
         currentIndex = index;
         Selectable selectable = currentSelectables[currentIndex];
 
-        // Set EventSystem selection
         EventSystem.current.SetSelectedGameObject(selectable.gameObject);
-
-        // Trigger hover effect
         TriggerPointerEnter(selectable);
 
-        // Position indicator
         PositionIndicator(selectable);
         ShowIndicator();
 
@@ -502,7 +500,6 @@ public class UINavigationController : MonoBehaviour
 
         Selectable current = currentSelectables[currentIndex];
 
-        // Handle Slider
         if (current is Slider slider)
         {
             float step = (slider.maxValue - slider.minValue) * 0.05f;
@@ -510,14 +507,12 @@ public class UINavigationController : MonoBehaviour
             return;
         }
 
-        // Handle Scrollbar
         if (current is Scrollbar scrollbar)
         {
             scrollbar.value = Mathf.Clamp01(scrollbar.value + direction * 0.1f);
             return;
         }
 
-        // Handle TMP_Dropdown
         if (current is TMP_Dropdown tmpDropdown)
         {
             int newValue = tmpDropdown.value + direction;
@@ -529,7 +524,6 @@ public class UINavigationController : MonoBehaviour
             return;
         }
 
-        // Handle standard Dropdown
         if (current is Dropdown dropdown)
         {
             int newValue = dropdown.value + direction;
@@ -541,21 +535,17 @@ public class UINavigationController : MonoBehaviour
             return;
         }
 
-        // Handle Toggle
         if (current is Toggle toggle)
         {
             toggle.isOn = !toggle.isOn;
             return;
         }
 
-        // Handle InputField
         if (current is TMP_InputField || current is InputField)
         {
-            // For input fields, left/right doesn't navigate, it's for text editing
             return;
         }
 
-        // For other elements, left/right does horizontal navigation
         MoveSelection(direction);
     }
 
@@ -565,10 +555,8 @@ public class UINavigationController : MonoBehaviour
 
         Selectable selectable = currentSelectables[currentIndex];
 
-        // Trigger press visual
         TriggerPointerDown(selectable);
 
-        // Handle different types
         if (selectable is Button button)
         {
             button.onClick.Invoke();
@@ -579,11 +567,11 @@ public class UINavigationController : MonoBehaviour
         }
         else if (selectable is TMP_Dropdown tmpDropdown)
         {
-            tmpDropdown.Show();
+            OpenTMPDropdown(tmpDropdown);
         }
         else if (selectable is Dropdown dropdown)
         {
-            dropdown.Show();
+            OpenDropdown(dropdown);
         }
         else if (selectable is TMP_InputField tmpInputField)
         {
@@ -597,13 +585,11 @@ public class UINavigationController : MonoBehaviour
         if (debugLog)
             Debug.Log($"[UINavigation] Confirmed: {selectable.gameObject.name}");
 
-        // Trigger release
         StartCoroutine(DelayedPointerUp(selectable));
     }
 
     private void HandleCancel()
     {
-        // Handle dropdown closing
         if (currentIndex >= 0 && currentIndex < currentSelectables.Count)
         {
             Selectable current = currentSelectables[currentIndex];
@@ -632,24 +618,47 @@ public class UINavigationController : MonoBehaviour
         RectTransform targetRect = selectable.GetComponent<RectTransform>();
         if (targetRect == null) return;
 
-        // Parent indicator directly to the selectable
-        indicatorRect.SetParent(targetRect, false);
+        // Get the main canvas (not dropdown blocker!)
+        Canvas mainCanvas = GetMainCanvas(selectable);
+        if (mainCanvas == null)
+        {
+            if (debugLog)
+                Debug.LogWarning("[UINavigation] Could not find main canvas");
+            return;
+        }
 
-        // Reset transforms so we are purely local
-        indicatorRect.localScale = Vector3.one;
+        // Parent to main canvas to prevent destruction with dropdown blockers
+        if (indicatorRect.parent != mainCanvas.transform)
+        {
+            indicatorRect.SetParent(mainCanvas.transform, false);
+        }
+
+        indicatorRect.localScale = indicatorBaseScale;
         indicatorRect.localRotation = Quaternion.identity;
 
-        Vector2 localPos;
+        Vector3 worldPos;
 
-        // If a custom marker exists, use it
         UIIndicatorMarker marker = selectable.GetComponent<UIIndicatorMarker>();
         if (marker != null && marker.HasCustomPosition())
         {
-            localPos = marker.GetLocalIndicatorPosition();
+            if (marker.indicatorPosition != null)
+            {
+                worldPos = marker.indicatorPosition.position;
+                worldPos += (Vector3)marker.customOffset;
+            }
+            else if (marker.useThisTransform)
+            {
+                worldPos = targetRect.position + (Vector3)marker.customOffset;
+            }
+            else
+            {
+                worldPos = targetRect.position;
+            }
         }
         else
         {
             Rect r = targetRect.rect;
+            Vector2 localPos;
 
             switch (indicatorPosition)
             {
@@ -670,11 +679,54 @@ public class UINavigationController : MonoBehaviour
                     break;
             }
 
-            localPos += indicatorOffset;
+            worldPos = targetRect.TransformPoint(localPos);
+            worldPos += (Vector3)indicatorOffset;
         }
 
-        indicatorRect.anchoredPosition = localPos;
-        storedBasePosition = localPos;
+        // Convert to canvas local position
+        RectTransform canvasRect = mainCanvas.GetComponent<RectTransform>();
+        Vector2 canvasLocalPos;
+
+        Camera cam = mainCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : mainCanvas.worldCamera;
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,
+            RectTransformUtility.WorldToScreenPoint(cam, worldPos),
+            cam,
+            out canvasLocalPos
+        );
+
+        indicatorRect.anchoredPosition = canvasLocalPos;
+        storedBasePosition = canvasLocalPos;
+    }
+
+    private Canvas GetMainCanvas(Selectable selectable)
+    {
+        Canvas[] canvases = selectable.GetComponentsInParent<Canvas>(true);
+
+        foreach (Canvas canvas in canvases)
+        {
+            if (canvas.name.Contains("Blocker") || canvas.name.Contains("Dropdown List"))
+                continue;
+
+            if (canvas.GetComponentInParent<TMP_Dropdown>() != null ||
+                canvas.GetComponentInParent<Dropdown>() != null)
+                continue;
+
+            return canvas;
+        }
+
+        if (currentCanvas != null)
+            return currentCanvas;
+
+        Canvas[] allCanvases = FindObjectsOfType<Canvas>();
+        foreach (Canvas canvas in allCanvases)
+        {
+            if (canvas.isRootCanvas && !canvas.name.Contains("Blocker"))
+                return canvas;
+        }
+
+        return null;
     }
 
     private void OpenTMPDropdown(TMP_Dropdown dropdown)
@@ -693,7 +745,7 @@ public class UINavigationController : MonoBehaviour
 
     private System.Collections.IEnumerator CaptureDropdownOptions(GameObject dropdownRoot)
     {
-        yield return null; // wait one frame for template instantiation
+        yield return null;
 
         dropdownOptions.Clear();
 
@@ -719,37 +771,23 @@ public class UINavigationController : MonoBehaviour
             Debug.Log($"[UINavigation] Entered dropdown mode with {dropdownOptions.Count} options");
     }
 
-    private Vector2 storedBasePosition;
-
     private void AnimateIndicator()
     {
         if (indicatorRect == null) return;
 
         animationTimer += Time.unscaledDeltaTime * animationSpeed;
 
-        // Pulse animation on scale
         float scale = 1f + Mathf.Sin(animationTimer) * 0.1f;
         indicatorRect.localScale = indicatorBaseScale * scale;
 
-        // Bounce animation on position
         float bounceOffset = Mathf.Sin(animationTimer * 2f) * 3f;
-
         Vector2 animatedPosition = storedBasePosition;
 
-        // Apply bounce in the appropriate direction
-        if (indicatorPosition == IndicatorPosition.Left)
+        if (indicatorPosition == IndicatorPosition.Left || indicatorPosition == IndicatorPosition.Right)
         {
             animatedPosition.x += bounceOffset;
         }
-        else if (indicatorPosition == IndicatorPosition.Right)
-        {
-            animatedPosition.x += bounceOffset;
-        }
-        else if (indicatorPosition == IndicatorPosition.Top)
-        {
-            animatedPosition.y += bounceOffset;
-        }
-        else if (indicatorPosition == IndicatorPosition.Bottom)
+        else if (indicatorPosition == IndicatorPosition.Top || indicatorPosition == IndicatorPosition.Bottom)
         {
             animatedPosition.y += bounceOffset;
         }
@@ -804,17 +842,11 @@ public class UINavigationController : MonoBehaviour
 
     #region Public Methods
 
-    /// <summary>
-    /// Force refresh the navigation system
-    /// </summary>
     public void RefreshNavigation()
     {
         UpdateActivePanel();
     }
 
-    /// <summary>
-    /// Manually select a specific UI element
-    /// </summary>
     public void SelectElement(GameObject element)
     {
         Selectable selectable = element.GetComponent<Selectable>();
@@ -829,9 +861,6 @@ public class UINavigationController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Get currently selected element
-    /// </summary>
     public Selectable GetCurrentSelection()
     {
         if (currentIndex >= 0 && currentIndex < currentSelectables.Count)
@@ -839,9 +868,6 @@ public class UINavigationController : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Enable or disable keyboard navigation
-    /// </summary>
     public void SetNavigationEnabled(bool enabled)
     {
         this.enabled = enabled;
