@@ -92,6 +92,7 @@ public class UINavigationController : MonoBehaviour
     private List<Selectable> dropdownOptions = new List<Selectable>();
     private int dropdownIndex = -1;
     private Selectable dropdownOwner;
+    private ScrollRect dropdownScrollRect;
 
     private void Awake()
     {
@@ -419,6 +420,9 @@ public class UINavigationController : MonoBehaviour
 
         PositionIndicator(option);
         ShowIndicator();
+
+        // Scroll to the selected option
+        ScrollToDropdownOption(index);
     }
 
     private void ConfirmDropdown()
@@ -442,6 +446,7 @@ public class UINavigationController : MonoBehaviour
         dropdownOpen = false;
         dropdownOptions.Clear();
         dropdownIndex = -1;
+        dropdownScrollRect = null;
 
         // Restore selection to dropdown control
         int ownerIndex = currentSelectables.IndexOf(dropdownOwner);
@@ -748,6 +753,7 @@ public class UINavigationController : MonoBehaviour
         yield return null;
 
         dropdownOptions.Clear();
+        dropdownScrollRect = null;
 
         Canvas dropdownCanvas = dropdownRoot.GetComponentInChildren<Canvas>();
         if (dropdownCanvas == null) yield break;
@@ -762,13 +768,68 @@ public class UINavigationController : MonoBehaviour
 
         if (dropdownOptions.Count == 0) yield break;
 
+        // Find the ScrollRect for scrolling
+        if (dropdownOptions.Count > 0)
+        {
+            dropdownScrollRect = dropdownOptions[0].GetComponentInParent<ScrollRect>();
+        }
+
+        // Sort options by Y position (top to bottom)
+        dropdownOptions = dropdownOptions
+            .OrderByDescending(s => s.transform.position.y)
+            .ToList();
+
         dropdownOpen = true;
         dropdownIndex = 0;
 
         SelectDropdownOption(dropdownIndex);
 
         if (debugLog)
-            Debug.Log($"[UINavigation] Entered dropdown mode with {dropdownOptions.Count} options");
+            Debug.Log($"[UINavigation] Entered dropdown mode with {dropdownOptions.Count} options, ScrollRect: {(dropdownScrollRect != null ? "Found" : "None")}");
+    }
+
+    private void ScrollToDropdownOption(int index)
+    {
+        if (dropdownScrollRect == null || index < 0 || index >= dropdownOptions.Count)
+            return;
+
+        RectTransform content = dropdownScrollRect.content;
+        RectTransform viewport = dropdownScrollRect.viewport;
+        RectTransform itemRect = dropdownOptions[index].GetComponent<RectTransform>();
+
+        if (content == null || viewport == null || itemRect == null)
+            return;
+
+        // Calculate the normalized position for this item
+        // Get the position of the item relative to the content
+        Canvas.ForceUpdateCanvases();
+
+        float contentHeight = content.rect.height;
+        float viewportHeight = viewport.rect.height;
+
+        // Only scroll if content is larger than viewport
+        if (contentHeight <= viewportHeight)
+            return;
+
+        // Get item's position in content
+        Vector2 itemPosInContent = (Vector2)content.InverseTransformPoint(itemRect.position);
+        float itemHeight = itemRect.rect.height;
+
+        // Calculate normalized scroll position (0 = bottom, 1 = top for vertical scroll)
+        float normalizedPosition = 1f - ((float)index / Mathf.Max(1, dropdownOptions.Count - 1));
+
+        // Apply some smoothing - center the item in viewport if possible
+        float itemCenter = -itemPosInContent.y;
+        float scrollRange = contentHeight - viewportHeight;
+
+        if (scrollRange > 0)
+        {
+            float targetScroll = (itemCenter - (viewportHeight / 2f)) / scrollRange;
+            dropdownScrollRect.verticalNormalizedPosition = Mathf.Clamp01(1f - targetScroll);
+        }
+
+        if (debugLog)
+            Debug.Log($"[UINavigation] Scrolled to dropdown option {index}, normalized pos: {dropdownScrollRect.verticalNormalizedPosition:F2}");
     }
 
     private void AnimateIndicator()
