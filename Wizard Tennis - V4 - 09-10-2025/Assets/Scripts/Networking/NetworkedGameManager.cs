@@ -38,13 +38,12 @@ public class NetworkedGameManager : NetworkBehaviour
     public Transform hostSpawnCenter;
     private float hostSpawnTimer;
     private List<GameObject> hostActivePickups = new List<GameObject>();
-    public List<GameObject> hostPickupPrefabs;
+    public List<NetworkVariable<bool>> hostPickupBools;
 
     [Header("Spawn Settings - Client Side")]
     public Transform clientSpawnCenter;
     private float clientSpawnTimer;
     private List<GameObject> clientActivePickups = new List<GameObject>();
-    public List<GameObject> clientPickupPrefabs;
 
     [Header("Player Spawn Points")]
     public Transform hostPlayerSpawn;
@@ -596,15 +595,28 @@ public class NetworkedGameManager : NetworkBehaviour
                 hostPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Host spellcasting found (Update).");
 
-                hostPickupPrefabs = hostPlayer.GetComponent<NetworkedPlayerCustomisation>().playerPrefabs;
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().fireball);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().ice);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().lightning);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().shadow);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().green);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().stone);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().chronos);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gemini);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().pisces);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().jolly);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().blink);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().warp);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().tether);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().mud);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gambit);
+                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gorbino);
             }
             else if (spell.OwnerClientId != 0 && clientSpellcasting == null)
             {
                 clientSpellcasting = spell;
                 clientPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Client spellcasting found (Update).");
-
-                clientPickupPrefabs = clientPlayer.GetComponent<NetworkedPlayerCustomisation>().playerPrefabs;
             }
         }
 
@@ -882,7 +894,7 @@ public class NetworkedGameManager : NetworkBehaviour
             // fallback: use prefab's PickupEffect.SpawnWeight (converted to integer weight)
             foreach (var prefab in pickupPrefabs)
             {
-                if (prefab == null) continue;
+                if (prefab == null || !hostPickupBools[pickupPrefabs.IndexOf(prefab)].Value) continue;
                 var effect = prefab.GetComponent<PickupEffect>();
                 if (effect == null) continue;
 

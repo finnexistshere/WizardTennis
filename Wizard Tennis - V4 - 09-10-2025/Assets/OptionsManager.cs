@@ -1349,7 +1349,7 @@ public class OptionsManager : MonoBehaviour
         blinkBool = PlayerPrefs.GetInt("BlinkBool", 1) == 1;
         warpBool = PlayerPrefs.GetInt("WarpBool", 1) == 1;
         tetherBool = PlayerPrefs.GetInt("TetherBool", 1) == 1;
-        mudBool = PlayerPrefs.GetInt("mudBool", 1) == 1;
+        mudBool = PlayerPrefs.GetInt("MudBool", 1) == 1;
         gambitBool = PlayerPrefs.GetInt("GambitBool", 1) == 1;
         gorbinoBool = PlayerPrefs.GetInt("GorbinoBool", 1) == 1;
 

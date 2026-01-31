@@ -36,7 +36,7 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
     [SerializeField] private bool debugLog = false;
 
     [Header("Spell Customisation")]
-    public List<GameObject> playerPrefabs;
+    //public List<GameObject> playerPrefabs;
 
     // NetworkVariables to sync customisation across clients
     private NetworkVariable<int> materialIndex = new NetworkVariable<int>(
@@ -73,6 +73,87 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
     private Material runtimeCustomMaterial;
     private bool hasAppliedCustomisation = false;
 
+    public NetworkVariable<bool> fireball = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> ice = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> lightning = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> shadow = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> green = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> stone = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> chronos = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> gemini = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> pisces = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> jolly = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> blink = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> warp = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> tether = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> mud = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> gambit = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+    public NetworkVariable<bool> gorbino = new NetworkVariable<bool>(
+        true,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+
     public override void OnNetworkSpawn()
     {
         if (IsOwner)
@@ -98,31 +179,6 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
 
         if (debugLog)
             Debug.Log($"[NetworkedCustomisation] Spawned for {(IsOwner ? "Owner" : "Remote")} - ClientId: {OwnerClientId}");
-
-        NetworkedGameManager gameManager = GameObject.Find("Game Manager").GetComponent<NetworkedGameManager>();
-        if (OptionsManager.Instance != null)
-        {
-            if (OptionsManager.Instance.FireballBool) playerPrefabs.Add(gameManager.pickupPrefabs[0]);
-            if (OptionsManager.Instance.IceBool) playerPrefabs.Add(gameManager.pickupPrefabs[1]);
-            if (OptionsManager.Instance.LightningBool) playerPrefabs.Add(gameManager.pickupPrefabs[2]);
-            if (OptionsManager.Instance.ShadowBool) playerPrefabs.Add(gameManager.pickupPrefabs[3]);
-            if (OptionsManager.Instance.GreenBool) playerPrefabs.Add(gameManager.pickupPrefabs[4]);
-            if (OptionsManager.Instance.StoneBool) playerPrefabs.Add(gameManager.pickupPrefabs[5]);
-            if (OptionsManager.Instance.ChronosBool) playerPrefabs.Add(gameManager.pickupPrefabs[6]);
-            if (OptionsManager.Instance.GeminiBool) playerPrefabs.Add(gameManager.pickupPrefabs[7]);
-            if (OptionsManager.Instance.PiscesBool) playerPrefabs.Add(gameManager.pickupPrefabs[8]);
-            if (OptionsManager.Instance.JollyBool) playerPrefabs.Add(gameManager.pickupPrefabs[9]);
-            if (OptionsManager.Instance.BlinkBool) playerPrefabs.Add(gameManager.pickupPrefabs[10]);
-            if (OptionsManager.Instance.WarpBool) playerPrefabs.Add(gameManager.pickupPrefabs[11]);
-            if (OptionsManager.Instance.TetherBool) playerPrefabs.Add(gameManager.pickupPrefabs[12]);
-            if (OptionsManager.Instance.MudBool) playerPrefabs.Add(gameManager.pickupPrefabs[13]);
-            if (OptionsManager.Instance.GambitBool) playerPrefabs.Add(gameManager.pickupPrefabs[14]);
-            if (OptionsManager.Instance.GorbinoBool) playerPrefabs.Add(gameManager.pickupPrefabs[15]);
-        }
-        else if (OptionsManager.Instance == null)
-        {
-            playerPrefabs = gameManager.pickupPrefabs;
-        }
     }
 
     public override void OnNetworkDespawn()
@@ -167,6 +223,26 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
 
         if (debugLog)
             Debug.Log($"[NetworkedCustomisation] Loaded customisation - Material: {savedIndex}, HSV: ({customHue.Value:F2}, {customSaturation.Value:F2}, {customValue.Value:F2})");
+
+        if (OptionsManager.Instance != null)
+        {
+            if (!OptionsManager.Instance.FireballBool) fireball.Value = false;
+            if (!OptionsManager.Instance.IceBool) ice.Value = false;
+            if (!OptionsManager.Instance.LightningBool) lightning.Value = false;
+            if (!OptionsManager.Instance.ShadowBool) shadow.Value = false;
+            if (!OptionsManager.Instance.GreenBool) green.Value = false;
+            if (!OptionsManager.Instance.StoneBool) stone.Value = false;
+            if (!OptionsManager.Instance.ChronosBool) chronos.Value = false;
+            if (!OptionsManager.Instance.GeminiBool) gemini.Value = false;
+            if (!OptionsManager.Instance.PiscesBool) pisces.Value = false;
+            if (!OptionsManager.Instance.JollyBool) jolly.Value = false;
+            if (!OptionsManager.Instance.BlinkBool) blink.Value = false;
+            if (!OptionsManager.Instance.WarpBool) warp.Value = false;
+            if (!OptionsManager.Instance.TetherBool) tether.Value = false;
+            if (!OptionsManager.Instance.MudBool) mud.Value = false;
+            if (!OptionsManager.Instance.GambitBool) gambit.Value = false;
+            if (!OptionsManager.Instance.GorbinoBool) gorbino.Value = false;
+        }
     }
 
     private void OnMaterialIndexChanged(int previousValue, int newValue)
