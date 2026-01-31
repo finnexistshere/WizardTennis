@@ -115,53 +115,6 @@ public class NetworkedGameManager : NetworkBehaviour
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
 
-        if (OptionsManager.Instance != null && IsOwner)
-        {
-            if (OptionsManager.Instance.FireballBool) hostPickupPrefabs.Add(pickupPrefabs[0]);
-            if (OptionsManager.Instance.IceBool) hostPickupPrefabs.Add(pickupPrefabs[1]);
-            if (OptionsManager.Instance.LightningBool) hostPickupPrefabs.Add(pickupPrefabs[2]);
-            if (OptionsManager.Instance.ShadowBool) hostPickupPrefabs.Add(pickupPrefabs[3]);
-            if (OptionsManager.Instance.GreenBool) hostPickupPrefabs.Add(pickupPrefabs[4]);
-            if (OptionsManager.Instance.StoneBool) hostPickupPrefabs.Add(pickupPrefabs[5]);
-            if (OptionsManager.Instance.ChronosBool) hostPickupPrefabs.Add(pickupPrefabs[6]);
-            if (OptionsManager.Instance.GeminiBool) hostPickupPrefabs.Add(pickupPrefabs[7]);
-            if (OptionsManager.Instance.PiscesBool) hostPickupPrefabs.Add(pickupPrefabs[8]);
-            if (OptionsManager.Instance.JollyBool) hostPickupPrefabs.Add(pickupPrefabs[9]);
-            if (OptionsManager.Instance.BlinkBool) hostPickupPrefabs.Add(pickupPrefabs[10]);
-            if (OptionsManager.Instance.WarpBool) hostPickupPrefabs.Add(pickupPrefabs[11]);
-            if (OptionsManager.Instance.TetherBool) hostPickupPrefabs.Add(pickupPrefabs[12]);
-            if (OptionsManager.Instance.MudBool) hostPickupPrefabs.Add(pickupPrefabs[13]);
-            if (OptionsManager.Instance.GambitBool) hostPickupPrefabs.Add(pickupPrefabs[14]);
-            if (OptionsManager.Instance.GorbinoBool) hostPickupPrefabs.Add(pickupPrefabs[15]);
-        }
-        else if (OptionsManager.Instance == null && IsOwner)
-        {
-            hostPickupPrefabs = pickupPrefabs;
-        }
-        if (OptionsManager.Instance != null && !IsOwner)
-        {
-            if (OptionsManager.Instance.FireballBool) clientPickupPrefabs.Add(pickupPrefabs[0]);
-            if (OptionsManager.Instance.IceBool) clientPickupPrefabs.Add(pickupPrefabs[1]);
-            if (OptionsManager.Instance.LightningBool) clientPickupPrefabs.Add(pickupPrefabs[2]);
-            if (OptionsManager.Instance.ShadowBool) clientPickupPrefabs.Add(pickupPrefabs[3]);
-            if (OptionsManager.Instance.GreenBool) clientPickupPrefabs.Add(pickupPrefabs[4]);
-            if (OptionsManager.Instance.StoneBool) clientPickupPrefabs.Add(pickupPrefabs[5]);
-            if (OptionsManager.Instance.ChronosBool) clientPickupPrefabs.Add(pickupPrefabs[6]);
-            if (OptionsManager.Instance.GeminiBool) clientPickupPrefabs.Add(pickupPrefabs[7]);
-            if (OptionsManager.Instance.PiscesBool) clientPickupPrefabs.Add(pickupPrefabs[8]);
-            if (OptionsManager.Instance.JollyBool) clientPickupPrefabs.Add(pickupPrefabs[9]);
-            if (OptionsManager.Instance.BlinkBool) clientPickupPrefabs.Add(pickupPrefabs[10]);
-            if (OptionsManager.Instance.WarpBool) clientPickupPrefabs.Add(pickupPrefabs[11]);
-            if (OptionsManager.Instance.TetherBool) clientPickupPrefabs.Add(pickupPrefabs[12]);
-            if (OptionsManager.Instance.MudBool) clientPickupPrefabs.Add(pickupPrefabs[13]);
-            if (OptionsManager.Instance.GambitBool) clientPickupPrefabs.Add(pickupPrefabs[14]);
-            if (OptionsManager.Instance.GorbinoBool) clientPickupPrefabs.Add(pickupPrefabs[15]);
-        }
-        else if (OptionsManager.Instance == null && !IsOwner)
-        {
-            clientPickupPrefabs = pickupPrefabs;
-        }
-
         ScoreManager.Instance?.LoadSavedScores();
     }
 
@@ -642,12 +595,16 @@ public class NetworkedGameManager : NetworkBehaviour
                 hostSpellcasting = spell;
                 hostPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Host spellcasting found (Update).");
+
+                hostPickupPrefabs = hostPlayer.GetComponent<NetworkedPlayerCustomisation>().playerPrefabs;
             }
             else if (spell.OwnerClientId != 0 && clientSpellcasting == null)
             {
                 clientSpellcasting = spell;
                 clientPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Client spellcasting found (Update).");
+
+                clientPickupPrefabs = clientPlayer.GetComponent<NetworkedPlayerCustomisation>().playerPrefabs;
             }
         }
 
