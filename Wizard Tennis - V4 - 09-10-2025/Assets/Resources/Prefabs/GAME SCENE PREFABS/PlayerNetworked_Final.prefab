@@ -5636,6 +5636,8 @@ MonoBehaviour:
   - ServingWalls
   strength: 11
   ogUpForce: 5
+  positionSyncInterval: 0.01
+  positionLerpSpeed: 0.3
   audioSource: {fileID: 0}
   hitsounds:
   - {fileID: 8300000, guid: 820b22098d554f7469ab14c7d191ccf8, type: 3}

@@ -29923,7 +29923,6 @@ GameObject:
   - component: {fileID: 1479144568}
   - component: {fileID: 1479144566}
   - component: {fileID: 1479144571}
-  - component: {fileID: 1479144572}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -30028,21 +30027,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4168fc8fd4e9cf74ab10a25b7d57354a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
---- !u!114 &1479144572
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1479144565}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b859b887f858cb43ae8f1cc32e5c431, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LocalTestHelper
-  useLocalTesting: 1
-  ipAddress: 127.0.0.1
-  port: 7777
 --- !u!1 &1487472478
 GameObject:
   m_ObjectHideFlags: 0

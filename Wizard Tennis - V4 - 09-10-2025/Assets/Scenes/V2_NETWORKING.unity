@@ -17545,7 +17545,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &276903870
 RectTransform:
   m_ObjectHideFlags: 0
@@ -24174,7 +24174,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &450155295
 RectTransform:
   m_ObjectHideFlags: 0
@@ -25645,7 +25645,7 @@ GameObject:
   - component: {fileID: 571976422}
   - component: {fileID: 571976423}
   m_Layer: 5
-  m_Name: Quit to Menu
+  m_Name: Menu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -56771,7 +56771,7 @@ GameObject:
   - component: {fileID: 2101770634}
   - component: {fileID: 2101770635}
   m_Layer: 5
-  m_Name: Quit Game
+  m_Name: OS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

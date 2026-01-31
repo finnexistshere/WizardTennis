@@ -52,7 +52,15 @@ public class NetworkedGameManager : NetworkBehaviour
     private float findPlayerTimeout = 10f; // safety
     private float findPlayerTimer = 0f;
 
-    private bool isPaused = false;
+    // Network-synced pause state
+    private NetworkVariable<bool> isPausedNetwork = new NetworkVariable<bool>(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    private bool localPauseMenuVisible = false;
+
     public PlayerInput playerInput;
 
     private bool pickupsUnlocked = false;
@@ -109,8 +117,59 @@ public class NetworkedGameManager : NetworkBehaviour
             Debug.Log("[NetworkedGameManager] Server initialized.");
         }
 
+        // Subscribe to pause state changes
+        isPausedNetwork.OnValueChanged += OnPauseStateChanged;
+
         // Find both players' spellcasting components and player objects
         StartCoroutine(FindSpellcastingReferences());
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        // Unsubscribe from pause state changes
+        isPausedNetwork.OnValueChanged -= OnPauseStateChanged;
+    }
+
+    private void OnPauseStateChanged(bool previousValue, bool newValue)
+    {
+        Debug.Log($"[NetworkedGameManager] Pause state changed: {previousValue} -> {newValue}");
+
+        if (newValue)
+        {
+            // Game is now paused
+            ApplyPauseLocally();
+        }
+        else
+        {
+            // Game is now unpaused
+            ApplyUnpauseLocally();
+        }
+    }
+
+    private void ApplyPauseLocally()
+    {
+        localPauseMenuVisible = true;
+
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(true);
+
+        if (playerInput != null)
+            playerInput.SwitchCurrentActionMap("UI");
+
+        Debug.Log("[NetworkedGameManager] Local pause applied");
+    }
+
+    private void ApplyUnpauseLocally()
+    {
+        localPauseMenuVisible = false;
+
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(false);
+
+        if (playerInput != null)
+            playerInput.SwitchCurrentActionMap("Player");
+
+        Debug.Log("[NetworkedGameManager] Local unpause applied");
     }
 
     private IEnumerator FindSpellcastingReferences()
@@ -363,8 +422,11 @@ public class NetworkedGameManager : NetworkBehaviour
             TryFindPlayers();
         }
 
-        // Only owner handles input
-        if (!IsOwner) return;
+        // PAUSE INPUT - Available to ALL clients (host and non-host)
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            TogglePause();
+        }
 
         if (tutorialPanel != null && tutorialPanel.activeSelf)
         {
@@ -421,7 +483,7 @@ public class NetworkedGameManager : NetworkBehaviour
             }
         }
 
-        // When both are found ? lock and stop running forever
+        // When both are found → lock and stop running forever
         if (hostSpellcasting != null && clientSpellcasting != null)
         {
             playersFound = true;
@@ -436,29 +498,107 @@ public class NetworkedGameManager : NetworkBehaviour
         }
     }
 
-    void OnPause(InputAction.CallbackContext context)
-    {
-        if (!context.performed) return;
-        TogglePause();
-    }
-
+    /// <summary>
+    /// Toggle pause - called locally by any client
+    /// </summary>
     private void TogglePause()
     {
-        if (isPaused)
-            ResumeGame();
+        if (isPausedNetwork.Value)
+        {
+            RequestResumeGame();
+        }
         else
-            PauseGame();
+        {
+            RequestPauseGame();
+        }
+    }
+
+    /// <summary>
+    /// Request pause from any client
+    /// </summary>
+    private void RequestPauseGame()
+    {
+        if (IsServer)
+        {
+            PauseGameInternal();
+        }
+        else
+        {
+            PauseGameServerRpc();
+        }
+    }
+
+    /// <summary>
+    /// Request resume from any client
+    /// </summary>
+    private void RequestResumeGame()
+    {
+        if (IsServer)
+        {
+            ResumeGameInternal();
+        }
+        else
+        {
+            ResumeGameServerRpc();
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void PauseGameServerRpc()
+    {
+        PauseGameInternal();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void ResumeGameServerRpc()
+    {
+        ResumeGameInternal();
+    }
+
+    private void PauseGameInternal()
+    {
+        if (!IsServer) return;
+
+        isPausedNetwork.Value = true;
+        Debug.Log("[NetworkedGameManager] Game PAUSED (server)");
+    }
+
+    private void ResumeGameInternal()
+    {
+        if (!IsServer) return;
+
+        isPausedNetwork.Value = false;
+        Debug.Log("[NetworkedGameManager] Game RESUMED (server)");
     }
 
     void buttonClick(string buttonName)
     {
         switch (buttonName)
         {
-            case "Resume": ResumeGame(); break;
-            case "Restart": RestartGame(); break;
-            case "Menu": QuitMenu(); break;
-            case "OS": QuitGame(); break;
+            case "Resume":
+                RequestResumeGame();
+                break;
+            case "Restart":
+                RestartGame();
+                break;
+            case "Menu":
+                QuitMenu();
+                break;
+            case "OS":
+                QuitGame();
+                break;
         }
+    }
+
+    // ----- Legacy methods for compatibility -----
+    public void PauseGame()
+    {
+        RequestPauseGame();
+    }
+
+    public void ResumeGame()
+    {
+        RequestResumeGame();
     }
 
     private void SpawnPickupForPlayer
@@ -695,24 +835,6 @@ public class NetworkedGameManager : NetworkBehaviour
         return pool[idx];
     }
 
-    // ----- Pause / Resume -----
-    public void PauseGame()
-    {
-        isPaused = true;
-        if (playerInput != null)
-            playerInput.SwitchCurrentActionMap("UI");
-        pauseMenuUI?.SetActive(true);
-    }
-
-    public void ResumeGame()
-    {
-        isPaused = false;
-        if (playerInput != null)
-            playerInput.SwitchCurrentActionMap("Player");
-        pauseMenuUI?.SetActive(false);
-        Debug.Log("Resuming Game");
-    }
-
     // ----- Show message (round messages) -----
     public void ShowMessage(string message)
     {
@@ -734,7 +856,6 @@ public class NetworkedGameManager : NetworkBehaviour
     // ----- Round Over (show message, pause, reset players) -----
     public void RoundOver(string message)
     {
-        isPaused = true;
         Time.timeScale = 0f;
 
         if (gameOverUI != null)
@@ -779,7 +900,6 @@ public class NetworkedGameManager : NetworkBehaviour
 
         // Resume time FIRST
         Time.timeScale = 1f;
-        isPaused = false;
 
         Debug.Log("[NetworkedGameManager] Time scale restored to 1");
 
@@ -1009,7 +1129,6 @@ public class NetworkedGameManager : NetworkBehaviour
     private void ResumeTimeClientRpc()
     {
         Time.timeScale = 1f;
-        isPaused = false;
 
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
@@ -1073,11 +1192,12 @@ public class NetworkedGameManager : NetworkBehaviour
     // ----- Restart -----
     public void RestartGame()
     {
+        StartNextRound();
+        ResumeGame();
         if (ScoreManager.Instance != null)
             ScoreManager.Instance.ResetScores();
 
         Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     // ----- Final Game Over -----
@@ -1165,7 +1285,6 @@ public class NetworkedGameManager : NetworkBehaviour
     private void ShowGameOverUIClientRpc(string message)
     {
         Time.timeScale = 0f;
-        isPaused = true;
 
         if (gameOverUI != null)
             gameOverUI.SetActive(true);
@@ -1223,5 +1342,18 @@ public class NetworkedGameManager : NetworkBehaviour
         }
 
         Debug.Log($"=== END BARRIER STATE DEBUG ===");
+    }
+
+    [ContextMenu("Debug Pause State")]
+    public void DebugPauseState()
+    {
+        Debug.Log($"=== PAUSE STATE DEBUG ===");
+        Debug.Log($"  IsServer: {IsServer}");
+        Debug.Log($"  IsHost: {IsHost}");
+        Debug.Log($"  isPausedNetwork.Value: {isPausedNetwork.Value}");
+        Debug.Log($"  localPauseMenuVisible: {localPauseMenuVisible}");
+        Debug.Log($"  pauseMenuUI active: {(pauseMenuUI != null ? pauseMenuUI.activeSelf.ToString() : "NULL")}");
+        Debug.Log($"  Time.timeScale: {Time.timeScale}");
+        Debug.Log($"=== END PAUSE DEBUG ===");
     }
 }

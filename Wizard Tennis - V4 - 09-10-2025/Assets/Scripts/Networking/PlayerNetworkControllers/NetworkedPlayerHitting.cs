@@ -32,16 +32,24 @@ public class NetworkedBall : NetworkBehaviour
     [Tooltip("Possible names for barrier GameObjects")]
     public string[] barrierNames = new string[]
     {
-    "ServingBarriers",
-    "Serving Barriers",
-    "Barriers",
-    "ServingWalls"
+        "ServingBarriers",
+        "Serving Barriers",
+        "Barriers",
+        "ServingWalls"
     };
 
     [Header("Physics")]
     public float strength = 25f;
     public float ogUpForce = 11f;
     private float upForce;
+
+    [Header("Network Sync Settings")]
+    [Tooltip("How often to sync ball position (seconds)")]
+    public float positionSyncInterval = 0.05f;
+    
+    [Tooltip("How smoothly clients interpolate to server position (0-1)")]
+    [Range(0f, 1f)]
+    public float positionLerpSpeed = 0.3f;
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -66,13 +74,18 @@ public class NetworkedBall : NetworkBehaviour
     private static float lastGlobalServerHitTime = -999f;
     private static float serverHitDebounce = 0.2f;
 
+    // Network sync
+    private float lastPositionSyncTime;
+    private Vector3 targetPosition;
+    private Vector3 targetVelocity;
+    private bool hasReceivedSync = false;
+
     // Pause ball state
     private static Vector3 savedVelocity;
     private static RigidbodyConstraints savedConstraints;
     private static bool ballPaused = false;
 
     // IK Reference - each player tracks their own IK controller
-    // IK references (local-only, per client)
     private TwoHandIKController localPlayerIK;
     private TwoHandIKController remotePlayerIK;
 
@@ -96,11 +109,8 @@ public class NetworkedBall : NetworkBehaviour
             CustomisationManager.Instance.RegisterAsPlayer(gameObject);
         }
 
-        // DON'T search for generic "ServingBarriers" - let it be assigned in inspector
-        // or find it by being a child of this player
         if (servingBarriers == null)
         {
-            // Try to find barriers as a child of this player
             Transform barriersChild = transform.Find("ServingBarriers");
             if (barriersChild != null)
             {
@@ -116,7 +126,6 @@ public class NetworkedBall : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Apply references from the relay
         if (PlayerReferenceRelay.Instance != null)
         {
             try
@@ -134,7 +143,6 @@ public class NetworkedBall : NetworkBehaviour
             Debug.LogWarning("[NetworkedBall] PlayerReferenceRelay.Instance is null!");
         }
 
-        // Get this player's UI manager and IK controller
         if (IsOwner)
         {
             uiManager = GetComponent<NetworkedUIManager>();
@@ -149,21 +157,20 @@ public class NetworkedBall : NetworkBehaviour
                 Debug.Log($"[NetworkedBall] Local IK cached for client {OwnerClientId}");
         }
 
-        // CRITICAL: Find barriers after network spawn (when we know our ClientId)
         FindServingBarriers();
 
         if (IsOwner)
         {
             Debug.Log($"[NetworkedBall] Player {OwnerClientId} spawned and ready.");
 
-            // Ensure barriers start in correct state
             if (servingBarriers != null)
             {
                 servingBarriers.SetActive(true);
                 Debug.Log($"[NetworkedBall] Player {OwnerClientId} initialized barriers to ACTIVE");
             }
         }
-        // --- Server authoritative ball physics ---
+
+        // Server handles ball physics authoritatively
         if (IsServer && currentBallInstance != null)
         {
             Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
@@ -198,14 +205,10 @@ public class NetworkedBall : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Find barriers that are specific to this player (child or nearby)
-    /// </summary>
     private GameObject FindPerPlayerBarriers()
     {
         Debug.Log($"[NetworkedBall] Looking for per-player barriers for client {OwnerClientId}");
 
-        // METHOD 1: Direct child of player
         GameObject barriers = FindBarriersAsChild(transform);
         if (barriers != null)
         {
@@ -213,7 +216,6 @@ public class NetworkedBall : NetworkBehaviour
             return barriers;
         }
 
-        // METHOD 2: Child of player's parent (sibling)
         if (transform.parent != null)
         {
             barriers = FindBarriersAsChild(transform.parent);
@@ -224,11 +226,9 @@ public class NetworkedBall : NetworkBehaviour
             }
         }
 
-        // METHOD 3: Search by tag + ownership
         GameObject[] taggedBarriers = GameObject.FindGameObjectsWithTag(barriersTag);
         foreach (GameObject obj in taggedBarriers)
         {
-            // Check if this barrier is associated with this player
             NetworkObject netObj = obj.GetComponentInParent<NetworkObject>();
             if (netObj != null && netObj.OwnerClientId == OwnerClientId)
             {
@@ -237,7 +237,6 @@ public class NetworkedBall : NetworkBehaviour
             }
         }
 
-        // METHOD 4: Find closest barriers to player
         barriers = FindClosestBarriers();
         if (barriers != null)
         {
@@ -249,14 +248,10 @@ public class NetworkedBall : NetworkBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Find shared barriers that all players use
-    /// </summary>
     private GameObject FindSharedBarriers()
     {
         Debug.Log($"[NetworkedBall] Looking for shared scene barriers");
 
-        // METHOD 1: Search by tag
         GameObject barriers = GameObject.FindGameObjectWithTag(barriersTag);
         if (barriers != null)
         {
@@ -264,7 +259,6 @@ public class NetworkedBall : NetworkBehaviour
             return barriers;
         }
 
-        // METHOD 2: Search by name
         foreach (string name in barrierNames)
         {
             barriers = GameObject.Find(name);
@@ -275,8 +269,7 @@ public class NetworkedBall : NetworkBehaviour
             }
         }
 
-        // METHOD 3: Search all GameObjects for matching name patterns
-        GameObject[] allObjects = FindObjectsOfType<GameObject>(true); // Include inactive
+        GameObject[] allObjects = FindObjectsOfType<GameObject>(true);
         foreach (GameObject obj in allObjects)
         {
             foreach (string name in barrierNames)
@@ -293,14 +286,10 @@ public class NetworkedBall : NetworkBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Helper: Search for barriers as a child of the given transform
-    /// </summary>
     private GameObject FindBarriersAsChild(Transform parent)
     {
         if (parent == null) return null;
 
-        // Try exact name matches first
         foreach (string name in barrierNames)
         {
             Transform child = parent.Find(name);
@@ -310,7 +299,6 @@ public class NetworkedBall : NetworkBehaviour
             }
         }
 
-        // Try partial matches (case-insensitive)
         foreach (Transform child in parent.GetComponentsInChildren<Transform>(true))
         {
             string childName = child.name.ToLower();
@@ -322,7 +310,6 @@ public class NetworkedBall : NetworkBehaviour
                 }
             }
 
-            // Check for "barrier" or "wall" keywords
             if (childName.Contains("barrier") || childName.Contains("wall") || childName.Contains("serve"))
             {
                 return child.gameObject;
@@ -332,16 +319,12 @@ public class NetworkedBall : NetworkBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Helper: Find the closest barriers to this player (fallback method)
-    /// </summary>
     private GameObject FindClosestBarriers()
     {
         GameObject[] allBarriers = GameObject.FindGameObjectsWithTag(barriersTag);
 
         if (allBarriers.Length == 0)
         {
-            // Try finding by name if no tagged objects
             List<GameObject> foundBarriers = new List<GameObject>();
             foreach (string name in barrierNames)
             {
@@ -382,11 +365,9 @@ public class NetworkedBall : NetworkBehaviour
         if (Input.GetKeyDown(KeyCode.E) && currentBallInstance == null && ballPrefab != null && ballSpawnPoint != null)
         {
             SpawnBallServerRpc(ballSpawnPoint.position, ballSpawnPoint.rotation);
-            // Second call to help with Client Spawn Timing
             ServeBallServerRpc();
 
             barrierController?.RequestDisableBarriers();
-
             NetworkedGameManager.Instance?.RequestUnlockPickupSpawning();
         }
 
@@ -405,9 +386,61 @@ public class NetworkedBall : NetworkBehaviour
             lastServeTime = Time.time;
 
             barrierController?.RequestDisableBarriers();
-
             ServeBallServerRpc();
         }
+    }
+
+    private void FixedUpdate()
+    {
+        // Server: Periodically sync ball state to all clients
+        if (IsServer && currentBallInstance != null)
+        {
+            if (Time.time - lastPositionSyncTime >= positionSyncInterval)
+            {
+                lastPositionSyncTime = Time.time;
+                
+                Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    SyncBallStateClientRpc(
+                        currentBallInstance.transform.position,
+                        rb.linearVelocity,
+                        Time.time
+                    );
+                }
+            }
+        }
+
+        // Clients: Smoothly interpolate to server-authoritative state
+        if (!IsServer && currentBallInstance != null && hasReceivedSync)
+        {
+            Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                // Smoothly move towards target position
+                Vector3 currentPos = currentBallInstance.transform.position;
+                Vector3 newPos = Vector3.Lerp(currentPos, targetPosition, positionLerpSpeed);
+                
+                // Only apply if difference is significant (avoid jitter)
+                if (Vector3.Distance(currentPos, targetPosition) > 0.1f)
+                {
+                    rb.position = newPos;
+                }
+
+                // Blend velocity
+                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, targetVelocity, positionLerpSpeed);
+            }
+        }
+    }
+
+    [ClientRpc]
+    private void SyncBallStateClientRpc(Vector3 position, Vector3 velocity, float timestamp)
+    {
+        if (IsServer) return; // Server doesn't need to sync to itself
+
+        targetPosition = position;
+        targetVelocity = velocity;
+        hasReceivedSync = true;
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -493,13 +526,6 @@ public class NetworkedBall : NetworkBehaviour
         GameObject ball = Instantiate(ballPrefab, position, rotation);
         ball.tag = "Ball";
 
-        if (!IsServer)
-        {
-            Rigidbody rb = ball.GetComponent<Rigidbody>();
-            if (rb != null)
-                rb.isKinematic = true;
-        }
-
         NetworkObject netObj = ball.GetComponent<NetworkObject>();
         if (netObj != null)
         {
@@ -509,6 +535,7 @@ public class NetworkedBall : NetworkBehaviour
                 rb.useGravity = false;
                 rb.linearVelocity = Vector3.zero;
                 rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
             }
 
             netObj.Spawn(true);
@@ -519,17 +546,14 @@ public class NetworkedBall : NetworkBehaviour
         }
     }
 
-    // ASSIGNING THE IK RIG ============================================
     [ClientRpc]
     private void NotifyBallSpawnedClientRpc()
     {
-        // Start coroutine to handle assignment with retry
         StartCoroutine(AssignBallToAllIKs());
     }
 
     private IEnumerator AssignBallToAllIKs()
     {
-        // Wait for ball to be findable
         int attempts = 0;
         while (currentBallInstance == null && attempts < 20)
         {
@@ -549,7 +573,6 @@ public class NetworkedBall : NetworkBehaviour
         Transform ballTransform = currentBallInstance.transform;
         Debug.Log($"[NetworkedBall] Ball found at {ballTransform.position}, assigning to IKs...");
 
-        // ---- LOCAL PLAYER IK ----
         if (localPlayerIK == null)
             localPlayerIK = GetComponent<TwoHandIKController>();
 
@@ -563,8 +586,6 @@ public class NetworkedBall : NetworkBehaviour
             Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} LOCAL IK not found");
         }
 
-        // ---- REMOTE PLAYER IK ----
-        // Wait a bit longer for remote player to be ready
         yield return new WaitForSeconds(0.2f);
 
         if (remotePlayerIK == null)
@@ -605,56 +626,9 @@ public class NetworkedBall : NetworkBehaviour
         }
     }
 
-    private IEnumerator AssignBallToIKAfterSpawn()
-    {
-        // Wait one frame so the ball + player objects are guaranteed to exist
-        yield return new WaitForEndOfFrame();
-
-        currentBallInstance = GameObject.FindGameObjectWithTag("Ball");
-
-        if (currentBallInstance == null)
-        {
-            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} could not find ball!");
-            yield break;
-        }
-
-        nearBall = true;
-        Transform ballTransform = currentBallInstance.transform;
-
-        // ---------- LOCAL PLAYER IK ----------
-        if (localPlayerIK == null)
-            localPlayerIK = GetComponent<TwoHandIKController>();
-
-        if (localPlayerIK != null)
-        {
-            localPlayerIK.AssignBall(ballTransform);
-            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to LOCAL IK");
-        }
-        else
-        {
-            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} LOCAL IK not found");
-        }
-
-        // ---------- REMOTE PLAYER IK ----------
-        if (remotePlayerIK == null)
-            remotePlayerIK = FindRemotePlayerIK();
-
-        if (remotePlayerIK != null)
-        {
-            remotePlayerIK.AssignBall(ballTransform);
-            Debug.Log($"[NetworkedBall] Client {OwnerClientId} assigned ball to REMOTE IK");
-        }
-        else
-        {
-            Debug.LogWarning($"[NetworkedBall] Client {OwnerClientId} REMOTE IK not found yet, retrying");
-            StartCoroutine(RetryAssignRemoteIK(ballTransform));
-        }
-    }
-
     private TwoHandIKController FindRemotePlayerIK()
     {
-        TwoHandIKController[] allIKs =
-            FindObjectsOfType<TwoHandIKController>(true);
+        TwoHandIKController[] allIKs = FindObjectsOfType<TwoHandIKController>(true);
 
         foreach (var ik in allIKs)
         {
@@ -662,7 +636,6 @@ public class NetworkedBall : NetworkBehaviour
             if (netObj == null)
                 continue;
 
-            // Remote player = not owned by this client
             if (!netObj.IsOwner)
             {
                 Debug.Log($"[NetworkedBall] Found REMOTE IK on client {netObj.OwnerClientId}");
@@ -673,7 +646,6 @@ public class NetworkedBall : NetworkBehaviour
         Debug.LogWarning("[NetworkedBall] Remote IK not found yet");
         return null;
     }
-    // ===============================================================
 
     [ServerRpc(RequireOwnership = false)]
     private void ServeBallServerRpc(ServerRpcParams rpcParams = default)
@@ -684,12 +656,13 @@ public class NetworkedBall : NetworkBehaviour
         if (rb != null)
         {
             rb.useGravity = true;
-
-            // Fixed: Apply upForce directly as the Y component
             Vector3 serveVelocity = new Vector3(0, ogUpForce, 0);
             rb.linearVelocity = serveVelocity;
 
             Debug.Log($"[Server] Ball served by client {rpcParams.Receive.SenderClientId} - velocity: {rb.linearVelocity}");
+            
+            // Immediately sync the serve to all clients
+            SyncBallStateClientRpc(currentBallInstance.transform.position, rb.linearVelocity, Time.time);
         }
 
         NotifyServeCompleteClientRpc();
@@ -715,7 +688,7 @@ public class NetworkedBall : NetworkBehaviour
         if (!IsServer || currentBallInstance == null)
             return;
 
-        // Global server debounce (unchanged behavior)
+        // Global server debounce
         if (Time.time - lastGlobalServerHitTime < serverHitDebounce)
         {
             Debug.Log($"[Server] Ignoring hit from client {rpcParams.Receive.SenderClientId} (debounced)");
@@ -737,16 +710,14 @@ public class NetworkedBall : NetworkBehaviour
 
         rb.useGravity = true;
 
-        Vector3 finalVelocity =
-            direction.normalized * force +
-            Vector3.up * upwardForce;
-
+        Vector3 finalVelocity = direction.normalized * force + Vector3.up * upwardForce;
         rb.linearVelocity = finalVelocity;
-        SyncBallVelocityClientRpc(finalVelocity);
+        
+        // Immediately sync to all clients
+        SyncBallStateClientRpc(currentBallInstance.transform.position, finalVelocity, Time.time);
 
         Debug.Log($"[Server] Ball hit accepted from client {rpcParams.Receive.SenderClientId}, velocity: {finalVelocity}");
 
-        // Visuals only
         PlayHitEffectsClientRpc(currentBallInstance.transform.position);
     }
 
@@ -784,7 +755,6 @@ public class NetworkedBall : NetworkBehaviour
         }
 
         nearBall = true;
-
         lastHitTime = Time.time;
         Debug.Log($"[NetworkedBall] Player {OwnerClientId} processing hit!");
 
@@ -821,13 +791,13 @@ public class NetworkedBall : NetworkBehaviour
         Vector3 direction = targetPos - transform.position;
         HitBallServerRpc(direction, strength, upForce);
 
-        // Update rally count via NetworkedScoreManager
+        // Update rally count
         if (NetworkedScoreManager.Instance != null)
         {
             NetworkedScoreManager.Instance.IncrementRallyCountServerRpc();
         }
 
-        // Reset spell effects (if not already reset by Fireball)
+        // Reset spell effects
         if (spellEffects != null && spellEffects.resetOnPlrHit)
         {
             spellEffects.resetSpellEffect();
@@ -855,18 +825,13 @@ public class NetworkedBall : NetworkBehaviour
 
         Vector3 ballPos = currentBallInstance.transform.position;
 
-        if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(
-                hittingClientId,
-                out var hittingClient))
+        if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(hittingClientId, out var hittingClient))
             return false;
 
         if (hittingClient.PlayerObject == null)
             return false;
 
-        float hitterDist = Vector3.Distance(
-            hittingClient.PlayerObject.transform.position,
-            ballPos
-        );
+        float hitterDist = Vector3.Distance(hittingClient.PlayerObject.transform.position, ballPos);
 
         foreach (var client in NetworkManager.Singleton.ConnectedClients.Values)
         {
@@ -876,13 +841,10 @@ public class NetworkedBall : NetworkBehaviour
             if (client.ClientId == hittingClientId)
                 continue;
 
-            float otherDist = Vector3.Distance(
-                client.PlayerObject.transform.position,
-                ballPos
-            );
+            float otherDist = Vector3.Distance(client.PlayerObject.transform.position, ballPos);
 
-            // Small tolerance to avoid ties
-            if (otherDist < hitterDist - 0.05f)
+            // Larger tolerance to prevent double-hits from lag
+            if (otherDist < hitterDist - 0.5f)
                 return false;
         }
 
@@ -947,14 +909,12 @@ public class NetworkedBall : NetworkBehaviour
         hitting = false;
         localServing = true;
 
-        // Try to find barriers if we don't have them
         if (servingBarriers == null)
         {
             Debug.LogWarning($"[NetworkedBall] Player {OwnerClientId} barriers lost, attempting to re-find...");
             FindServingBarriers();
         }
 
-        // Validate and enable barriers
         if (ValidateBarriers())
         {
             servingBarriers.SetActive(true);
@@ -1013,22 +973,5 @@ public class NetworkedBall : NetworkBehaviour
         Debug.Log($"  localServing: {localServing}");
         Debug.Log($"  nearBall: {nearBall}");
         Debug.Log($"=== END BARRIER DEBUG ===");
-    }
-
-    [ClientRpc]
-    private void SyncBallVelocityClientRpc(Vector3 serverVelocity)
-    {
-        if (IsServer || currentBallInstance == null)
-            return;
-
-        Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
-        if (rb == null)
-            return;
-
-        rb.linearVelocity = Vector3.Lerp(
-            rb.linearVelocity,
-            serverVelocity,
-            0.65f
-        );
     }
 }

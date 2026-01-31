@@ -10,12 +10,32 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
     [Header("State")]
     public string LastHitWizard = "";
-    public bool hasBounced = false;
+
+    // Network variable for bounce tracking - synced across all clients
+    private NetworkVariable<bool> hasBounced = new NetworkVariable<bool>(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    // Network variable for last hit timestamp
+    private NetworkVariable<float> lastBounceTime = new NetworkVariable<float>(
+        -999f,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    [Header("Bounce Settings")]
+    [Tooltip("Minimum time between bounce registrations (seconds)")]
+    public float bounceDebounce = 0.3f;
 
     private GameObject lastHitterGameObject;
     private GameObject previousHitterGameObject;
 
     private bool canTrigger = true;
+
+    // Cache for reducing GetComponent calls
+    private Rigidbody ballRigidbody;
 
     private void Awake()
     {
@@ -27,6 +47,22 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         if (networkedSpellEffects == null)
             networkedSpellEffects = NetworkedSpellEffects.Instance;
+
+        ballRigidbody = GetComponent<Rigidbody>();
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        // Reset state when spawned
+        if (IsServer)
+        {
+            hasBounced.Value = false;
+            lastBounceTime.Value = -999f;
+        }
+
+        Debug.Log($"[Ball-Tracker] Spawned on {(IsServer ? "Server" : "Client")}");
     }
 
     private void OnTriggerEnter(Collider other)
@@ -68,13 +104,23 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
                 break;
 
             case "BounceCheck":
-                // Check for Mud spell on bounce
-                if (networkedSpellEffects != null &&
-                    networkedSpellEffects.spellName == "Mud" &&
-                    networkedSpellEffects.resetOnBounce)
+                // Server-authoritative bounce handling with debounce
+                if (Time.time - lastBounceTime.Value >= bounceDebounce)
                 {
-                    Debug.Log("[Ball] Mud spell triggered on bounce");
-                    networkedSpellEffects.resetSpellEffect();
+                    HandleBounceCheck();
+
+                    // Check for Mud spell on bounce
+                    if (networkedSpellEffects != null &&
+                        networkedSpellEffects.spellName == "Mud" &&
+                        networkedSpellEffects.resetOnBounce)
+                    {
+                        Debug.Log("[Ball] Mud spell triggered on bounce");
+                        networkedSpellEffects.resetSpellEffect();
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[Ball-Tracker] Bounce ignored - debounce active (time since last: {Time.time - lastBounceTime.Value:F3}s)");
                 }
                 break;
         }
@@ -102,10 +148,17 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         Debug.Log($"[Ball-TryMarkLastHitPlayer] Previous: {previousHitterGameObject?.name ?? "NULL"}, Current: {lastHitterGameObject?.name}");
 
-        // Convert numeric clientId -> string label used by scoring logic
+        // Convert numeric clientId ? string label used by scoring logic
         LastHitWizard = hitterId == 0 ? "Player_0" : "Player_1";
 
         Debug.Log($"[Ball-TryMarkLastHitPlayer] LastHitWizard set to: {LastHitWizard}");
+
+        // Reset bounce state when player hits
+        if (hasBounced.Value)
+        {
+            hasBounced.Value = false;
+            Debug.Log("[Ball-TryMarkLastHitPlayer] Bounce state reset on player hit");
+        }
 
         // Notify SpellEffects about the hit
         if (networkedSpellEffects == null)
@@ -131,12 +184,12 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     }
 
     // ---------------------------------------------------------
-    // SCORING LOGIC - FIXED TO USE "Player" and "Opponent"
+    // SCORING LOGIC
     // ---------------------------------------------------------
 
     private void HandleOutOfBounds()
     {
-        if (!hasBounced)
+        if (!hasBounced.Value)
         {
             // Ball went out without bouncing
             if (LastHitWizard == "Player_0")
@@ -156,7 +209,7 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
     private void HandleOutOfBoundsSide2()
     {
-        if (!hasBounced)
+        if (!hasBounced.Value)
         {
             // Ball went out without bouncing
             if (LastHitWizard == "Player_0")
@@ -184,9 +237,17 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
     public void HandleBounceCheck()
     {
-        if (hasBounced)
+        if (!IsServer)
         {
-            // Double bounce
+            Debug.LogWarning("[Ball-Tracker] HandleBounceCheck called on client - should only run on server!");
+            return;
+        }
+
+        if (hasBounced.Value)
+        {
+            // Double bounce detected
+            Debug.Log($"[Ball-Tracker] DOUBLE BOUNCE detected! LastHitWizard: {LastHitWizard}");
+
             if (LastHitWizard == "Player_0")
                 AwardPoint("Opponent", "Player 2 Wins! Double bounce by Player 1!");
             else if (LastHitWizard == "Player_1")
@@ -194,8 +255,21 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         }
         else
         {
-            hasBounced = true;
+            // First bounce - mark it
+            hasBounced.Value = true;
+            lastBounceTime.Value = Time.time;
+
+            Debug.Log($"[Ball-Tracker] First bounce registered at time {Time.time:F3}");
+
+            // Sync bounce state to all clients
+            NotifyBounceClientRpc();
         }
+    }
+
+    [ClientRpc]
+    private void NotifyBounceClientRpc()
+    {
+        Debug.Log($"[Ball-Tracker-Client] Bounce notification received - hasBounced: {hasBounced.Value}");
     }
 
     private void AwardPoint(string winner, string message)
@@ -231,7 +305,11 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
     private void ResetBounceTrigger()
     {
-        hasBounced = false;
+        if (IsServer)
+        {
+            hasBounced.Value = false;
+            lastBounceTime.Value = -999f;
+        }
     }
 
     private void ToggleTriggerGate()
@@ -241,10 +319,36 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
     public void ResetTracking()
     {
+        if (!IsServer)
+        {
+            Debug.LogWarning("[Ball-Tracker] ResetTracking called on client - should only run on server!");
+            return;
+        }
+
         LastHitWizard = "";
-        hasBounced = false;
+        hasBounced.Value = false;
+        lastBounceTime.Value = -999f;
         lastHitterGameObject = null;
         previousHitterGameObject = null;
         canTrigger = true;
+
+        Debug.Log("[Ball-Tracker] Tracking reset");
+    }
+
+    // Public getter for bounce state (for other scripts to check)
+    public bool HasBounced => hasBounced.Value;
+
+    // Debug info
+    [ContextMenu("Debug Bounce State")]
+    private void DebugBounceState()
+    {
+        Debug.Log($"=== BOUNCE TRACKER DEBUG ===");
+        Debug.Log($"  IsServer: {IsServer}");
+        Debug.Log($"  hasBounced: {hasBounced.Value}");
+        Debug.Log($"  lastBounceTime: {lastBounceTime.Value:F3}");
+        Debug.Log($"  Time since last bounce: {Time.time - lastBounceTime.Value:F3}s");
+        Debug.Log($"  LastHitWizard: {LastHitWizard}");
+        Debug.Log($"  canTrigger: {canTrigger}");
+        Debug.Log($"=== END DEBUG ===");
     }
 }
