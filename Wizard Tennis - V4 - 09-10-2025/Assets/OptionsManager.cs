@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using NUnit.Framework;
+using System.Collections.Generic;
+//using UnityEngine.UIElements;
 
 public class OptionsManager : MonoBehaviour
 {
@@ -59,6 +62,26 @@ public class OptionsManager : MonoBehaviour
     [Tooltip("Field of view slider")]
     [SerializeField] private Slider fovSlider;
 
+    [Header("=== Spell Customisation (Assign in Inspector) ===")]
+    [Tooltip("Spell toggles")]
+    // I'm so sorry I can't do a list of Toggles so there has to be a separate one for literally every single spell toggle I apolagise profusely for how clogged this is gonna get
+    [SerializeField] private Toggle fireballToggle;
+    [SerializeField] private Toggle iceToggle;
+    [SerializeField] private Toggle lightningToggle;
+    [SerializeField] private Toggle shadowToggle;
+    [SerializeField] private Toggle greenToggle;
+    [SerializeField] private Toggle stoneToggle;
+    [SerializeField] private Toggle chronosToggle;
+    [SerializeField] private Toggle geminiToggle;
+    [SerializeField] private Toggle piscesToggle;
+    [SerializeField] private Toggle jollyToggle;
+    [SerializeField] private Toggle blinkToggle;
+    [SerializeField] private Toggle warpToggle;
+    [SerializeField] private Toggle tetherToggle;
+    [SerializeField] private Toggle mudToggle;
+    [SerializeField] private Toggle gambitToggle;
+    [SerializeField] private Toggle gorbinoToggle;
+
     [Header("=== Audio Settings ===")]
     [SerializeField] private float volume = 0.75f;
     [SerializeField] private float masterVolume = 1.0f;
@@ -73,6 +96,24 @@ public class OptionsManager : MonoBehaviour
     [SerializeField] public bool spellTips = true;
     [SerializeField] private float mouseSensitivity = 1.0f;
     [SerializeField] private bool invertY = false;
+    // Spell Customisation bools I'm so sorry again
+    [SerializeField] private bool fireballBool = true;
+    [SerializeField] private bool iceBool = true;
+    [SerializeField] private bool lightningBool = true;
+    [SerializeField] private bool shadowBool = true;
+    [SerializeField] private bool greenBool = true;
+    [SerializeField] private bool stoneBool = true;
+    [SerializeField] private bool chronosBool = true;
+    [SerializeField] private bool geminiBool = true;
+    [SerializeField] private bool piscesBool = true;
+    [SerializeField] private bool jollyBool = true;
+    [SerializeField] private bool blinkBool = true;
+    [SerializeField] private bool warpBool = true;
+    [SerializeField] private bool tetherBool = true;
+    [SerializeField] private bool mudBool = true;
+    [SerializeField] private bool gambitBool = true;
+    [SerializeField] private bool gorbinoBool = true;
+
 
     [Header("=== Graphics Settings ===")]
     [SerializeField] private bool vsyncEnabled = true;
@@ -105,6 +146,24 @@ public class OptionsManager : MonoBehaviour
     public float FieldOfView => fieldOfView;
     public Language CurrentLanguage => currentLanguage;
     public string CurrentLanguageCode => LanguageHelper.GetLanguageCode(currentLanguage);
+    // Spell Customisation you know how it goes now
+    public bool FireballBool => fireballBool;
+    public bool IceBool => iceBool;
+    public bool LightningBool => lightningBool;
+    public bool ShadowBool => shadowBool;
+    public bool GreenBool => greenBool;
+    public bool StoneBool => stoneBool;
+    public bool ChronosBool => chronosBool;
+    public bool GeminiBool => geminiBool;
+    public bool PiscesBool => piscesBool;
+    public bool JollyBool => jollyBool;
+    public bool BlinkBool => blinkBool;
+    public bool WarpBool => warpBool;
+    public bool TetherBool => tetherBool;
+    public bool MudBool => mudBool;
+    public bool GambitBool => gambitBool;
+    public bool GorbinoBool => gorbinoBool;
+
 
     // Events
     public delegate void LanguageChangedHandler(Language newLanguage);
@@ -145,6 +204,10 @@ public class OptionsManager : MonoBehaviour
         {
             HookUI();
         }
+        if (HasSpellbookUIReferences())
+        {
+            HookSpellbookUI();
+        }
     }
 
     private void Update()
@@ -163,6 +226,7 @@ public class OptionsManager : MonoBehaviour
         if (Instance == this)
         {
             UnhookUI();
+            UnhookSpellbookUI();
             Instance = null;
         }
     }
@@ -181,6 +245,17 @@ public class OptionsManager : MonoBehaviour
                fullscreenToggle != null || qualityDropdown != null ||
                resolutionDropdown != null || mouseSensitivitySlider != null ||
                invertYToggle != null || showFpsToggle != null || fovSlider != null;
+    }
+    private bool HasSpellbookUIReferences()
+    {
+        return fireballToggle != null || iceToggle != null ||
+               lightningToggle != null || shadowToggle != null ||
+               greenToggle != null || stoneToggle != null ||
+               chronosToggle != null || geminiToggle != null ||
+               piscesToggle != null || jollyToggle != null ||
+               blinkToggle != null || warpToggle != null ||
+               tetherToggle != null || mudToggle != null || 
+               gambitToggle != null || gorbinoToggle != null;
     }
 
     /// <summary>
@@ -385,6 +460,188 @@ public class OptionsManager : MonoBehaviour
         isUIHooked = false;
     }
 
+
+    // OKAY SAME THING BUT FOR THE SPELL CUSTOMISATION ON THE SPELLBOOK SCREEN
+    public void OnSpellbookOpened(
+        Toggle toggle = null,
+        Toggle toggle2 = null,
+        Toggle toggle3 = null,
+        Toggle toggle4 = null,
+        Toggle toggle5 = null,
+        Toggle toggle6 = null,
+        Toggle toggle7 = null,
+        Toggle toggle8 = null,
+        Toggle toggle9 = null,
+        Toggle toggle10 = null,
+        Toggle toggle11 = null,
+        Toggle toggle12 = null,
+        Toggle toggle13 = null,
+        Toggle toggle14 = null,
+        Toggle toggle15 = null,
+        Toggle toggle16 = null)
+    {
+        UnhookSpellbookUI();
+
+        // Override inspector references if runtime references provided
+        if (toggle != null) fireballToggle = toggle;
+        if (toggle2 != null) iceToggle = toggle2;
+        if (toggle3 != null) lightningToggle = toggle3;
+        if (toggle4 != null) shadowToggle = toggle4;
+        if (toggle5 != null) greenToggle = toggle5;
+        if (toggle6 != null) stoneToggle = toggle6;
+        if (toggle7 != null) chronosToggle = toggle7;
+        if (toggle8 != null) geminiToggle = toggle8;
+        if (toggle9 != null) piscesToggle = toggle9;
+        if (toggle10 != null) jollyToggle = toggle10;
+        if (toggle11 != null) blinkToggle = toggle11;
+        if (toggle12 != null) warpToggle = toggle12;
+        if (toggle13 != null) tetherToggle = toggle13;
+        if (toggle14 != null) mudToggle = toggle14;
+        if (toggle15 != null) gambitToggle = toggle15;
+        if (toggle16 != null) gorbinoToggle = toggle16;
+
+        HookSpellbookUI();
+    }
+
+    public void OnSpellbookClosed()
+    {
+        // Don't unhook if UI was assigned in inspector
+        // This allows persistent UI elements to stay connected
+    }
+
+    private void HookSpellbookUI()
+    {
+        if (isUIHooked) return;
+        
+        if (fireballToggle != null)
+        {
+            fireballToggle.onValueChanged.RemoveAllListeners();
+            fireballToggle.isOn = fireballBool;
+            fireballToggle.onValueChanged.AddListener(SetFireball);
+        }
+        if (iceToggle != null)
+        {
+            iceToggle.onValueChanged.RemoveAllListeners();
+            iceToggle.isOn = iceBool;
+            iceToggle.onValueChanged.AddListener(SetIce);
+        }
+        if (lightningToggle != null)
+        {
+            lightningToggle.onValueChanged.RemoveAllListeners();
+            lightningToggle.isOn = lightningBool;
+            lightningToggle.onValueChanged.AddListener(SetLightning);
+        }
+        if (shadowToggle != null)
+        {
+            shadowToggle.onValueChanged.RemoveAllListeners();
+            shadowToggle.isOn = shadowBool;
+            shadowToggle.onValueChanged.AddListener(SetShadow);
+        }
+        if (greenToggle != null)
+        {
+            greenToggle.onValueChanged.RemoveAllListeners();
+            greenToggle.isOn = greenBool;
+            greenToggle.onValueChanged.AddListener(SetGreen);
+        }
+        if (stoneToggle != null)
+        {
+            stoneToggle.onValueChanged.RemoveAllListeners();
+            stoneToggle.isOn = stoneBool;
+            stoneToggle.onValueChanged.AddListener(SetStone);
+        }
+        if (chronosToggle != null)
+        {
+            chronosToggle.onValueChanged.RemoveAllListeners();
+            chronosToggle.isOn = chronosBool;
+            chronosToggle.onValueChanged.AddListener(SetChronos);
+        }
+        if (geminiToggle != null)
+        {
+            geminiToggle.onValueChanged.RemoveAllListeners();
+            geminiToggle.isOn = geminiBool;
+            geminiToggle.onValueChanged.AddListener(SetGemini);
+        }
+        if (piscesToggle != null)
+        {
+            piscesToggle.onValueChanged.RemoveAllListeners();
+            piscesToggle.isOn = piscesBool;
+            piscesToggle.onValueChanged.AddListener(SetPisces);
+        }
+        if (jollyToggle != null)
+        {
+            jollyToggle.onValueChanged.RemoveAllListeners();
+            jollyToggle.isOn = jollyBool;
+            jollyToggle.onValueChanged.AddListener(SetJolly);
+        }
+        if (blinkToggle != null)
+        {
+            blinkToggle.onValueChanged.RemoveAllListeners();
+            blinkToggle.isOn = blinkBool;
+            blinkToggle.onValueChanged.AddListener(SetBlink);
+        }
+        if (warpToggle != null)
+        {
+            warpToggle.onValueChanged.RemoveAllListeners();
+            warpToggle.isOn = warpBool;
+            warpToggle.onValueChanged.AddListener(SetWarp);
+        }
+        if (tetherToggle != null)
+        {
+            tetherToggle.onValueChanged.RemoveAllListeners();
+            tetherToggle.isOn = tetherBool;
+            tetherToggle.onValueChanged.AddListener(SetTether);
+        }
+        if (mudToggle != null)
+        {
+            mudToggle.onValueChanged.RemoveAllListeners();
+            mudToggle.isOn = mudBool;
+            mudToggle.onValueChanged.AddListener(SetMud);
+        }
+        if (gambitToggle != null)
+        {
+            gambitToggle.onValueChanged.RemoveAllListeners();
+            gambitToggle.isOn = gambitBool;
+            gambitToggle.onValueChanged.AddListener(SetGambit);
+        }
+        if (gorbinoToggle != null)
+        {
+            gorbinoToggle.onValueChanged.RemoveAllListeners();
+            gorbinoToggle.isOn = gorbinoBool;
+            gorbinoToggle.onValueChanged.AddListener(SetGorbino);
+        }
+
+        UpdateUILabel();
+        isUIHooked = true;
+    }
+
+    private void UnhookSpellbookUI()
+    {
+        if (!isUIHooked) return;
+
+        // Remove all listeners
+        //fireballToggle?.onValueChanged.RemoveListener((isOn) => {
+        //    SetSpellToggle(isOn, fireballBool, "FireballBool", fireballToggle);
+        //});
+        fireballToggle.onValueChanged.RemoveListener(SetFireball);
+        iceToggle.onValueChanged.RemoveListener(SetIce);
+        lightningToggle.onValueChanged.RemoveListener(SetLightning);
+        shadowToggle.onValueChanged.RemoveListener(SetShadow);
+        greenToggle.onValueChanged.RemoveListener(SetGreen);
+        stoneToggle.onValueChanged.RemoveListener(SetStone);
+        chronosToggle.onValueChanged.RemoveListener(SetChronos);
+        geminiToggle.onValueChanged.RemoveListener(SetGemini);
+        piscesToggle.onValueChanged.RemoveListener(SetPisces);
+        jollyToggle.onValueChanged.RemoveListener(SetJolly);
+        blinkToggle.onValueChanged.RemoveListener(SetBlink);
+        warpToggle.onValueChanged.RemoveListener(SetWarp);
+        tetherToggle.onValueChanged.RemoveListener(SetTether);
+        mudToggle.onValueChanged.RemoveListener(SetMud);
+        gambitToggle.onValueChanged.RemoveListener(SetGambit);
+        gorbinoToggle.onValueChanged.RemoveListener(SetGorbino);
+
+        isUIHooked = false;
+    }
+
     #endregion
 
     #region Audio Settings
@@ -491,6 +748,185 @@ public class OptionsManager : MonoBehaviour
 
         OnSettingsChanged?.Invoke();
     }
+
+    // Spell Customisation
+    public void SetFireball(bool enabled)
+    {
+        fireballBool = enabled;
+        PlayerPrefs.SetInt("FireballBool", fireballBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (fireballToggle != null && fireballToggle.isOn != fireballBool)
+            fireballToggle.isOn = fireballBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetIce(bool enabled)
+    {
+        iceBool = enabled;
+        PlayerPrefs.SetInt("IceBool", iceBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (iceToggle != null && iceToggle.isOn != iceBool)
+            iceToggle.isOn = iceBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetLightning(bool enabled)
+    {
+        lightningBool = enabled;
+        PlayerPrefs.SetInt("LightningBool", lightningBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (lightningToggle != null && lightningToggle.isOn != lightningBool)
+            lightningToggle.isOn = lightningBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetShadow(bool enabled)
+    {
+        shadowBool = enabled;
+        PlayerPrefs.SetInt("ShadowBool", shadowBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (shadowToggle != null && shadowToggle.isOn != shadowBool)
+            shadowToggle.isOn = shadowBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetGreen(bool enabled)
+    {
+        greenBool = enabled;
+        PlayerPrefs.SetInt("GreenBool", greenBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (greenToggle != null && greenToggle.isOn != greenBool)
+            greenToggle.isOn = greenBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetStone(bool enabled)
+    {
+        stoneBool = enabled;
+        PlayerPrefs.SetInt("StoneBool", stoneBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (stoneToggle != null && stoneToggle.isOn != stoneBool)
+            stoneToggle.isOn = stoneBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetChronos(bool enabled)
+    {
+        chronosBool = enabled;
+        PlayerPrefs.SetInt("ChronosBool", chronosBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (chronosToggle != null && chronosToggle.isOn != chronosBool)
+            chronosToggle.isOn = chronosBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetGemini(bool enabled)
+    {
+        geminiBool = enabled;
+        PlayerPrefs.SetInt("GeminiBool", geminiBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (geminiToggle != null && geminiToggle.isOn != geminiBool)
+            geminiToggle.isOn = geminiBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetPisces(bool enabled)
+    {
+        piscesBool = enabled;
+        PlayerPrefs.SetInt("PiscesBool", piscesBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (piscesToggle != null && piscesToggle.isOn != piscesBool)
+            piscesToggle.isOn = piscesBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetJolly(bool enabled)
+    {
+        jollyBool = enabled;
+        PlayerPrefs.SetInt("JollyBool", jollyBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (jollyToggle != null && jollyToggle.isOn != jollyBool)
+            jollyToggle.isOn = jollyBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetBlink(bool enabled)
+    {
+        blinkBool = enabled;
+        PlayerPrefs.SetInt("BlinkBool", blinkBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (blinkToggle != null && blinkToggle.isOn != blinkBool)
+            blinkToggle.isOn = blinkBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetWarp(bool enabled)
+    {
+        warpBool = enabled;
+        PlayerPrefs.SetInt("WarpBool", warpBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (warpToggle != null && warpToggle.isOn != warpBool)
+            warpToggle.isOn = warpBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetTether(bool enabled)
+    {
+        tetherBool = enabled;
+        PlayerPrefs.SetInt("TetherBool", tetherBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (tetherToggle != null && tetherToggle.isOn != tetherBool)
+            tetherToggle.isOn = tetherBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetMud(bool enabled)
+    {
+        mudBool = enabled;
+        PlayerPrefs.SetInt("MudBool", mudBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (mudToggle != null && mudToggle.isOn != mudBool)
+            mudToggle.isOn = mudBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetGambit(bool enabled)
+    {
+        gambitBool = enabled;
+        PlayerPrefs.SetInt("GambitBool", gambitBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (gambitToggle != null && gambitToggle.isOn != gambitBool)
+            gambitToggle.isOn = gambitBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+    public void SetGorbino(bool enabled)
+    {
+        gorbinoBool = enabled;
+        PlayerPrefs.SetInt("GorbinoBool", gorbinoBool ? 1 : 0);
+        PlayerPrefs.Save();
+
+        if (gorbinoToggle != null && gorbinoToggle.isOn != gorbinoBool)
+            gorbinoToggle.isOn = gorbinoBool;
+
+        OnSettingsChanged?.Invoke();
+    }
+
 
     #endregion
 
@@ -670,6 +1106,23 @@ public class OptionsManager : MonoBehaviour
         spellTips = PlayerPrefs.GetInt("spellTips", 1) == 1;
         mouseSensitivity = PlayerPrefs.GetFloat("MouseSensitivity", 1.0f);
         invertY = PlayerPrefs.GetInt("InvertY", 0) == 1;
+        // Spell Customisatoin
+        fireballBool = PlayerPrefs.GetInt("FireballBool", 1) == 1;
+        iceBool = PlayerPrefs.GetInt("IceBool", 1) == 1;
+        lightningBool = PlayerPrefs.GetInt("LightningBool", 1) == 1;
+        shadowBool = PlayerPrefs.GetInt("ShadowBool", 1) == 1;
+        greenBool = PlayerPrefs.GetInt("GreenBool", 1) == 1;
+        stoneBool = PlayerPrefs.GetInt("StoneBool", 1) == 1;
+        chronosBool = PlayerPrefs.GetInt("ChronosBool", 1) == 1;
+        geminiBool = PlayerPrefs.GetInt("GeminiBool", 1) == 1;
+        piscesBool = PlayerPrefs.GetInt("PiscesBool", 1) == 1;
+        jollyBool = PlayerPrefs.GetInt("JollyBool", 1) == 1;
+        blinkBool = PlayerPrefs.GetInt("BlinkBool", 1) == 1;
+        warpBool = PlayerPrefs.GetInt("WarpBool", 1) == 1;
+        tetherBool = PlayerPrefs.GetInt("TetherBool", 1) == 1;
+        mudBool = PlayerPrefs.GetInt("mudBool", 1) == 1;
+        gambitBool = PlayerPrefs.GetInt("GambitBool", 1) == 1;
+        gorbinoBool = PlayerPrefs.GetInt("GorbinoBool", 1) == 1;
 
         // Graphics
         vsyncEnabled = PlayerPrefs.GetInt("Vsync", 1) == 1;

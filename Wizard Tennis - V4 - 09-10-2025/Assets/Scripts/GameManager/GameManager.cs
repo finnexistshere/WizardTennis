@@ -16,6 +16,7 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance;
 
     [Header("Pickup Settings")]
+    public List<GameObject> allPickupPrefabs;
     public List<GameObject> pickupPrefabs;
     public float spawnInterval = 7f;
     public float spawnRadius = 25f;
@@ -91,7 +92,30 @@ public class GameManager : MonoBehaviour
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
 
-        ScoreManager.Instance.LoadSavedScores();
+        if (OptionsManager.Instance != null)
+        {
+            if (OptionsManager.Instance.FireballBool) pickupPrefabs.Add(allPickupPrefabs[0]);
+            if (OptionsManager.Instance.IceBool) pickupPrefabs.Add(allPickupPrefabs[1]);
+            if (OptionsManager.Instance.LightningBool) pickupPrefabs.Add(allPickupPrefabs[2]);
+            if (OptionsManager.Instance.ShadowBool) pickupPrefabs.Add(allPickupPrefabs[3]);
+            if (OptionsManager.Instance.GreenBool) pickupPrefabs.Add(allPickupPrefabs[4]);
+            if (OptionsManager.Instance.StoneBool) pickupPrefabs.Add(allPickupPrefabs[5]);
+            if (OptionsManager.Instance.ChronosBool) pickupPrefabs.Add(allPickupPrefabs[6]);
+            if (OptionsManager.Instance.GeminiBool) pickupPrefabs.Add(allPickupPrefabs[7]);
+            if (OptionsManager.Instance.PiscesBool) pickupPrefabs.Add(allPickupPrefabs[8]);
+            if (OptionsManager.Instance.JollyBool) pickupPrefabs.Add(allPickupPrefabs[9]);
+            if (OptionsManager.Instance.BlinkBool) pickupPrefabs.Add(allPickupPrefabs[10]);
+            if (OptionsManager.Instance.WarpBool) pickupPrefabs.Add(allPickupPrefabs[11]);
+            if (OptionsManager.Instance.TetherBool) pickupPrefabs.Add(allPickupPrefabs[12]);
+            if (OptionsManager.Instance.MudBool) pickupPrefabs.Add(allPickupPrefabs[13]);
+            if (OptionsManager.Instance.GambitBool) pickupPrefabs.Add(allPickupPrefabs[14]);
+            if (OptionsManager.Instance.GorbinoBool) pickupPrefabs.Add(allPickupPrefabs[15]);
+        } else
+        {
+            pickupPrefabs = allPickupPrefabs;
+        }
+
+            ScoreManager.Instance.LoadSavedScores();
     }
 
     private void Start()

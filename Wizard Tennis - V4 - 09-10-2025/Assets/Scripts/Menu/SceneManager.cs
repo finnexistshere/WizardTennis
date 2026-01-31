@@ -101,6 +101,11 @@ public class SceneChanger : MonoBehaviour
     {
         MainMenu.SetActive(false);
         SpellbookMenu.SetActive(true);
+
+        if (OptionsManager.Instance != null)
+        {
+            OptionsManager.Instance.OnSpellbookOpened();
+        }
     }
 
     public void BackToMainFromSpells()
