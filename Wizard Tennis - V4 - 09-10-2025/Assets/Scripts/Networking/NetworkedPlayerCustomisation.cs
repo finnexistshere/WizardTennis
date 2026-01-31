@@ -169,6 +169,23 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
             customSaturation.OnValueChanged += OnCustomColorChanged;
             customValue.OnValueChanged += OnCustomColorChanged;
             customAlpha.OnValueChanged += OnCustomColorChanged;
+
+            fireball.OnValueChanged += OnBoolChange;
+            ice.OnValueChanged += OnBoolChange;
+            lightning.OnValueChanged += OnBoolChange;
+            shadow.OnValueChanged += OnBoolChange;
+            green.OnValueChanged += OnBoolChange;
+            stone.OnValueChanged += OnBoolChange;
+            chronos.OnValueChanged += OnBoolChange;
+            gemini.OnValueChanged += OnBoolChange;
+            pisces.OnValueChanged += OnBoolChange;
+            jolly.OnValueChanged += OnBoolChange;
+            blink.OnValueChanged += OnBoolChange;
+            warp.OnValueChanged += OnBoolChange;
+            tether.OnValueChanged += OnBoolChange;
+            mud.OnValueChanged += OnBoolChange;
+            gambit.OnValueChanged += OnBoolChange;
+            gorbino.OnValueChanged += OnBoolChange;
         }
 
         // Apply customisation for both owner and non-owner
@@ -243,6 +260,12 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
             if (!OptionsManager.Instance.GambitBool) gambit.Value = false;
             if (!OptionsManager.Instance.GorbinoBool) gorbino.Value = false;
         }
+    }
+
+    private void OnBoolChange(bool previousValue, bool newValue)
+    {
+        if (debugLog)
+            Debug.Log("ISTFG THIS BETTER BE CHANGING SHIT FOR YOU EDWARD.");
     }
 
     private void OnMaterialIndexChanged(int previousValue, int newValue)
