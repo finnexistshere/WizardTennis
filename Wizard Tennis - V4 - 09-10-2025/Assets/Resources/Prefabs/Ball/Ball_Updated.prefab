@@ -157,7 +157,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 3109362586
+  GlobalObjectIdHash: 124956437
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 7
@@ -250,7 +250,10 @@ MonoBehaviour:
   spellEffects: {fileID: 0}
   networkedSpellEffects: {fileID: 0}
   LastHitWizard: 
-  hasBounced: 0
+  bounceDebounce: 0.4
+  spawnGracePeriod: 0.5
+  hitGracePeriod: 0.2
+  scoringCooldown: 0.5
 --- !u!1 &6566581645874027722
 GameObject:
   m_ObjectHideFlags: 0
@@ -312,7 +315,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6566581645874027722}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0a8112ac38b465f4d88e7fd1e04df61a, type: 3}
   m_Name: 
