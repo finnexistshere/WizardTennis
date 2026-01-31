@@ -43358,6 +43358,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
+  enableDevTools: 1
+  spawnAllSpellsKey: 109
+  respawnAllSpellsKey: 110
+  devSpawnSpacing: 2.5
   pickupPrefabs:
   - {fileID: 7109859178366572936, guid: 041b102b8f230424c9305a22b619402b, type: 3}
   - {fileID: 7109859178366572936, guid: a227066672fbdf248ad3205225023abe, type: 3}
