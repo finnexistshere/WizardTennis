@@ -772,35 +772,6 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
                 break;
 
-            case "Jolly":
-                if (caster != null)
-                {
-                    Transform racketTransform = caster.transform.GetChild(2)?.GetChild(1)?.GetChild(0)
-                        ?.GetChild(0)?.GetChild(1)?.GetChild(0)?.GetChild(0);
-
-                    if (racketTransform != null)
-                    {
-                        // DO NOT parent (otherwise rotation is inherited)
-                        // effectObj.transform.SetParent(racketTransform, false); // REMOVE THIS
-
-                        // Keep Jolly's rotation and scale
-                        effectObj.transform.rotation = Quaternion.Euler(0, 90, 0);
-                        effectObj.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-
-                        // Follow POSITION ONLY
-                        StartCoroutine(FollowPositionOnly(effectObj.transform, racketTransform));
-
-                        // Hide racket mesh
-                        Transform racketMesh = caster.transform.GetChild(2)?.GetChild(0)?.GetChild(4)?.GetChild(0)?.GetChild(0);
-                        if (racketMesh != null)
-                            racketMesh.gameObject.SetActive(false);
-                    }
-                }
-
-                StartCoroutine(DespawnEffectAfterDelay(spell, effectObj, 5f));
-                break;
-
-
             case "Mud":
                 // Ensure mud spawns on ground and scales up like non-networked version
                 if (effectObj != null)
@@ -1601,15 +1572,41 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Jolly":
-                var capsule = player.GetComponent<CapsuleCollider>();
-                if (capsule != null) capsule.radius = 1;
+                if (player != null)
+                {
+                    // Restore collider
+                    var capsule = player.GetComponent<CapsuleCollider>();
+                    if (capsule != null)
+                    {
+                        capsule.radius = 1;
+                        Debug.Log("[SpellEffects] Jolly - restored collider radius");
+                    }
 
-                Transform racketMesh = player.transform.GetChild(2)?.GetChild(0)?.GetChild(4)?.GetChild(0)?.GetChild(0);
-                if (racketMesh != null)
-                    racketMesh.gameObject.SetActive(true);
+                    // Show racket mesh
+                    HideRacketMesh(player, false);
 
-                // Despawn handled by DespawnEffectAfterDelay
-                activeJolly = null;
+                    // Disable Jolly object
+                    if (activeJolly != null)
+                    {
+                        activeJolly.SetActive(false);
+                        Debug.Log($"[SpellEffects] Jolly object {activeJolly.name} disabled");
+                        activeJolly = null;
+                    }
+                    else
+                    {
+                        // Fallback: try to find and disable it
+                        GameObject jollyObject = FindJollyObject(player);
+                        if (jollyObject != null && jollyObject.activeSelf)
+                        {
+                            jollyObject.SetActive(false);
+                            Debug.Log($"[SpellEffects] Jolly fallback: found and disabled {jollyObject.name}");
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[SpellEffects] Jolly reset: player is null");
+                }
                 break;
 
             case "Mud":
@@ -1762,15 +1759,52 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
     }
 
-    // Helper function for Jolly
-    private IEnumerator FollowPositionOnly(Transform obj, Transform target)
+    // Helper function for Jolly - WITH NULL CHECKS
+    private IEnumerator FollowPositionOnlyWithNullChecks(Transform obj, Transform target)
     {
+        if (obj == null)
+        {
+            Debug.LogWarning("[SpellEffects] FollowPositionOnly: obj is null at start");
+            yield break;
+        }
+
+        if (target == null)
+        {
+            Debug.LogWarning("[SpellEffects] FollowPositionOnly: target is null at start");
+            yield break;
+        }
+
+        Debug.Log($"[SpellEffects] Starting FollowPositionOnly: {obj.name} -> {target.name}");
+        int frameCount = 0;
+
         while (obj != null && target != null)
         {
-            obj.position = target.position;  // follow position
+            obj.position = target.position;  // follow position only
                                              // ignore target.rotation completely
+
+            frameCount++;
             yield return null;
         }
+
+        // Log why we stopped
+        if (obj == null && target == null)
+        {
+            Debug.LogWarning($"[SpellEffects] FollowPositionOnly stopped: both obj and target became null (ran {frameCount} frames)");
+        }
+        else if (obj == null)
+        {
+            Debug.LogWarning($"[SpellEffects] FollowPositionOnly stopped: obj became null (ran {frameCount} frames)");
+        }
+        else if (target == null)
+        {
+            Debug.LogWarning($"[SpellEffects] FollowPositionOnly stopped: target became null (ran {frameCount} frames)");
+        }
+    }
+
+    // Keep old version for backward compatibility
+    private IEnumerator FollowPositionOnly(Transform obj, Transform target)
+    {
+        return FollowPositionOnlyWithNullChecks(obj, target);
     }
 
     private IEnumerator ApplyLightningSpeed(MainCharacterMovement mcm, float duration)
@@ -2704,6 +2738,154 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             pointSource.PlayOneShot(pointlost, pointSFXVolume);
             Debug.Log("[SpellEffects] Point lost sound played");
+        }
+    }
+
+    /// <summary>
+    /// Finds the Jolly child object on a player
+    /// Searches by name pattern to handle different naming conventions
+    /// </summary>
+    private GameObject FindJollyObject(GameObject player)
+    {
+        if (player == null)
+        {
+            Debug.LogError("[SpellEffects] FindJollyObject: player is null");
+            return null;
+        }
+
+        // Search patterns for Jolly object
+        string[] jollyNames = new string[] { "Jolly", "jolly", "JollyObject", "Jolly Object", "JollyPrefab" };
+
+        // Search all children (including inactive)
+        Transform[] allChildren = player.GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform child in allChildren)
+        {
+            // Check exact matches first
+            foreach (string name in jollyNames)
+            {
+                if (child.name == name)
+                {
+                    Debug.Log($"[SpellEffects] Found Jolly object (exact match): {child.name}");
+                    return child.gameObject;
+                }
+            }
+
+            // Check contains matches
+            foreach (string name in jollyNames)
+            {
+                if (child.name.Contains(name))
+                {
+                    Debug.Log($"[SpellEffects] Found Jolly object (contains match): {child.name}");
+                    return child.gameObject;
+                }
+            }
+        }
+
+        Debug.LogWarning($"[SpellEffects] Could not find Jolly object on {player.name}");
+        Debug.LogWarning($"[SpellEffects] Searched {allChildren.Length} children. Please name the Jolly child object 'Jolly' or 'JollyObject'");
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the racket transform on a player
+    /// Uses multiple search methods for reliability
+    /// </summary>
+    private Transform FindRacketTransform(GameObject player)
+    {
+        if (player == null)
+        {
+            Debug.LogError("[SpellEffects] FindRacketTransform: player is null");
+            return null;
+        }
+
+        Transform racketTransform = null;
+
+        // METHOD 1: Try to find by name (most reliable)
+        Transform[] allChildren = player.GetComponentsInChildren<Transform>(true);
+        foreach (Transform child in allChildren)
+        {
+            if (child.name.Contains("Racket") || child.name.Contains("racket") ||
+                child.name.Contains("Hand.R") || child.name.Contains("HandR"))
+            {
+                racketTransform = child;
+                Debug.Log($"[SpellEffects] Found racket by name: {child.name}");
+                return racketTransform;
+            }
+        }
+
+        // METHOD 2: Fallback to hierarchy path
+        Transform body = player.transform.Find("Body");
+        if (body != null)
+        {
+            // Navigate down to racket hand
+            racketTransform = body.Find("Armature")?.Find("Hips")?.Find("Spine")?.Find("Spine.001")
+                ?.Find("Shoulder.R")?.Find("Upper_Arm.R")?.Find("Forearm.R")?.Find("Hand.R");
+
+            if (racketTransform != null)
+            {
+                Debug.Log($"[SpellEffects] Found racket via hierarchy at {racketTransform.position}");
+                return racketTransform;
+            }
+        }
+
+        // METHOD 3: Last resort - search for any transform with "Hand" in name
+        foreach (Transform child in allChildren)
+        {
+            if (child.name.Contains("Hand"))
+            {
+                racketTransform = child;
+                Debug.LogWarning($"[SpellEffects] Found potential racket (fallback): {child.name}");
+                return racketTransform;
+            }
+        }
+
+        Debug.LogWarning($"[SpellEffects] Could not find racket transform on {player.name}");
+        return null;
+    }
+
+    /// <summary>
+    /// Hides or shows the racket mesh
+    /// </summary>
+    private void HideRacketMesh(GameObject player, bool hide)
+    {
+        if (player == null)
+        {
+            Debug.LogWarning("[SpellEffects] HideRacketMesh: player is null");
+            return;
+        }
+
+        // Try multiple paths to find racket mesh
+        Transform racketMesh = null;
+
+        // Path 1: Standard hierarchy path
+        racketMesh = player.transform.GetChild(2)?.GetChild(0)?.GetChild(4)?.GetChild(0)?.GetChild(0);
+
+        // Path 2: Search by name if path 1 fails
+        if (racketMesh == null)
+        {
+            Transform[] allChildren = player.GetComponentsInChildren<Transform>(true);
+            foreach (Transform child in allChildren)
+            {
+                if (child.name.Contains("RacketMesh") || child.name.Contains("Racket_Mesh") ||
+                    child.name.Contains("racketmesh"))
+                {
+                    racketMesh = child;
+                    Debug.Log($"[SpellEffects] Found racket mesh by name: {child.name}");
+                    break;
+                }
+            }
+        }
+
+        if (racketMesh != null)
+        {
+            racketMesh.gameObject.SetActive(!hide);
+            Debug.Log($"[SpellEffects] Racket mesh {(hide ? "hidden" : "shown")}");
+        }
+        else
+        {
+            Debug.LogWarning($"[SpellEffects] Could not find racket mesh on {player.name}");
         }
     }
 }

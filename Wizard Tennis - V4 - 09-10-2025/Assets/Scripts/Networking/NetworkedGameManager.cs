@@ -12,6 +12,12 @@ public class NetworkedGameManager : NetworkBehaviour
 {
     public static NetworkedGameManager Instance;
 
+    [Header("DEV TOOLS")]
+    public bool enableDevTools = true;
+    public KeyCode spawnAllSpellsKey = KeyCode.F9;
+    public KeyCode respawnAllSpellsKey = KeyCode.F10;
+    public float devSpawnSpacing = 2.5f;
+
     [Header("Pickup Settings")]
     public List<GameObject> pickupPrefabs;
     public float spawnInterval = 7f;
@@ -428,6 +434,17 @@ public class NetworkedGameManager : NetworkBehaviour
             TogglePause();
         }
 
+        if (enableDevTools && IsServer && Input.GetKeyDown(spawnAllSpellsKey))
+        {
+            Debug.Log("[DEV] Spawn ALL spell pickups triggered");
+            SpawnAllPickupsForBothPlayers();
+        }
+        if (enableDevTools && IsServer && Input.GetKeyDown(respawnAllSpellsKey))
+        {
+            RemoveAllPickups();
+            SpawnAllPickupsForBothPlayers();
+        }
+
         if (tutorialPanel != null && tutorialPanel.activeSelf)
         {
             if (Input.GetKeyDown(KeyCode.E))
@@ -459,6 +476,108 @@ public class NetworkedGameManager : NetworkBehaviour
             SpawnPickupForPlayer(clientSpawnCenter, clientActivePickups, clientSpellcasting);
             clientSpawnTimer = spawnInterval;
         }
+    }
+
+    [ContextMenu("DEV / Spawn All Pickups")]
+    private void DevSpawnAllPickups()
+    {
+        if (!IsServer)
+        {
+            Debug.LogWarning("[DEV] Must be server to spawn pickups");
+            return;
+        }
+
+        SpawnAllPickupsForBothPlayers();
+    }
+
+    private void SpawnAllPickupsForBothPlayers()
+    {
+        if (!IsServer) return;
+
+        SpawnAllPickupsForSide(
+            hostSpawnCenter,
+            hostActivePickups,
+            hostSpellcasting
+        );
+
+        SpawnAllPickupsForSide(
+            clientSpawnCenter,
+            clientActivePickups,
+            clientSpellcasting
+        );
+    }
+
+    private void SpawnAllPickupsForSide(
+    Transform spawnCenter,
+    List<GameObject> activePickups,
+    NetworkedSpellcasting spellcasting
+)
+    {
+        if (spawnCenter == null)
+        {
+            Debug.LogWarning("[DEV] Spawn center missing");
+            return;
+        }
+
+        int index = 0;
+
+        foreach (var entry in pickupWeights)
+        {
+            if (entry.prefab == null)
+                continue;
+
+            Vector3 offset = new Vector3(
+                (index % 5) * devSpawnSpacing,
+                0f,
+                (index / 5) * devSpawnSpacing
+            );
+
+            Vector3 spawnPos = spawnCenter.position + offset;
+
+            SpawnPickupDirect(entry.prefab, spawnPos, activePickups);
+            index++;
+        }
+
+        Debug.Log($"[DEV] Spawned {index} pickups at {spawnCenter.name}");
+    }
+
+    private void SpawnPickupDirect(
+    GameObject prefab,
+    Vector3 position,
+    List<GameObject> activePickups
+)
+    {
+        if (prefab == null) return;
+
+        var netObjPrefab = prefab.GetComponent<NetworkObject>();
+        if (netObjPrefab == null)
+        {
+            Debug.LogError($"[DEV] Prefab '{prefab.name}' has no NetworkObject");
+            return;
+        }
+
+        // Ensure prefab is registered
+        bool registered = false;
+        foreach (var p in NetworkManager.Singleton.NetworkConfig.Prefabs.Prefabs)
+        {
+            if (p.Prefab == prefab)
+            {
+                registered = true;
+                break;
+            }
+        }
+
+        if (!registered)
+        {
+            Debug.LogError($"[DEV] Prefab '{prefab.name}' is NOT registered");
+            return;
+        }
+
+        GameObject pickup = Instantiate(prefab, position, Quaternion.identity);
+        NetworkObject netObj = pickup.GetComponent<NetworkObject>();
+
+        netObj.Spawn();
+        activePickups.Add(pickup);
     }
 
     private void TryFindPlayers()
