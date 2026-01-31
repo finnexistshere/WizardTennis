@@ -537,5 +537,35 @@ public class SteamLobbyManager : MonoBehaviour
         return currentLobby?.Id.ToString() ?? string.Empty;
     }
 
+    public void LeaveLobbyAndShutdownNetwork()
+    {
+        Log("Leaving lobby and shutting down network");
+
+        // Stop all polling immediately
+        isPollingLobby = false;
+        isHostPollingMembers = false;
+        hasStartedNetwork = false;
+        isHost = false;
+
+        // Leave Steam lobby
+        if (currentLobby.HasValue)
+        {
+            Log("Leaving Steam lobby");
+            currentLobby.Value.Leave();
+            currentLobby = null;
+        }
+
+        // Shutdown Netcode
+        var netManager = NetworkManager.Singleton;
+        if (netManager != null)
+        {
+            if (netManager.IsListening)
+            {
+                Log("Shutting down NetworkManager");
+                netManager.Shutdown();
+            }
+        }
+    }
+
     #endregion
 }

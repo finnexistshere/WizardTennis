@@ -1383,17 +1383,21 @@ public class NetworkedGameManager : NetworkBehaviour
     {
         ScoreManager.Instance?.ResetScores();
 
-        // Disconnect from network
-        if (NetworkManager.Singleton != null)
+        // Hard disconnect from Steam + Netcode
+        if (SteamLobbyManager.Instance != null)
         {
-            if (NetworkManager.Singleton.IsHost)
-                NetworkManager.Singleton.Shutdown();
-            else if (NetworkManager.Singleton.IsClient)
-                NetworkManager.Singleton.Shutdown();
+            SteamLobbyManager.Instance.LeaveLobbyAndShutdownNetwork();
+        }
+        else
+        {
+            Debug.LogWarning("SteamLobbyManager missing during QuitMenu");
         }
 
-        SceneManager.LoadScene("Main Menu");
+        // Safety reset
         Time.timeScale = 1f;
+
+        // Scene load LAST
+        SceneManager.LoadScene("Main Menu");
     }
 
     public void QuitGame()
