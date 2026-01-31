@@ -1,9 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using NUnit.Framework;
+using UnityEngine.SceneManagement;
 using System.Collections.Generic;
-//using UnityEngine.UIElements;
 
 public class OptionsManager : MonoBehaviour
 {
@@ -64,7 +63,6 @@ public class OptionsManager : MonoBehaviour
 
     [Header("=== Spell Customisation (Assign in Inspector) ===")]
     [Tooltip("Spell toggles")]
-    // I'm so sorry I can't do a list of Toggles so there has to be a separate one for literally every single spell toggle I apolagise profusely for how clogged this is gonna get
     [SerializeField] private Toggle fireballToggle;
     [SerializeField] private Toggle iceToggle;
     [SerializeField] private Toggle lightningToggle;
@@ -82,6 +80,13 @@ public class OptionsManager : MonoBehaviour
     [SerializeField] private Toggle gambitToggle;
     [SerializeField] private Toggle gorbinoToggle;
 
+    [Header("=== Auto Re-Hook Settings ===")]
+    [Tooltip("Automatically search for UI elements by name when scene loads")]
+    [SerializeField] private bool autoFindUIOnSceneLoad = true;
+
+    [Tooltip("Log when UI elements are found/hooked")]
+    [SerializeField] private bool debugUIHooking = true;
+
     [Header("=== Audio Settings ===")]
     [SerializeField] private float volume = 0.75f;
     [SerializeField] private float masterVolume = 1.0f;
@@ -96,7 +101,6 @@ public class OptionsManager : MonoBehaviour
     [SerializeField] public bool spellTips = true;
     [SerializeField] private float mouseSensitivity = 1.0f;
     [SerializeField] private bool invertY = false;
-    // Spell Customisation bools I'm so sorry again
     [SerializeField] private bool fireballBool = true;
     [SerializeField] private bool iceBool = true;
     [SerializeField] private bool lightningBool = true;
@@ -114,11 +118,10 @@ public class OptionsManager : MonoBehaviour
     [SerializeField] private bool gambitBool = true;
     [SerializeField] private bool gorbinoBool = true;
 
-
     [Header("=== Graphics Settings ===")]
     [SerializeField] private bool vsyncEnabled = true;
     [SerializeField] private bool fullscreen = true;
-    [SerializeField] private int qualityLevel = -1; // -1 = use current
+    [SerializeField] private int qualityLevel = -1;
     [SerializeField] private int resolutionIndex = 0;
     [SerializeField] private float fieldOfView = 60f;
 
@@ -146,7 +149,6 @@ public class OptionsManager : MonoBehaviour
     public float FieldOfView => fieldOfView;
     public Language CurrentLanguage => currentLanguage;
     public string CurrentLanguageCode => LanguageHelper.GetLanguageCode(currentLanguage);
-    // Spell Customisation you know how it goes now
     public bool FireballBool => fireballBool;
     public bool IceBool => iceBool;
     public bool LightningBool => lightningBool;
@@ -164,7 +166,6 @@ public class OptionsManager : MonoBehaviour
     public bool GambitBool => gambitBool;
     public bool GorbinoBool => gorbinoBool;
 
-
     // Events
     public delegate void LanguageChangedHandler(Language newLanguage);
     public event LanguageChangedHandler OnLanguageChanged;
@@ -172,13 +173,13 @@ public class OptionsManager : MonoBehaviour
     public delegate void SettingsChangedHandler();
     public event SettingsChangedHandler OnSettingsChanged;
 
-    // Track if UI is currently hooked
     private bool isUIHooked = false;
+    private bool isSpellbookUIHooked = false;
     private Resolution[] resolutions;
+    private string currentSceneName;
 
     private void Awake()
     {
-        // Singleton
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -195,6 +196,13 @@ public class OptionsManager : MonoBehaviour
 
         LoadSettings();
         InitializeResolutions();
+
+        // Subscribe to scene loaded event
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        currentSceneName = SceneManager.GetActiveScene().name;
+
+        if (debugUIHooking)
+            Debug.Log($"[OptionsManager] Initialized in scene: {currentSceneName}");
     }
 
     private void Start()
@@ -225,17 +233,276 @@ public class OptionsManager : MonoBehaviour
     {
         if (Instance == this)
         {
+            // Unsubscribe from scene loaded event
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+
             UnhookUI();
             UnhookSpellbookUI();
             Instance = null;
         }
     }
 
-    #region UI Management
+    #region Scene Management
 
     /// <summary>
-    /// Check if any UI references are assigned in inspector
+    /// Called when a new scene is loaded
     /// </summary>
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        string previousScene = currentSceneName;
+        currentSceneName = scene.name;
+
+        if (debugUIHooking)
+            Debug.Log($"[OptionsManager] Scene loaded: {currentSceneName} (from {previousScene})");
+
+        // Always unhook old UI first
+        UnhookUI();
+        UnhookSpellbookUI();
+
+        if (autoFindUIOnSceneLoad)
+        {
+            // Small delay to ensure scene is fully loaded
+            Invoke(nameof(AutoFindAndHookUI), 0.1f);
+        }
+    }
+
+    /// <summary>
+    /// Automatically finds and hooks UI elements in the new scene
+    /// </summary>
+    private void AutoFindAndHookUI()
+    {
+        if (debugUIHooking)
+            Debug.Log($"[OptionsManager] Auto-finding UI elements in scene: {currentSceneName}");
+
+        bool foundAny = false;
+
+        // Find regular UI elements
+        if (TryFindUIElements())
+        {
+            HookUI();
+            foundAny = true;
+            if (debugUIHooking)
+                Debug.Log($"[OptionsManager] ? Found and hooked main UI elements");
+        }
+
+        // Find spellbook UI elements
+        if (TryFindSpellbookUIElements())
+        {
+            HookSpellbookUI();
+            foundAny = true;
+            if (debugUIHooking)
+                Debug.Log($"[OptionsManager] ? Found and hooked spellbook UI elements");
+        }
+
+        if (!foundAny && debugUIHooking)
+        {
+            Debug.Log($"[OptionsManager] No UI elements found in scene: {currentSceneName}");
+        }
+    }
+
+    /// <summary>
+    /// Tries to find main UI elements by name in the scene
+    /// </summary>
+    private bool TryFindUIElements()
+    {
+        bool foundAny = false;
+
+        // Volume sliders
+        volumeSlider = FindUIElement<Slider>("VolumeSlider", "Volume Slider") ?? volumeSlider;
+        if (volumeSlider != null) foundAny = true;
+
+        masterVolumeSlider = FindUIElement<Slider>("MasterVolumeSlider", "Master Volume Slider") ?? masterVolumeSlider;
+        if (masterVolumeSlider != null) foundAny = true;
+
+        musicVolumeSlider = FindUIElement<Slider>("MusicVolumeSlider", "Music Volume Slider") ?? musicVolumeSlider;
+        if (musicVolumeSlider != null) foundAny = true;
+
+        sfxVolumeSlider = FindUIElement<Slider>("SfxVolumeSlider", "SFX Volume Slider") ?? sfxVolumeSlider;
+        if (sfxVolumeSlider != null) foundAny = true;
+
+        // Toggles
+        leftHandedToggle = FindUIElement<Toggle>("LeftHandedToggle", "Left Handed Toggle") ?? leftHandedToggle;
+        if (leftHandedToggle != null) foundAny = true;
+
+        spellTipsToggle = FindUIElement<Toggle>("SpellTipsToggle", "Spell Tips Toggle") ?? spellTipsToggle;
+        if (spellTipsToggle != null) foundAny = true;
+
+        vsyncToggle = FindUIElement<Toggle>("VsyncToggle", "VSync Toggle") ?? vsyncToggle;
+        if (vsyncToggle != null) foundAny = true;
+
+        fullscreenToggle = FindUIElement<Toggle>("FullscreenToggle", "Fullscreen Toggle") ?? fullscreenToggle;
+        if (fullscreenToggle != null) foundAny = true;
+
+        invertYToggle = FindUIElement<Toggle>("InvertYToggle", "Invert Y Toggle") ?? invertYToggle;
+        if (invertYToggle != null) foundAny = true;
+
+        showFpsToggle = FindUIElement<Toggle>("ShowFpsToggle", "Show FPS Toggle") ?? showFpsToggle;
+        if (showFpsToggle != null) foundAny = true;
+
+        // Dropdowns
+        musicDropdown = FindUIElement<TMP_Dropdown>("MusicDropdown", "Music Dropdown") ?? musicDropdown;
+        if (musicDropdown != null) foundAny = true;
+
+        languageDropdown = FindUIElement<TMP_Dropdown>("LanguageDropdown", "Language Dropdown") ?? languageDropdown;
+        if (languageDropdown != null) foundAny = true;
+
+        qualityDropdown = FindUIElement<TMP_Dropdown>("QualityDropdown", "Quality Dropdown") ?? qualityDropdown;
+        if (qualityDropdown != null) foundAny = true;
+
+        resolutionDropdown = FindUIElement<TMP_Dropdown>("ResolutionDropdown", "Resolution Dropdown") ?? resolutionDropdown;
+        if (resolutionDropdown != null) foundAny = true;
+
+        // Other sliders
+        mouseSensitivitySlider = FindUIElement<Slider>("MouseSensitivitySlider", "Mouse Sensitivity Slider") ?? mouseSensitivitySlider;
+        if (mouseSensitivitySlider != null) foundAny = true;
+
+        fovSlider = FindUIElement<Slider>("FOVSlider", "FOV Slider", "FieldOfViewSlider") ?? fovSlider;
+        if (fovSlider != null) foundAny = true;
+
+        // Text elements
+        modeLabel = FindUIElement<TextMeshProUGUI>("ModeLabel", "Mode Label") ?? modeLabel;
+
+        return foundAny;
+    }
+
+    /// <summary>
+    /// Tries to find spellbook UI elements by name in the scene
+    /// </summary>
+    private bool TryFindSpellbookUIElements()
+    {
+        bool foundAny = false;
+
+        fireballToggle = FindUIElement<Toggle>("FireballToggle", "Fireball Toggle") ?? fireballToggle;
+        if (fireballToggle != null) foundAny = true;
+
+        iceToggle = FindUIElement<Toggle>("IceToggle", "Ice Toggle") ?? iceToggle;
+        if (iceToggle != null) foundAny = true;
+
+        lightningToggle = FindUIElement<Toggle>("LightningToggle", "Lightning Toggle") ?? lightningToggle;
+        if (lightningToggle != null) foundAny = true;
+
+        shadowToggle = FindUIElement<Toggle>("ShadowToggle", "Shadow Toggle") ?? shadowToggle;
+        if (shadowToggle != null) foundAny = true;
+
+        greenToggle = FindUIElement<Toggle>("GreenToggle", "Green Toggle") ?? greenToggle;
+        if (greenToggle != null) foundAny = true;
+
+        stoneToggle = FindUIElement<Toggle>("StoneToggle", "Stone Toggle") ?? stoneToggle;
+        if (stoneToggle != null) foundAny = true;
+
+        chronosToggle = FindUIElement<Toggle>("ChronosToggle", "Chronos Toggle") ?? chronosToggle;
+        if (chronosToggle != null) foundAny = true;
+
+        geminiToggle = FindUIElement<Toggle>("GeminiToggle", "Gemini Toggle") ?? geminiToggle;
+        if (geminiToggle != null) foundAny = true;
+
+        piscesToggle = FindUIElement<Toggle>("PiscesToggle", "Pisces Toggle") ?? piscesToggle;
+        if (piscesToggle != null) foundAny = true;
+
+        jollyToggle = FindUIElement<Toggle>("JollyToggle", "Jolly Toggle") ?? jollyToggle;
+        if (jollyToggle != null) foundAny = true;
+
+        blinkToggle = FindUIElement<Toggle>("BlinkToggle", "Blink Toggle") ?? blinkToggle;
+        if (blinkToggle != null) foundAny = true;
+
+        warpToggle = FindUIElement<Toggle>("WarpToggle", "Warp Toggle") ?? warpToggle;
+        if (warpToggle != null) foundAny = true;
+
+        tetherToggle = FindUIElement<Toggle>("TetherToggle", "Tether Toggle") ?? tetherToggle;
+        if (tetherToggle != null) foundAny = true;
+
+        mudToggle = FindUIElement<Toggle>("MudToggle", "Mud Toggle") ?? mudToggle;
+        if (mudToggle != null) foundAny = true;
+
+        gambitToggle = FindUIElement<Toggle>("GambitToggle", "Gambit Toggle") ?? gambitToggle;
+        if (gambitToggle != null) foundAny = true;
+
+        gorbinoToggle = FindUIElement<Toggle>("GorbinoToggle", "Gorbino Toggle") ?? gorbinoToggle;
+        if (gorbinoToggle != null) foundAny = true;
+
+        return foundAny;
+    }
+
+    /// <summary>
+    /// Generic method to find UI elements by multiple possible names
+    /// </summary>
+    private T FindUIElement<T>(params string[] possibleNames) where T : Component
+    {
+        foreach (string name in possibleNames)
+        {
+            if (string.IsNullOrEmpty(name)) continue;
+
+            // Try exact GameObject name match
+            GameObject obj = GameObject.Find(name);
+            if (obj != null)
+            {
+                T component = obj.GetComponent<T>();
+                if (component != null)
+                {
+                    if (debugUIHooking)
+                        Debug.Log($"[OptionsManager] ? Found {typeof(T).Name}: {name}");
+                    return component;
+                }
+            }
+
+            // Try finding in scene root objects
+            foreach (GameObject rootObj in SceneManager.GetActiveScene().GetRootGameObjects())
+            {
+                T component = FindComponentInChildren<T>(rootObj.transform, name);
+                if (component != null)
+                {
+                    if (debugUIHooking)
+                        Debug.Log($"[OptionsManager] ? Found {typeof(T).Name} in hierarchy: {name}");
+                    return component;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Recursively search for component with matching GameObject name
+    /// </summary>
+    private T FindComponentInChildren<T>(Transform parent, string name) where T : Component
+    {
+        if (parent.name == name)
+        {
+            T component = parent.GetComponent<T>();
+            if (component != null)
+                return component;
+        }
+
+        foreach (Transform child in parent)
+        {
+            T component = FindComponentInChildren<T>(child, name);
+            if (component != null)
+                return component;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Force re-hook all UI (useful for debugging or manual refresh)
+    /// </summary>
+    [ContextMenu("Force Re-Hook UI")]
+    public void ForceReHookUI()
+    {
+        Debug.Log("[OptionsManager] Force re-hooking all UI...");
+
+        UnhookUI();
+        UnhookSpellbookUI();
+
+        AutoFindAndHookUI();
+
+        Debug.Log("[OptionsManager] Force re-hook complete");
+    }
+
+    #endregion
+
+    #region UI Management
+
     private bool HasUIReferences()
     {
         return volumeSlider != null || leftHandedToggle != null ||
@@ -246,6 +513,7 @@ public class OptionsManager : MonoBehaviour
                resolutionDropdown != null || mouseSensitivitySlider != null ||
                invertYToggle != null || showFpsToggle != null || fovSlider != null;
     }
+
     private bool HasSpellbookUIReferences()
     {
         return fireballToggle != null || iceToggle != null ||
@@ -254,13 +522,10 @@ public class OptionsManager : MonoBehaviour
                chronosToggle != null || geminiToggle != null ||
                piscesToggle != null || jollyToggle != null ||
                blinkToggle != null || warpToggle != null ||
-               tetherToggle != null || mudToggle != null || 
+               tetherToggle != null || mudToggle != null ||
                gambitToggle != null || gorbinoToggle != null;
     }
 
-    /// <summary>
-    /// Legacy method for runtime UI assignment (still supported)
-    /// </summary>
     public void OnOptionsMenuOpened(
         Slider slider = null,
         Toggle toggle = null,
@@ -271,7 +536,6 @@ public class OptionsManager : MonoBehaviour
     {
         UnhookUI();
 
-        // Override inspector references if runtime references provided
         if (slider != null) volumeSlider = slider;
         if (toggle != null) leftHandedToggle = toggle;
         if (label != null) modeLabel = label;
@@ -285,7 +549,6 @@ public class OptionsManager : MonoBehaviour
     public void OnOptionsMenuClosed()
     {
         // Don't unhook if UI was assigned in inspector
-        // This allows persistent UI elements to stay connected
     }
 
     private void HookUI()
@@ -439,7 +702,6 @@ public class OptionsManager : MonoBehaviour
     {
         if (!isUIHooked) return;
 
-        // Remove all listeners
         volumeSlider?.onValueChanged.RemoveListener(SetVolume);
         masterVolumeSlider?.onValueChanged.RemoveListener(SetMasterVolume);
         musicVolumeSlider?.onValueChanged.RemoveListener(SetMusicVolume);
@@ -460,8 +722,6 @@ public class OptionsManager : MonoBehaviour
         isUIHooked = false;
     }
 
-
-    // OKAY SAME THING BUT FOR THE SPELL CUSTOMISATION ON THE SPELLBOOK SCREEN
     public void OnSpellbookOpened(
         Toggle toggle = null,
         Toggle toggle2 = null,
@@ -482,7 +742,6 @@ public class OptionsManager : MonoBehaviour
     {
         UnhookSpellbookUI();
 
-        // Override inspector references if runtime references provided
         if (toggle != null) fireballToggle = toggle;
         if (toggle2 != null) iceToggle = toggle2;
         if (toggle3 != null) lightningToggle = toggle3;
@@ -506,13 +765,12 @@ public class OptionsManager : MonoBehaviour
     public void OnSpellbookClosed()
     {
         // Don't unhook if UI was assigned in inspector
-        // This allows persistent UI elements to stay connected
     }
 
     private void HookSpellbookUI()
     {
-        if (isUIHooked) return;
-        
+        if (isSpellbookUIHooked) return;
+
         if (fireballToggle != null)
         {
             fireballToggle.onValueChanged.RemoveAllListeners();
@@ -611,35 +869,31 @@ public class OptionsManager : MonoBehaviour
         }
 
         UpdateUILabel();
-        isUIHooked = true;
+        isSpellbookUIHooked = true;
     }
 
     private void UnhookSpellbookUI()
     {
-        if (!isUIHooked) return;
+        if (!isSpellbookUIHooked) return;
 
-        // Remove all listeners
-        //fireballToggle?.onValueChanged.RemoveListener((isOn) => {
-        //    SetSpellToggle(isOn, fireballBool, "FireballBool", fireballToggle);
-        //});
-        fireballToggle.onValueChanged.RemoveListener(SetFireball);
-        iceToggle.onValueChanged.RemoveListener(SetIce);
-        lightningToggle.onValueChanged.RemoveListener(SetLightning);
-        shadowToggle.onValueChanged.RemoveListener(SetShadow);
-        greenToggle.onValueChanged.RemoveListener(SetGreen);
-        stoneToggle.onValueChanged.RemoveListener(SetStone);
-        chronosToggle.onValueChanged.RemoveListener(SetChronos);
-        geminiToggle.onValueChanged.RemoveListener(SetGemini);
-        piscesToggle.onValueChanged.RemoveListener(SetPisces);
-        jollyToggle.onValueChanged.RemoveListener(SetJolly);
-        blinkToggle.onValueChanged.RemoveListener(SetBlink);
-        warpToggle.onValueChanged.RemoveListener(SetWarp);
-        tetherToggle.onValueChanged.RemoveListener(SetTether);
-        mudToggle.onValueChanged.RemoveListener(SetMud);
-        gambitToggle.onValueChanged.RemoveListener(SetGambit);
-        gorbinoToggle.onValueChanged.RemoveListener(SetGorbino);
+        fireballToggle?.onValueChanged.RemoveListener(SetFireball);
+        iceToggle?.onValueChanged.RemoveListener(SetIce);
+        lightningToggle?.onValueChanged.RemoveListener(SetLightning);
+        shadowToggle?.onValueChanged.RemoveListener(SetShadow);
+        greenToggle?.onValueChanged.RemoveListener(SetGreen);
+        stoneToggle?.onValueChanged.RemoveListener(SetStone);
+        chronosToggle?.onValueChanged.RemoveListener(SetChronos);
+        geminiToggle?.onValueChanged.RemoveListener(SetGemini);
+        piscesToggle?.onValueChanged.RemoveListener(SetPisces);
+        jollyToggle?.onValueChanged.RemoveListener(SetJolly);
+        blinkToggle?.onValueChanged.RemoveListener(SetBlink);
+        warpToggle?.onValueChanged.RemoveListener(SetWarp);
+        tetherToggle?.onValueChanged.RemoveListener(SetTether);
+        mudToggle?.onValueChanged.RemoveListener(SetMud);
+        gambitToggle?.onValueChanged.RemoveListener(SetGambit);
+        gorbinoToggle?.onValueChanged.RemoveListener(SetGorbino);
 
-        isUIHooked = false;
+        isSpellbookUIHooked = false;
     }
 
     #endregion
@@ -749,184 +1003,166 @@ public class OptionsManager : MonoBehaviour
         OnSettingsChanged?.Invoke();
     }
 
-    // Spell Customisation
+    // Spell Customisation methods...
     public void SetFireball(bool enabled)
     {
         fireballBool = enabled;
         PlayerPrefs.SetInt("FireballBool", fireballBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (fireballToggle != null && fireballToggle.isOn != fireballBool)
             fireballToggle.isOn = fireballBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetIce(bool enabled)
     {
         iceBool = enabled;
         PlayerPrefs.SetInt("IceBool", iceBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (iceToggle != null && iceToggle.isOn != iceBool)
             iceToggle.isOn = iceBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetLightning(bool enabled)
     {
         lightningBool = enabled;
         PlayerPrefs.SetInt("LightningBool", lightningBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (lightningToggle != null && lightningToggle.isOn != lightningBool)
             lightningToggle.isOn = lightningBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetShadow(bool enabled)
     {
         shadowBool = enabled;
         PlayerPrefs.SetInt("ShadowBool", shadowBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (shadowToggle != null && shadowToggle.isOn != shadowBool)
             shadowToggle.isOn = shadowBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetGreen(bool enabled)
     {
         greenBool = enabled;
         PlayerPrefs.SetInt("GreenBool", greenBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (greenToggle != null && greenToggle.isOn != greenBool)
             greenToggle.isOn = greenBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetStone(bool enabled)
     {
         stoneBool = enabled;
         PlayerPrefs.SetInt("StoneBool", stoneBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (stoneToggle != null && stoneToggle.isOn != stoneBool)
             stoneToggle.isOn = stoneBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetChronos(bool enabled)
     {
         chronosBool = enabled;
         PlayerPrefs.SetInt("ChronosBool", chronosBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (chronosToggle != null && chronosToggle.isOn != chronosBool)
             chronosToggle.isOn = chronosBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetGemini(bool enabled)
     {
         geminiBool = enabled;
         PlayerPrefs.SetInt("GeminiBool", geminiBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (geminiToggle != null && geminiToggle.isOn != geminiBool)
             geminiToggle.isOn = geminiBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetPisces(bool enabled)
     {
         piscesBool = enabled;
         PlayerPrefs.SetInt("PiscesBool", piscesBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (piscesToggle != null && piscesToggle.isOn != piscesBool)
             piscesToggle.isOn = piscesBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetJolly(bool enabled)
     {
         jollyBool = enabled;
         PlayerPrefs.SetInt("JollyBool", jollyBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (jollyToggle != null && jollyToggle.isOn != jollyBool)
             jollyToggle.isOn = jollyBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetBlink(bool enabled)
     {
         blinkBool = enabled;
         PlayerPrefs.SetInt("BlinkBool", blinkBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (blinkToggle != null && blinkToggle.isOn != blinkBool)
             blinkToggle.isOn = blinkBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetWarp(bool enabled)
     {
         warpBool = enabled;
         PlayerPrefs.SetInt("WarpBool", warpBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (warpToggle != null && warpToggle.isOn != warpBool)
             warpToggle.isOn = warpBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetTether(bool enabled)
     {
         tetherBool = enabled;
         PlayerPrefs.SetInt("TetherBool", tetherBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (tetherToggle != null && tetherToggle.isOn != tetherBool)
             tetherToggle.isOn = tetherBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetMud(bool enabled)
     {
         mudBool = enabled;
         PlayerPrefs.SetInt("MudBool", mudBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (mudToggle != null && mudToggle.isOn != mudBool)
             mudToggle.isOn = mudBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetGambit(bool enabled)
     {
         gambitBool = enabled;
         PlayerPrefs.SetInt("GambitBool", gambitBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (gambitToggle != null && gambitToggle.isOn != gambitBool)
             gambitToggle.isOn = gambitBool;
-
         OnSettingsChanged?.Invoke();
     }
+
     public void SetGorbino(bool enabled)
     {
         gorbinoBool = enabled;
         PlayerPrefs.SetInt("GorbinoBool", gorbinoBool ? 1 : 0);
         PlayerPrefs.Save();
-
         if (gorbinoToggle != null && gorbinoToggle.isOn != gorbinoBool)
             gorbinoToggle.isOn = gorbinoBool;
-
         OnSettingsChanged?.Invoke();
     }
-
 
     #endregion
 
@@ -998,7 +1234,6 @@ public class OptionsManager : MonoBehaviour
         if (fovSlider != null && !Mathf.Approximately(fovSlider.value, fieldOfView))
             fovSlider.value = fieldOfView;
 
-        // Apply to active cameras
         Camera[] cameras = FindObjectsOfType<Camera>();
         foreach (Camera cam in cameras)
         {
@@ -1066,12 +1301,8 @@ public class OptionsManager : MonoBehaviour
         if (languageDropdown != null && languageDropdown.value != (int)language)
             languageDropdown.value = (int)language;
 
-        // Fire the language changed event (for spellcasting and other subscribers)
         OnLanguageChanged?.Invoke(language);
-
-        // Force update all localized UI components
         BroadcastLanguageChangeToAllUI();
-
         OnSettingsChanged?.Invoke();
     }
 
@@ -1089,24 +1320,22 @@ public class OptionsManager : MonoBehaviour
 
     private void UpdateUILabel()
     {
-        // Removed for compatibility with the Language switching, here for legacy
+        // Legacy - kept for compatibility
     }
 
     private void LoadSettings()
     {
-        // Audio
         volume = PlayerPrefs.GetFloat("Volume", 0.75f);
         masterVolume = PlayerPrefs.GetFloat("MasterVolume", 1.0f);
         musicVolume = PlayerPrefs.GetFloat("MusicVolume", 0.8f);
         sfxVolume = PlayerPrefs.GetFloat("SfxVolume", 1.0f);
         bgmValue = PlayerPrefs.GetInt("bgm", 0);
 
-        // Gameplay
         leftHandedMode = PlayerPrefs.GetInt("LeftHandedMode", 0) == 1;
         spellTips = PlayerPrefs.GetInt("spellTips", 1) == 1;
         mouseSensitivity = PlayerPrefs.GetFloat("MouseSensitivity", 1.0f);
         invertY = PlayerPrefs.GetInt("InvertY", 0) == 1;
-        // Spell Customisatoin
+
         fireballBool = PlayerPrefs.GetInt("FireballBool", 1) == 1;
         iceBool = PlayerPrefs.GetInt("IceBool", 1) == 1;
         lightningBool = PlayerPrefs.GetInt("LightningBool", 1) == 1;
@@ -1124,24 +1353,20 @@ public class OptionsManager : MonoBehaviour
         gambitBool = PlayerPrefs.GetInt("GambitBool", 1) == 1;
         gorbinoBool = PlayerPrefs.GetInt("GorbinoBool", 1) == 1;
 
-        // Graphics
         vsyncEnabled = PlayerPrefs.GetInt("Vsync", 1) == 1;
         fullscreen = PlayerPrefs.GetInt("Fullscreen", 1) == 1;
         qualityLevel = PlayerPrefs.GetInt("QualityLevel", QualitySettings.GetQualityLevel());
         resolutionIndex = PlayerPrefs.GetInt("ResolutionIndex", 0);
         fieldOfView = PlayerPrefs.GetFloat("FOV", 60f);
 
-        // UI
         showFps = PlayerPrefs.GetInt("ShowFps", 0) == 1;
         currentLanguage = (Language)PlayerPrefs.GetInt("Language", 0);
 
-        // Apply settings
         AudioListener.volume = volume;
         QualitySettings.vSyncCount = vsyncEnabled ? 1 : 0;
         Screen.fullScreen = fullscreen;
         QualitySettings.SetQualityLevel(qualityLevel);
 
-        // BGM
         if (bgmOptions != null && bgmOptions.Length > 0)
         {
             bgmValue = Mathf.Clamp(bgmValue, 0, bgmOptions.Length - 1);
@@ -1179,9 +1404,6 @@ public class OptionsManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Reset all settings to defaults
-    /// </summary>
     public void ResetToDefaults()
     {
         SetVolume(0.75f);
@@ -1202,37 +1424,30 @@ public class OptionsManager : MonoBehaviour
         Debug.Log("[OptionsManager] Reset all settings to defaults");
     }
 
-    /// <summary>
-    /// Broadcasts language change to all localized UI components in the scene
-    /// </summary>
     private void BroadcastLanguageChangeToAllUI()
     {
         Debug.Log($"[OptionsManager] Broadcasting language change to all UI components...");
 
         int updatedCount = 0;
 
-        // Update all LocalizedText components
         foreach (var localizedText in FindObjectsOfType<LocalizedText>(true))
         {
             localizedText.UpdateText();
             updatedCount++;
         }
 
-        // Update all LocalizedButton components
         foreach (var localizedButton in FindObjectsOfType<LocalizedButton>(true))
         {
             localizedButton.UpdateText();
             updatedCount++;
         }
 
-        // Update all LocalizedDropdown components
         foreach (var localizedDropdown in FindObjectsOfType<LocalizedDropdown>(true))
         {
             localizedDropdown.UpdateOptions();
             updatedCount++;
         }
 
-        // Update all LocalizedInputField components
         foreach (var localizedInputField in FindObjectsOfType<LocalizedInputField>(true))
         {
             localizedInputField.UpdatePlaceholder();
@@ -1242,9 +1457,6 @@ public class OptionsManager : MonoBehaviour
         Debug.Log($"[OptionsManager] Updated {updatedCount} localized UI components");
     }
 
-    /// <summary>
-    /// Force refresh all localized UI in the scene (useful for debugging)
-    /// </summary>
     public void ForceRefreshAllLocalizedUI()
     {
         Debug.Log("[OptionsManager] Forcing refresh of all localized UI...");
