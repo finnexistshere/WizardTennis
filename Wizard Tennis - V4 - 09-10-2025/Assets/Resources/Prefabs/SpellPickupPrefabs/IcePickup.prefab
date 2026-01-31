@@ -285,6 +285,14 @@ PrefabInstance:
       propertyPath: m_LocalScale.z
       value: 2.7309077
       objectReference: {fileID: 0}
+    - target: {fileID: 8152481506460991361, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
+      propertyPath: InitialModule.maxNumParticles
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 8514628442808083872, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
+      propertyPath: InitialModule.maxNumParticles
+      value: 10
+      objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 3859308216455353394, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
     - {fileID: 5938492845071832468, guid: 3379a8877613671468d3fb0d2d1df770, type: 3}
