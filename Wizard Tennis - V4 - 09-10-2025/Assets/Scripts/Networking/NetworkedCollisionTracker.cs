@@ -325,42 +325,44 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
             AwardPoint("Player", "Player 1 Wins! Player 2 hit the net!");
     }
 
-    public void HandleBounceCheck()
-    {
-        if (!IsServer)
-        {
-            Debug.LogWarning("[Ball-Tracker] HandleBounceCheck called on client - should only run on server!");
-            return;
-        }
-
-        if (hasBounced.Value)
-        {
+//    public void HandleBounceCheck()
+//    {
+//        return;
+//
+//        if (!IsServer)
+//        {
+//            Debug.LogWarning("[Ball-Tracker] HandleBounceCheck called on client - should only run on server!");
+//            return;
+//        }
+//
+//        if (hasBounced.Value)
+//        {
             // Double bounce detected - check if we can score
-            if (!CanScore())
-            {
-                Debug.Log("[Ball-Tracker] Double bounce detected but scoring cooldown active");
-                return;
-            }
-
-            Debug.Log($"[Ball-Tracker] DOUBLE BOUNCE detected! LastHitWizard: {LastHitWizard}");
-
-            if (LastHitWizard == "Player_0")
-                AwardPoint("Opponent", "Player 2 Wins! Double bounce by Player 1!");
-            else if (LastHitWizard == "Player_1")
-                AwardPoint("Player", "Player 1 Wins! Double bounce by Player 2!");
-        }
-        else
-        {
-            // First bounce - mark it
-            hasBounced.Value = true;
-            lastBounceTime.Value = Time.time;
-
-            Debug.Log($"[Ball-Tracker] First bounce registered at time {Time.time:F3}");
-
-            // Sync bounce state to all clients
-            NotifyBounceClientRpc();
-        }
-    }
+//            if (!CanScore())
+//            {
+//                Debug.Log("[Ball-Tracker] Double bounce detected but scoring cooldown active");
+//                return;
+//            }
+//
+//            Debug.Log($"[Ball-Tracker] DOUBLE BOUNCE detected! LastHitWizard: {LastHitWizard}");
+//
+//            if (LastHitWizard == "Player_0")
+//                AwardPoint("Opponent", "Player 2 Wins! Double bounce by Player 1!");
+//            else if (LastHitWizard == "Player_1")
+//                AwardPoint("Player", "Player 1 Wins! Double bounce by Player 2!");
+//        }
+//        else
+//        {
+//            // First bounce - mark it
+//            hasBounced.Value = true;
+//            lastBounceTime.Value = Time.time;
+//
+//            Debug.Log($"[Ball-Tracker] First bounce registered at time {Time.time:F3}");
+//
+//            // Sync bounce state to all clients
+//            NotifyBounceClientRpc();
+//        }
+//    }
 
     [ClientRpc]
     private void NotifyBounceClientRpc()
