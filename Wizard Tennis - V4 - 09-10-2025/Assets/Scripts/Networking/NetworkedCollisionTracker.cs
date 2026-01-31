@@ -25,9 +25,34 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    // Network variable for spawn time (for grace period)
+    private NetworkVariable<float> ballSpawnTime = new NetworkVariable<float>(
+        -999f,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    // Network variable for last player hit time
+    private NetworkVariable<float> lastPlayerHitTime = new NetworkVariable<float>(
+        -999f,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     [Header("Bounce Settings")]
     [Tooltip("Minimum time between bounce registrations (seconds)")]
-    public float bounceDebounce = 0.3f;
+    public float bounceDebounce = 0.4f;
+
+    [Tooltip("Grace period after ball spawn before collisions are processed (seconds)")]
+    public float spawnGracePeriod = 0.5f;
+
+    [Tooltip("Grace period after player hit before out-of-bounds is processed (seconds)")]
+    public float hitGracePeriod = 0.2f;
+
+    [Tooltip("Minimum time between scoring triggers (prevents rapid double-scoring)")]
+    public float scoringCooldown = 0.5f;
+
+    private float lastScoringTime = -999f;
 
     private GameObject lastHitterGameObject;
     private GameObject previousHitterGameObject;
@@ -36,6 +61,11 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
     // Cache for reducing GetComponent calls
     private Rigidbody ballRigidbody;
+
+    // Track collision history to prevent duplicate processing
+    private string lastProcessedCollision = "";
+    private float lastCollisionTime = -999f;
+    private const float collisionDebounce = 0.15f;
 
     private void Awake()
     {
@@ -60,6 +90,11 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         {
             hasBounced.Value = false;
             lastBounceTime.Value = -999f;
+            ballSpawnTime.Value = Time.time;
+            lastPlayerHitTime.Value = -999f;
+            lastScoringTime = -999f;
+
+            Debug.Log($"[Ball-Tracker] Ball spawned at time {Time.time:F3}, grace period active until {Time.time + spawnGracePeriod:F3}");
         }
 
         Debug.Log($"[Ball-Tracker] Spawned on {(IsServer ? "Server" : "Client")}");
@@ -70,6 +105,13 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         // Only server processes collision scoring & hit tracking
         if (!IsServer) return;
 
+        // CRITICAL: Grace period after spawn to prevent false positives
+        if (Time.time - ballSpawnTime.Value < spawnGracePeriod)
+        {
+            Debug.Log($"[Ball-Tracker] Ignoring collision during spawn grace period ({Time.time - ballSpawnTime.Value:F3}s < {spawnGracePeriod}s)");
+            return;
+        }
+
         // --- PLAYER HIT CHECK ---
         if (other.CompareTag("Player") || other.CompareTag("Opponent"))
         {
@@ -79,11 +121,29 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         string tag = other.tag;
 
+        // Prevent duplicate collision processing
+        string collisionKey = $"{tag}_{Time.frameCount}";
+        if (collisionKey == lastProcessedCollision && Time.time - lastCollisionTime < collisionDebounce)
+        {
+            Debug.Log($"[Ball-Tracker] Ignoring duplicate collision: {tag} (debounce active)");
+            return;
+        }
+
+        lastProcessedCollision = collisionKey;
+        lastCollisionTime = Time.time;
+
         switch (tag)
         {
             case "OutOfBounds":
-                if (canTrigger)
+                if (canTrigger && CanScore())
                 {
+                    // Grace period after player hit
+                    if (Time.time - lastPlayerHitTime.Value < hitGracePeriod)
+                    {
+                        Debug.Log($"[Ball-Tracker] OutOfBounds ignored - hit grace period active ({Time.time - lastPlayerHitTime.Value:F3}s < {hitGracePeriod}s)");
+                        return;
+                    }
+
                     HandleOutOfBounds();
                     ResetBounceTrigger();
                 }
@@ -91,8 +151,15 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
                 break;
 
             case "OutOfBoundsSide2":
-                if (canTrigger)
+                if (canTrigger && CanScore())
                 {
+                    // Grace period after player hit
+                    if (Time.time - lastPlayerHitTime.Value < hitGracePeriod)
+                    {
+                        Debug.Log($"[Ball-Tracker] OutOfBoundsSide2 ignored - hit grace period active ({Time.time - lastPlayerHitTime.Value:F3}s < {hitGracePeriod}s)");
+                        return;
+                    }
+
                     HandleOutOfBoundsSide2();
                     ResetBounceTrigger();
                 }
@@ -100,7 +167,10 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
                 break;
 
             case "Net":
-                HandleNetHit();
+                if (CanScore())
+                {
+                    HandleNetHit();
+                }
                 break;
 
             case "BounceCheck":
@@ -124,6 +194,19 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
                 }
                 break;
         }
+    }
+
+    /// <summary>
+    /// Check if enough time has passed since last scoring event
+    /// </summary>
+    private bool CanScore()
+    {
+        if (Time.time - lastScoringTime < scoringCooldown)
+        {
+            Debug.Log($"[Ball-Tracker] Scoring blocked by cooldown ({Time.time - lastScoringTime:F3}s < {scoringCooldown}s)");
+            return false;
+        }
+        return true;
     }
 
     private void TryMarkLastHitPlayer(Collider other)
@@ -153,10 +236,15 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         Debug.Log($"[Ball-TryMarkLastHitPlayer] LastHitWizard set to: {LastHitWizard}");
 
+        // Update last player hit time (for grace period)
+        lastPlayerHitTime.Value = Time.time;
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] Last player hit time updated to {Time.time:F3}");
+
         // Reset bounce state when player hits
         if (hasBounced.Value)
         {
             hasBounced.Value = false;
+            lastBounceTime.Value = -999f;
             Debug.Log("[Ball-TryMarkLastHitPlayer] Bounce state reset on player hit");
         }
 
@@ -245,7 +333,13 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         if (hasBounced.Value)
         {
-            // Double bounce detected
+            // Double bounce detected - check if we can score
+            if (!CanScore())
+            {
+                Debug.Log("[Ball-Tracker] Double bounce detected but scoring cooldown active");
+                return;
+            }
+
             Debug.Log($"[Ball-Tracker] DOUBLE BOUNCE detected! LastHitWizard: {LastHitWizard}");
 
             if (LastHitWizard == "Player_0")
@@ -275,6 +369,15 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
     private void AwardPoint(string winner, string message)
     {
         if (!IsServer) return;
+
+        // Final safety check - prevent rapid scoring
+        if (Time.time - lastScoringTime < scoringCooldown)
+        {
+            Debug.LogWarning($"[Ball-Tracker] AwardPoint blocked by cooldown ({Time.time - lastScoringTime:F3}s < {scoringCooldown}s)");
+            return;
+        }
+
+        lastScoringTime = Time.time;
 
         Debug.Log($"[NetworkedCollisionTrackerBall] AwardPoint called - winner: '{winner}', message: '{message}'");
 
@@ -328,15 +431,30 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         LastHitWizard = "";
         hasBounced.Value = false;
         lastBounceTime.Value = -999f;
+        lastPlayerHitTime.Value = -999f;
+        ballSpawnTime.Value = Time.time; // Reset spawn time for new grace period
+        lastScoringTime = -999f;
         lastHitterGameObject = null;
         previousHitterGameObject = null;
         canTrigger = true;
+        lastProcessedCollision = "";
+        lastCollisionTime = -999f;
 
-        Debug.Log("[Ball-Tracker] Tracking reset");
+        Debug.Log($"[Ball-Tracker] Tracking reset - new spawn time: {Time.time:F3}, grace period until {Time.time + spawnGracePeriod:F3}");
     }
 
     // Public getter for bounce state (for other scripts to check)
     public bool HasBounced => hasBounced.Value;
+
+    /// <summary>
+    /// Check if ball is currently in spawn grace period
+    /// </summary>
+    public bool InSpawnGracePeriod => Time.time - ballSpawnTime.Value < spawnGracePeriod;
+
+    /// <summary>
+    /// Check if ball is currently in hit grace period
+    /// </summary>
+    public bool InHitGracePeriod => Time.time - lastPlayerHitTime.Value < hitGracePeriod;
 
     // Debug info
     [ContextMenu("Debug Bounce State")]
@@ -349,6 +467,33 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
         Debug.Log($"  Time since last bounce: {Time.time - lastBounceTime.Value:F3}s");
         Debug.Log($"  LastHitWizard: {LastHitWizard}");
         Debug.Log($"  canTrigger: {canTrigger}");
+        Debug.Log($"  --- GRACE PERIODS ---");
+        Debug.Log($"  ballSpawnTime: {ballSpawnTime.Value:F3}");
+        Debug.Log($"  Time since spawn: {Time.time - ballSpawnTime.Value:F3}s");
+        Debug.Log($"  In spawn grace: {InSpawnGracePeriod}");
+        Debug.Log($"  lastPlayerHitTime: {lastPlayerHitTime.Value:F3}");
+        Debug.Log($"  Time since hit: {Time.time - lastPlayerHitTime.Value:F3}s");
+        Debug.Log($"  In hit grace: {InHitGracePeriod}");
+        Debug.Log($"  --- COOLDOWNS ---");
+        Debug.Log($"  lastScoringTime: {lastScoringTime:F3}");
+        Debug.Log($"  Time since last score: {Time.time - lastScoringTime:F3}s");
+        Debug.Log($"  Can score: {CanScore()}");
         Debug.Log($"=== END DEBUG ===");
+    }
+
+    [ContextMenu("Force Reset Grace Periods")]
+    private void ForceResetGracePeriods()
+    {
+        if (!IsServer)
+        {
+            Debug.LogWarning("[Ball-Tracker] Must be server to reset grace periods");
+            return;
+        }
+
+        ballSpawnTime.Value = -999f;
+        lastPlayerHitTime.Value = -999f;
+        lastScoringTime = -999f;
+
+        Debug.Log("[Ball-Tracker] All grace periods and cooldowns force-reset");
     }
 }
