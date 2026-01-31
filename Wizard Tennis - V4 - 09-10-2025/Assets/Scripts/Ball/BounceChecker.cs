@@ -50,7 +50,7 @@ public class BounceChecker : MonoBehaviour
             // Only the server should process bounce rules
             if (networkTracker.IsServer)
             {
-                networkTracker.HandleBounceCheck();
+            //    networkTracker.HandleBounceCheck();
             }
             return;
         }
