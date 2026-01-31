@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
@@ -282,7 +282,7 @@ public class OptionsManager : MonoBehaviour
             HookUI();
             foundAny = true;
             if (debugUIHooking)
-                Debug.Log($"[OptionsManager] ? Found and hooked main UI elements");
+                Debug.Log($"[OptionsManager] ✓ Found and hooked main UI elements");
         }
 
         // Find spellbook UI elements
@@ -291,7 +291,7 @@ public class OptionsManager : MonoBehaviour
             HookSpellbookUI();
             foundAny = true;
             if (debugUIHooking)
-                Debug.Log($"[OptionsManager] ? Found and hooked spellbook UI elements");
+                Debug.Log($"[OptionsManager] ✓ Found and hooked spellbook UI elements");
         }
 
         if (!foundAny && debugUIHooking)
@@ -308,7 +308,7 @@ public class OptionsManager : MonoBehaviour
         bool foundAny = false;
 
         // Volume sliders
-        volumeSlider = FindUIElement<Slider>("VolumeSlider", "Volume Slider") ?? volumeSlider;
+        volumeSlider = FindUIElement<Slider>("VolumeSlider", "Volume") ?? volumeSlider;
         if (volumeSlider != null) foundAny = true;
 
         masterVolumeSlider = FindUIElement<Slider>("MasterVolumeSlider", "Master Volume Slider") ?? masterVolumeSlider;
@@ -324,19 +324,19 @@ public class OptionsManager : MonoBehaviour
         leftHandedToggle = FindUIElement<Toggle>("LeftHandedToggle", "Left Handed Toggle") ?? leftHandedToggle;
         if (leftHandedToggle != null) foundAny = true;
 
-        spellTipsToggle = FindUIElement<Toggle>("SpellTipsToggle", "Spell Tips Toggle") ?? spellTipsToggle;
+        spellTipsToggle = FindUIElement<Toggle>("SpellTipsToggle", "Spellcasting Tips Toggle") ?? spellTipsToggle;
         if (spellTipsToggle != null) foundAny = true;
 
         vsyncToggle = FindUIElement<Toggle>("VsyncToggle", "VSync Toggle") ?? vsyncToggle;
         if (vsyncToggle != null) foundAny = true;
 
-        fullscreenToggle = FindUIElement<Toggle>("FullscreenToggle", "Fullscreen Toggle") ?? fullscreenToggle;
+        fullscreenToggle = FindUIElement<Toggle>("FullscreenToggle", "Full Screen Toggle") ?? fullscreenToggle;
         if (fullscreenToggle != null) foundAny = true;
 
         invertYToggle = FindUIElement<Toggle>("InvertYToggle", "Invert Y Toggle") ?? invertYToggle;
         if (invertYToggle != null) foundAny = true;
 
-        showFpsToggle = FindUIElement<Toggle>("ShowFpsToggle", "Show FPS Toggle") ?? showFpsToggle;
+        showFpsToggle = FindUIElement<Toggle>("ShowFpsToggle", "FPS Counter Toggle") ?? showFpsToggle;
         if (showFpsToggle != null) foundAny = true;
 
         // Dropdowns
@@ -378,7 +378,7 @@ public class OptionsManager : MonoBehaviour
         iceToggle = FindUIElement<Toggle>("IceToggle", "Ice Toggle") ?? iceToggle;
         if (iceToggle != null) foundAny = true;
 
-        lightningToggle = FindUIElement<Toggle>("LightningToggle", "Lightning Toggle") ?? lightningToggle;
+        lightningToggle = FindUIElement<Toggle>("LightningToggle", "Electricity Toggle") ?? lightningToggle;
         if (lightningToggle != null) foundAny = true;
 
         shadowToggle = FindUIElement<Toggle>("ShadowToggle", "Shadow Toggle") ?? shadowToggle;
@@ -440,7 +440,7 @@ public class OptionsManager : MonoBehaviour
                 if (component != null)
                 {
                     if (debugUIHooking)
-                        Debug.Log($"[OptionsManager] ? Found {typeof(T).Name}: {name}");
+                        Debug.Log($"[OptionsManager] ✓ Found {typeof(T).Name}: {name}");
                     return component;
                 }
             }
@@ -452,7 +452,7 @@ public class OptionsManager : MonoBehaviour
                 if (component != null)
                 {
                     if (debugUIHooking)
-                        Debug.Log($"[OptionsManager] ? Found {typeof(T).Name} in hierarchy: {name}");
+                        Debug.Log($"[OptionsManager] ✓ Found {typeof(T).Name} in hierarchy: {name}");
                     return component;
                 }
             }

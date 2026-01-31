@@ -7823,7 +7823,7 @@ GameObject:
   - component: {fileID: 218456331}
   - component: {fileID: 218456333}
   m_Layer: 5
-  m_Name: Dropdown
+  m_Name: Language Dropdown
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -15626,6 +15626,8 @@ MonoBehaviour:
   mudToggle: {fileID: 1712826586}
   gambitToggle: {fileID: 1768048273}
   gorbinoToggle: {fileID: 682638805}
+  autoFindUIOnSceneLoad: 1
+  debugUIHooking: 1
   volume: 0.75
   masterVolume: 1
   musicVolume: 0.8
