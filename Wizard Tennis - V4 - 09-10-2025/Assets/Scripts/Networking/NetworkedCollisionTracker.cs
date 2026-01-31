@@ -177,7 +177,9 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
                 // Server-authoritative bounce handling with debounce
                 if (Time.time - lastBounceTime.Value >= bounceDebounce)
                 {
-                    HandleBounceCheck();
+                    // HandleBounceCheck();
+                    // NOTE: Temporarily Removing Bounce checks. Reason: Being a pain in my fucking ass.
+                    // - Ed
 
                     // Check for Mud spell on bounce
                     if (networkedSpellEffects != null &&

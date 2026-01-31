@@ -32803,12 +32803,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1479144565}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2b859b887f858cb43ae8f1cc32e5c431, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LocalTestHelper
-  useLocalTesting: 1
+  useLocalTesting: 0
   ipAddress: 127.0.0.1
   port: 7777
 --- !u!1 &1487472478
