@@ -1225,7 +1225,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 break;
 
             case "Jolly":
-                if (isLocalCaster && player != null && jollyPrefab != null)
+                if (isLocalCaster && player != null)
                 {
                     // Expand player collider
                     var capsule = player.GetComponent<CapsuleCollider>();
@@ -1235,47 +1235,22 @@ public class NetworkedSpellEffects : NetworkBehaviour
                         Debug.Log("[SpellEffects] Jolly - expanded collider");
                     }
 
-                    // Find racket transform - use more reliable path
-                    Transform racketTransform = null;
+                    // Find and ENABLE the Jolly child object (instead of spawning)
+                    GameObject jollyObject = FindJollyObject(player);
 
-                    // Try to find by name (more reliable)
-                    Transform[] allChildren = player.GetComponentsInChildren<Transform>();
-                    foreach (Transform child in allChildren)
+                    if (jollyObject != null)
                     {
-                        if (child.name.Contains("Racket") || child.name.Contains("racket"))
-                        {
-                            racketTransform = child;
-                            Debug.Log($"[SpellEffects] Found racket: {child.name}");
-                            break;
-                        }
-                    }
+                        jollyObject.SetActive(true);
+                        activeJolly = jollyObject;
 
-                    // Fallback to hierarchy path if name search fails
-                    if (racketTransform == null)
-                    {
-                        Transform body = player.transform.Find("Body");
-                        if (body != null)
-                        {
-                            // Navigate down to racket
-                            racketTransform = body.Find("Armature")?.Find("Hips")?.Find("Spine")?.Find("Spine.001")
-                                ?.Find("Shoulder.R")?.Find("Upper_Arm.R")?.Find("Forearm.R")?.Find("Hand.R");
+                        Debug.Log($"[SpellEffects] Jolly child object enabled: {jollyObject.name}");
 
-                            if (racketTransform != null)
-                                Debug.Log($"[SpellEffects] Found racket via hierarchy at {racketTransform.position}");
-                        }
-                    }
-
-                    if (racketTransform != null)
-                    {
-                        // Spawn at racket position
-                        SpawnEffectServerRpc("Jolly", casterClientId, targetClientId, racketTransform.position, Quaternion.identity);
-                        Debug.Log($"[SpellEffects] Jolly spawn requested at {racketTransform.position}");
+                        // Hide racket mesh
+                        HideRacketMesh(player, false); // Show racket (Jolly replaces it visually)
                     }
                     else
                     {
-                        Debug.LogWarning("[SpellEffects] Jolly - could not find racket transform!");
-                        // Fallback: spawn at player position
-                        SpawnEffectServerRpc("Jolly", casterClientId, targetClientId, player.transform.position, Quaternion.identity);
+                        Debug.LogError("[SpellEffects] Jolly - could not find Jolly child object on player!");
                     }
                 }
                 ScheduleReset(5f);
@@ -1585,7 +1560,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     // Show racket mesh
                     HideRacketMesh(player, false);
 
-                    // Disable Jolly object
+                    // Disable Jolly object ✓ Already correct!
                     if (activeJolly != null)
                     {
                         activeJolly.SetActive(false);
@@ -2813,6 +2788,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 Debug.Log($"[SpellEffects] Found racket by name: {child.name}");
                 return racketTransform;
             }
+            else
+            {
+                Debug.Log("Failed to Find Racket - Method 1");
+            }
         }
 
         // METHOD 2: Fallback to hierarchy path
@@ -2828,6 +2807,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 Debug.Log($"[SpellEffects] Found racket via hierarchy at {racketTransform.position}");
                 return racketTransform;
             }
+            else
+            {
+                Debug.Log("Failed to Find Racket - Method 2");
+            }
         }
 
         // METHOD 3: Last resort - search for any transform with "Hand" in name
@@ -2838,6 +2821,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 racketTransform = child;
                 Debug.LogWarning($"[SpellEffects] Found potential racket (fallback): {child.name}");
                 return racketTransform;
+            }
+            else
+            {
+                Debug.Log("Failed to Find Racket - Method 3");
             }
         }
 
