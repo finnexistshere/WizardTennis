@@ -73,86 +73,88 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
     private Material runtimeCustomMaterial;
     private bool hasAppliedCustomisation = false;
 
-    public NetworkVariable<bool> fireball = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> ice = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> lightning = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> shadow = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> green = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> stone = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> chronos = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> gemini = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> pisces = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> jolly = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> blink = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> warp = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> tether = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> mud = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> gambit = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
-    public NetworkVariable<bool> gorbino = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Owner
-    );
+    public NetworkList<bool> playerBools;
+
+    //public NetworkVariable<bool> fireball = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> ice = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> lightning = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> shadow = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> green = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> stone = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> chronos = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> gemini = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> pisces = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> jolly = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> blink = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> warp = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> tether = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> mud = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> gambit = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
+    //public NetworkVariable<bool> gorbino = new NetworkVariable<bool>(
+    //    true,
+    //    NetworkVariableReadPermission.Everyone,
+    //    NetworkVariableWritePermission.Owner
+    //);
 
     public override void OnNetworkSpawn()
     {
@@ -169,23 +171,6 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
             customSaturation.OnValueChanged += OnCustomColorChanged;
             customValue.OnValueChanged += OnCustomColorChanged;
             customAlpha.OnValueChanged += OnCustomColorChanged;
-
-            fireball.OnValueChanged += OnBoolChange;
-            ice.OnValueChanged += OnBoolChange;
-            lightning.OnValueChanged += OnBoolChange;
-            shadow.OnValueChanged += OnBoolChange;
-            green.OnValueChanged += OnBoolChange;
-            stone.OnValueChanged += OnBoolChange;
-            chronos.OnValueChanged += OnBoolChange;
-            gemini.OnValueChanged += OnBoolChange;
-            pisces.OnValueChanged += OnBoolChange;
-            jolly.OnValueChanged += OnBoolChange;
-            blink.OnValueChanged += OnBoolChange;
-            warp.OnValueChanged += OnBoolChange;
-            tether.OnValueChanged += OnBoolChange;
-            mud.OnValueChanged += OnBoolChange;
-            gambit.OnValueChanged += OnBoolChange;
-            gorbino.OnValueChanged += OnBoolChange;
         }
 
         // Apply customisation for both owner and non-owner
@@ -241,24 +226,44 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
         if (debugLog)
             Debug.Log($"[NetworkedCustomisation] Loaded customisation - Material: {savedIndex}, HSV: ({customHue.Value:F2}, {customSaturation.Value:F2}, {customValue.Value:F2})");
 
-        if (OptionsManager.Instance != null)
+        if (OptionsManager.Instance != null || !IsOwner)
         {
-            if (!OptionsManager.Instance.FireballBool) fireball.Value = false;
-            if (!OptionsManager.Instance.IceBool) ice.Value = false;
-            if (!OptionsManager.Instance.LightningBool) lightning.Value = false;
-            if (!OptionsManager.Instance.ShadowBool) shadow.Value = false;
-            if (!OptionsManager.Instance.GreenBool) green.Value = false;
-            if (!OptionsManager.Instance.StoneBool) stone.Value = false;
-            if (!OptionsManager.Instance.ChronosBool) chronos.Value = false;
-            if (!OptionsManager.Instance.GeminiBool) gemini.Value = false;
-            if (!OptionsManager.Instance.PiscesBool) pisces.Value = false;
-            if (!OptionsManager.Instance.JollyBool) jolly.Value = false;
-            if (!OptionsManager.Instance.BlinkBool) blink.Value = false;
-            if (!OptionsManager.Instance.WarpBool) warp.Value = false;
-            if (!OptionsManager.Instance.TetherBool) tether.Value = false;
-            if (!OptionsManager.Instance.MudBool) mud.Value = false;
-            if (!OptionsManager.Instance.GambitBool) gambit.Value = false;
-            if (!OptionsManager.Instance.GorbinoBool) gorbino.Value = false;
+            //if (!OptionsManager.Instance.FireballBool) fireball.Value = false;
+            //if (!OptionsManager.Instance.IceBool) ice.Value = false;
+            //if (!OptionsManager.Instance.LightningBool) lightning.Value = false;
+            //if (!OptionsManager.Instance.ShadowBool) shadow.Value = false;
+            //if (!OptionsManager.Instance.GreenBool) green.Value = false;
+            //if (!OptionsManager.Instance.StoneBool) stone.Value = false;
+            //if (!OptionsManager.Instance.ChronosBool) chronos.Value = false;
+            //if (!OptionsManager.Instance.GeminiBool) gemini.Value = false;
+            //if (!OptionsManager.Instance.PiscesBool) pisces.Value = false;
+            //if (!OptionsManager.Instance.JollyBool) jolly.Value = false;
+            //if (!OptionsManager.Instance.BlinkBool) blink.Value = false;
+            //if (!OptionsManager.Instance.WarpBool) warp.Value = false;
+            //if (!OptionsManager.Instance.TetherBool) tether.Value = false;
+            //if (!OptionsManager.Instance.MudBool) mud.Value = false;
+            //if (!OptionsManager.Instance.GambitBool) gambit.Value = false;
+            //if (!OptionsManager.Instance.GorbinoBool) gorbino.Value = false;
+        }
+
+        if (OptionsManager.Instance != null || !IsOwner)
+        {
+            playerBools.Add(OptionsManager.Instance.FireballBool);
+            playerBools.Add(OptionsManager.Instance.IceBool);
+            playerBools.Add(OptionsManager.Instance.LightningBool);
+            playerBools.Add(OptionsManager.Instance.ShadowBool);
+            playerBools.Add(OptionsManager.Instance.GreenBool);
+            playerBools.Add(OptionsManager.Instance.StoneBool);
+            playerBools.Add(OptionsManager.Instance.ChronosBool);
+            playerBools.Add(OptionsManager.Instance.GeminiBool);
+            playerBools.Add(OptionsManager.Instance.PiscesBool);
+            playerBools.Add(OptionsManager.Instance.JollyBool);
+            playerBools.Add(OptionsManager.Instance.BlinkBool);
+            playerBools.Add(OptionsManager.Instance.WarpBool);
+            playerBools.Add(OptionsManager.Instance.TetherBool);
+            playerBools.Add(OptionsManager.Instance.MudBool);
+            playerBools.Add(OptionsManager.Instance.GambitBool);
+            playerBools.Add(OptionsManager.Instance.GorbinoBool);
         }
     }
 

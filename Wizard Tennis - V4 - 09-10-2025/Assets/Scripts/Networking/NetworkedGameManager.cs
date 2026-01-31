@@ -39,6 +39,7 @@ public class NetworkedGameManager : NetworkBehaviour
     private float hostSpawnTimer;
     private List<GameObject> hostActivePickups = new List<GameObject>();
     public List<NetworkVariable<bool>> hostPickupBools;
+    public NetworkList<bool> hostPickupBools2;
 
     [Header("Spawn Settings - Client Side")]
     public Transform clientSpawnCenter;
@@ -595,22 +596,24 @@ public class NetworkedGameManager : NetworkBehaviour
                 hostPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Host spellcasting found (Update).");
 
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().fireball);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().ice);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().lightning);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().shadow);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().green);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().stone);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().chronos);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gemini);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().pisces);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().jolly);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().blink);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().warp);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().tether);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().mud);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gambit);
-                hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gorbino);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().fireball);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().ice);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().lightning);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().shadow);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().green);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().stone);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().chronos);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gemini);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().pisces);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().jolly);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().blink);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().warp);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().tether);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().mud);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gambit);
+                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gorbino);
+
+                hostPickupBools2 = hostPlayer.GetComponent<NetworkedPlayerCustomisation>().playerBools;
             }
             else if (spell.OwnerClientId != 0 && clientSpellcasting == null)
             {
@@ -885,7 +888,7 @@ public class NetworkedGameManager : NetworkBehaviour
             // copy only entries that have a valid prefab and weight > 0
             foreach (var e in pickupWeights)
             {
-                if (e.prefab != null && e.weight > 0)
+                if (e.prefab != null && e.weight > 0 && hostPickupBools2[pickupWeights.IndexOf(e)])
                     workingWeights.Add(e);
             }
         }
@@ -894,7 +897,7 @@ public class NetworkedGameManager : NetworkBehaviour
             // fallback: use prefab's PickupEffect.SpawnWeight (converted to integer weight)
             foreach (var prefab in pickupPrefabs)
             {
-                if (prefab == null || !hostPickupBools[pickupPrefabs.IndexOf(prefab)].Value) continue;
+                if (prefab == null || !hostPickupBools2[pickupPrefabs.IndexOf(prefab)]) continue;
                 var effect = prefab.GetComponent<PickupEffect>();
                 if (effect == null) continue;
 
