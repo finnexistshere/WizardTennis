@@ -38,13 +38,14 @@ public class NetworkedGameManager : NetworkBehaviour
     public Transform hostSpawnCenter;
     private float hostSpawnTimer;
     private List<GameObject> hostActivePickups = new List<GameObject>();
-    public List<NetworkVariable<bool>> hostPickupBools;
     public NetworkList<bool> hostPickupBools2 = new NetworkList<bool>();
 
     [Header("Spawn Settings - Client Side")]
     public Transform clientSpawnCenter;
     private float clientSpawnTimer;
     private List<GameObject> clientActivePickups = new List<GameObject>();
+    public NetworkList<bool> clientPickupBools = new NetworkList<bool>();
+
 
     [Header("Player Spawn Points")]
     public Transform hostPlayerSpawn;
@@ -82,6 +83,7 @@ public class NetworkedGameManager : NetworkBehaviour
     private GameObject clientPlayer;
 
     public List<bool> boolsTest;
+    public List<bool> boolsTest2;
 
     private void Awake()
     {
@@ -598,28 +600,10 @@ public class NetworkedGameManager : NetworkBehaviour
                 hostPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Host spellcasting found (Update).");
 
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().fireball);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().ice);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().lightning);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().shadow);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().green);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().stone);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().chronos);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gemini);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().pisces);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().jolly);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().blink);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().warp);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().tether);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().mud);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gambit);
-                //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gorbino);
-
                 hostPickupBools2 = hostPlayer.GetComponent<NetworkedPlayerCustomisation>().playerBools;
                 for (int i = 0; i < hostPickupBools2.Count; i++)
                 {
                     boolsTest.Add(hostPickupBools2[i]);
-                    //Debug.Log("FUCK YOU NETCODE YOU SUCK I HATE YOU");
                 }
             }
             else if (spell.OwnerClientId != 0 && clientSpellcasting == null)
@@ -627,6 +611,12 @@ public class NetworkedGameManager : NetworkBehaviour
                 clientSpellcasting = spell;
                 clientPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Client spellcasting found (Update).");
+
+                clientPickupBools = clientPlayer.GetComponent<NetworkedPlayerCustomisation>().playerBools;
+                for (int i = 0; i < clientPickupBools.Count; i++)
+                {
+                    boolsTest2.Add(clientPickupBools[i]);
+                }
             }
         }
 
