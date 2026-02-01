@@ -74,7 +74,6 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
     private bool hasAppliedCustomisation = false;
 
     public NetworkList<bool> playerBools = new NetworkList<bool>();
-    public NetworkList<bool> playerBools2 = new NetworkList<bool>();
     public List<bool> boolsTest;
 
     public override void OnNetworkSpawn()
@@ -102,55 +101,6 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
 
         if (debugLog)
             Debug.Log($"[NetworkedCustomisation] Spawned for {(IsOwner ? "Owner" : "Remote")} - ClientId: {OwnerClientId}");
-
-        if (OptionsManager.Instance != null)
-        {
-            if (IsOwner)
-            {
-                playerBools.Add(OptionsManager.Instance.FireballBool);
-                playerBools.Add(OptionsManager.Instance.IceBool);
-                playerBools.Add(OptionsManager.Instance.LightningBool);
-                playerBools.Add(OptionsManager.Instance.ShadowBool);
-                playerBools.Add(OptionsManager.Instance.GreenBool);
-                playerBools.Add(OptionsManager.Instance.StoneBool);
-                playerBools.Add(OptionsManager.Instance.ChronosBool);
-                playerBools.Add(OptionsManager.Instance.GeminiBool);
-                playerBools.Add(OptionsManager.Instance.PiscesBool);
-                playerBools.Add(OptionsManager.Instance.JollyBool);
-                playerBools.Add(OptionsManager.Instance.BlinkBool);
-                playerBools.Add(OptionsManager.Instance.WarpBool);
-                playerBools.Add(OptionsManager.Instance.TetherBool);
-                playerBools.Add(OptionsManager.Instance.MudBool);
-                playerBools.Add(OptionsManager.Instance.GambitBool);
-                playerBools.Add(OptionsManager.Instance.GorbinoBool);
-                for (int i = 0; i < playerBools.Count; i++)
-                {
-                    boolsTest.Add(playerBools[i]);
-                }
-            } else
-            {
-                playerBools2.Add(OptionsManager.Instance.FireballBool);
-                playerBools2.Add(OptionsManager.Instance.IceBool);
-                playerBools2.Add(OptionsManager.Instance.LightningBool);
-                playerBools2.Add(OptionsManager.Instance.ShadowBool);
-                playerBools2.Add(OptionsManager.Instance.GreenBool);
-                playerBools2.Add(OptionsManager.Instance.StoneBool);
-                playerBools2.Add(OptionsManager.Instance.ChronosBool);
-                playerBools2.Add(OptionsManager.Instance.GeminiBool);
-                playerBools2.Add(OptionsManager.Instance.PiscesBool);
-                playerBools2.Add(OptionsManager.Instance.JollyBool);
-                playerBools2.Add(OptionsManager.Instance.BlinkBool);
-                playerBools2.Add(OptionsManager.Instance.WarpBool);
-                playerBools2.Add(OptionsManager.Instance.TetherBool);
-                playerBools2.Add(OptionsManager.Instance.MudBool);
-                playerBools2.Add(OptionsManager.Instance.GambitBool);
-                playerBools2.Add(OptionsManager.Instance.GorbinoBool);
-                for (int i = 0; i < playerBools2.Count; i++)
-                {
-                    boolsTest.Add(playerBools2[i]);
-                }
-            }
-        }
     }
 
     public override void OnNetworkDespawn()
@@ -196,29 +146,49 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
         if (debugLog)
             Debug.Log($"[NetworkedCustomisation] Loaded customisation - Material: {savedIndex}, HSV: ({customHue.Value:F2}, {customSaturation.Value:F2}, {customValue.Value:F2})");
 
-        //if (OptionsManager.Instance != null || !IsOwner)
-        //{
-        //    playerBools.Add(OptionsManager.Instance.FireballBool);
-        //    playerBools.Add(OptionsManager.Instance.IceBool);
-        //    playerBools.Add(OptionsManager.Instance.LightningBool);
-        //    playerBools.Add(OptionsManager.Instance.ShadowBool);
-        //    playerBools.Add(OptionsManager.Instance.GreenBool);
-        //    playerBools.Add(OptionsManager.Instance.StoneBool);
-        //    playerBools.Add(OptionsManager.Instance.ChronosBool);
-        //    playerBools.Add(OptionsManager.Instance.GeminiBool);
-        //    playerBools.Add(OptionsManager.Instance.PiscesBool);
-        //    playerBools.Add(OptionsManager.Instance.JollyBool);
-        //    playerBools.Add(OptionsManager.Instance.BlinkBool);
-        //    playerBools.Add(OptionsManager.Instance.WarpBool);
-        //    playerBools.Add(OptionsManager.Instance.TetherBool);
-        //    playerBools.Add(OptionsManager.Instance.MudBool);
-        //    playerBools.Add(OptionsManager.Instance.GambitBool);
-        //    playerBools.Add(OptionsManager.Instance.GorbinoBool);
-        //    for (int i = 0; i < playerBools.Count; i++)
-        //    {
-        //        boolsTest.Add(playerBools[i]);
-        //    }
-        //}
+        if (OptionsManager.Instance != null || !IsOwner)
+        {
+            //if (!OptionsManager.Instance.FireballBool) fireball.Value = false;
+            //if (!OptionsManager.Instance.IceBool) ice.Value = false;
+            //if (!OptionsManager.Instance.LightningBool) lightning.Value = false;
+            //if (!OptionsManager.Instance.ShadowBool) shadow.Value = false;
+            //if (!OptionsManager.Instance.GreenBool) green.Value = false;
+            //if (!OptionsManager.Instance.StoneBool) stone.Value = false;
+            //if (!OptionsManager.Instance.ChronosBool) chronos.Value = false;
+            //if (!OptionsManager.Instance.GeminiBool) gemini.Value = false;
+            //if (!OptionsManager.Instance.PiscesBool) pisces.Value = false;
+            //if (!OptionsManager.Instance.JollyBool) jolly.Value = false;
+            //if (!OptionsManager.Instance.BlinkBool) blink.Value = false;
+            //if (!OptionsManager.Instance.WarpBool) warp.Value = false;
+            //if (!OptionsManager.Instance.TetherBool) tether.Value = false;
+            //if (!OptionsManager.Instance.MudBool) mud.Value = false;
+            //if (!OptionsManager.Instance.GambitBool) gambit.Value = false;
+            //if (!OptionsManager.Instance.GorbinoBool) gorbino.Value = false;
+        }
+
+        if (OptionsManager.Instance != null || !IsOwner)
+        {
+            playerBools.Add(OptionsManager.Instance.FireballBool);
+            playerBools.Add(OptionsManager.Instance.IceBool);
+            playerBools.Add(OptionsManager.Instance.LightningBool);
+            playerBools.Add(OptionsManager.Instance.ShadowBool);
+            playerBools.Add(OptionsManager.Instance.GreenBool);
+            playerBools.Add(OptionsManager.Instance.StoneBool);
+            playerBools.Add(OptionsManager.Instance.ChronosBool);
+            playerBools.Add(OptionsManager.Instance.GeminiBool);
+            playerBools.Add(OptionsManager.Instance.PiscesBool);
+            playerBools.Add(OptionsManager.Instance.JollyBool);
+            playerBools.Add(OptionsManager.Instance.BlinkBool);
+            playerBools.Add(OptionsManager.Instance.WarpBool);
+            playerBools.Add(OptionsManager.Instance.TetherBool);
+            playerBools.Add(OptionsManager.Instance.MudBool);
+            playerBools.Add(OptionsManager.Instance.GambitBool);
+            playerBools.Add(OptionsManager.Instance.GorbinoBool);
+            for (int i = 0; i < playerBools.Count; i++)
+            {
+                boolsTest.Add(playerBools[i]);
+            }
+        }
     }
 
     private void OnBoolChange(bool previousValue, bool newValue)

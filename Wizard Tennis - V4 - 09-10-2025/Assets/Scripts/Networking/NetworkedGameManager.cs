@@ -38,14 +38,13 @@ public class NetworkedGameManager : NetworkBehaviour
     public Transform hostSpawnCenter;
     private float hostSpawnTimer;
     private List<GameObject> hostActivePickups = new List<GameObject>();
+    public List<NetworkVariable<bool>> hostPickupBools;
     public NetworkList<bool> hostPickupBools2 = new NetworkList<bool>();
 
     [Header("Spawn Settings - Client Side")]
     public Transform clientSpawnCenter;
     private float clientSpawnTimer;
     private List<GameObject> clientActivePickups = new List<GameObject>();
-    public NetworkList<bool> clientPickupBools = new NetworkList<bool>();
-
 
     [Header("Player Spawn Points")]
     public Transform hostPlayerSpawn;
@@ -83,7 +82,6 @@ public class NetworkedGameManager : NetworkBehaviour
     private GameObject clientPlayer;
 
     public List<bool> boolsTest;
-    public List<bool> boolsTest2;
 
     private void Awake()
     {
@@ -611,12 +609,6 @@ public class NetworkedGameManager : NetworkBehaviour
                 clientSpellcasting = spell;
                 clientPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Client spellcasting found (Update).");
-
-                clientPickupBools = clientPlayer.GetComponent<NetworkedPlayerCustomisation>().playerBools2;
-                for (int i = 0; i < clientPickupBools.Count; i++)
-                {
-                    boolsTest2.Add(clientPickupBools[i]);
-                }
             }
         }
 
