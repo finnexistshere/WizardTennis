@@ -14,6 +14,14 @@ public class SceneChanger : MonoBehaviour
     public GameObject MultiplayerMenu;
     public GameObject CustomisationMenu;
 
+    [Header("Help Panels")]
+    public GameObject MainMenuHelp;
+    public GameObject CreditsHelp;
+    public GameObject OptionsHelp;
+    public GameObject SpellbookHelp;
+    public GameObject MultiplayerHelp;
+    public GameObject CustomisationHelp;
+
     [Header("Options Menu UI References")]
     public Slider volumeSlider;
     public Toggle leftHandedToggle;
@@ -167,5 +175,38 @@ public class SceneChanger : MonoBehaviour
         menuCamera.transform.rotation = target.rotation;
     }
 
+    #region Help Panels
+
+    public void OpenMainMenuHelp()
+    {
+        MainMenuHelp.SetActive(!MainMenuHelp.activeSelf);
+    }
+
+    public void OpenCreditsHelp()
+    {
+        CreditsHelp.SetActive(!CreditsHelp.activeSelf);
+    }
+
+    public void OpenOptionsHelp()
+    {
+        OptionsHelp.SetActive(!OptionsHelp.activeSelf);
+    }
+
+    public void OpenSpellbookHelp()
+    {
+        SpellbookHelp.SetActive(!SpellbookHelp.activeSelf);
+    }
+
+    public void OpenMultiplayerHelp()
+    {
+        MultiplayerHelp.SetActive(!MultiplayerHelp.activeSelf);
+    }
+
+    public void OpenCustomisationHelp()
+    {
+        CustomisationHelp.SetActive(!CustomisationHelp.activeSelf);
+    }
+
+    #endregion
 
 }
