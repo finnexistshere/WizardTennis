@@ -200,6 +200,9 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             if (OptionsManager.Instance != null)
             {
                 OptionsManager.Instance.OnLanguageChanged += OnLanguageChanged;
+
+                // Make sure we ask the Options manager if Left Handed mode is on
+                leftHandedMode = OptionsManager.Instance.leftHandedMode;
             }
         }
     }
