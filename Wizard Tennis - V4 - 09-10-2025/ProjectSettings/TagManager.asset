@@ -23,6 +23,7 @@ TagManager:
   - ServingBarriers
   - Racket
   - Robe
+  - robe_shadow
   layers:
   - Default
   - TransparentFX
