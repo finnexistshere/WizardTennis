@@ -73,7 +73,8 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
     private Material runtimeCustomMaterial;
     private bool hasAppliedCustomisation = false;
 
-    public NetworkList<bool> playerBools;
+    public NetworkList<bool> playerBools = new NetworkList<bool>();
+    public List<bool> boolsTest;
 
     //public NetworkVariable<bool> fireball = new NetworkVariable<bool>(
     //    true,
@@ -264,6 +265,10 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
             playerBools.Add(OptionsManager.Instance.MudBool);
             playerBools.Add(OptionsManager.Instance.GambitBool);
             playerBools.Add(OptionsManager.Instance.GorbinoBool);
+            for (int i = 0; i < playerBools.Count; i++)
+            {
+                boolsTest.Add(playerBools[i]);
+            }
         }
     }
 

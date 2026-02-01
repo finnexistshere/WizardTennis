@@ -39,7 +39,7 @@ public class NetworkedGameManager : NetworkBehaviour
     private float hostSpawnTimer;
     private List<GameObject> hostActivePickups = new List<GameObject>();
     public List<NetworkVariable<bool>> hostPickupBools;
-    public NetworkList<bool> hostPickupBools2;
+    public NetworkList<bool> hostPickupBools2 = new NetworkList<bool>();
 
     [Header("Spawn Settings - Client Side")]
     public Transform clientSpawnCenter;
@@ -80,6 +80,8 @@ public class NetworkedGameManager : NetworkBehaviour
     // References to player GameObjects
     private GameObject hostPlayer;
     private GameObject clientPlayer;
+
+    public List<bool> boolsTest;
 
     private void Awake()
     {
@@ -614,6 +616,11 @@ public class NetworkedGameManager : NetworkBehaviour
                 //hostPickupBools.Add(hostPlayer.GetComponent<NetworkedPlayerCustomisation>().gorbino);
 
                 hostPickupBools2 = hostPlayer.GetComponent<NetworkedPlayerCustomisation>().playerBools;
+                for (int i = 0; i < hostPickupBools2.Count; i++)
+                {
+                    boolsTest.Add(hostPickupBools2[i]);
+                    //Debug.Log("FUCK YOU NETCODE YOU SUCK I HATE YOU");
+                }
             }
             else if (spell.OwnerClientId != 0 && clientSpellcasting == null)
             {
