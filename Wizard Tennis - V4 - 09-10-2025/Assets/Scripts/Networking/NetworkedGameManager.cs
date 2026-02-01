@@ -612,7 +612,7 @@ public class NetworkedGameManager : NetworkBehaviour
                 clientPlayer = spell.gameObject;
                 Debug.Log("[NetworkedGameManager] Client spellcasting found (Update).");
 
-                clientPickupBools = clientPlayer.GetComponent<NetworkedPlayerCustomisation>().playerBools;
+                clientPickupBools = clientPlayer.GetComponent<NetworkedPlayerCustomisation>().playerBools2;
                 for (int i = 0; i < clientPickupBools.Count; i++)
                 {
                     boolsTest2.Add(clientPickupBools[i]);

@@ -74,6 +74,7 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
     private bool hasAppliedCustomisation = false;
 
     public NetworkList<bool> playerBools = new NetworkList<bool>();
+    public NetworkList<bool> playerBools2 = new NetworkList<bool>();
     public List<bool> boolsTest;
 
     public override void OnNetworkSpawn()
@@ -104,25 +105,50 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
 
         if (OptionsManager.Instance != null)
         {
-            playerBools.Add(OptionsManager.Instance.FireballBool);
-            playerBools.Add(OptionsManager.Instance.IceBool);
-            playerBools.Add(OptionsManager.Instance.LightningBool);
-            playerBools.Add(OptionsManager.Instance.ShadowBool);
-            playerBools.Add(OptionsManager.Instance.GreenBool);
-            playerBools.Add(OptionsManager.Instance.StoneBool);
-            playerBools.Add(OptionsManager.Instance.ChronosBool);
-            playerBools.Add(OptionsManager.Instance.GeminiBool);
-            playerBools.Add(OptionsManager.Instance.PiscesBool);
-            playerBools.Add(OptionsManager.Instance.JollyBool);
-            playerBools.Add(OptionsManager.Instance.BlinkBool);
-            playerBools.Add(OptionsManager.Instance.WarpBool);
-            playerBools.Add(OptionsManager.Instance.TetherBool);
-            playerBools.Add(OptionsManager.Instance.MudBool);
-            playerBools.Add(OptionsManager.Instance.GambitBool);
-            playerBools.Add(OptionsManager.Instance.GorbinoBool);
-            for (int i = 0; i < playerBools.Count; i++)
+            if (IsOwner)
             {
-                boolsTest.Add(playerBools[i]);
+                playerBools.Add(OptionsManager.Instance.FireballBool);
+                playerBools.Add(OptionsManager.Instance.IceBool);
+                playerBools.Add(OptionsManager.Instance.LightningBool);
+                playerBools.Add(OptionsManager.Instance.ShadowBool);
+                playerBools.Add(OptionsManager.Instance.GreenBool);
+                playerBools.Add(OptionsManager.Instance.StoneBool);
+                playerBools.Add(OptionsManager.Instance.ChronosBool);
+                playerBools.Add(OptionsManager.Instance.GeminiBool);
+                playerBools.Add(OptionsManager.Instance.PiscesBool);
+                playerBools.Add(OptionsManager.Instance.JollyBool);
+                playerBools.Add(OptionsManager.Instance.BlinkBool);
+                playerBools.Add(OptionsManager.Instance.WarpBool);
+                playerBools.Add(OptionsManager.Instance.TetherBool);
+                playerBools.Add(OptionsManager.Instance.MudBool);
+                playerBools.Add(OptionsManager.Instance.GambitBool);
+                playerBools.Add(OptionsManager.Instance.GorbinoBool);
+                for (int i = 0; i < playerBools.Count; i++)
+                {
+                    boolsTest.Add(playerBools[i]);
+                }
+            } else
+            {
+                playerBools2.Add(OptionsManager.Instance.FireballBool);
+                playerBools2.Add(OptionsManager.Instance.IceBool);
+                playerBools2.Add(OptionsManager.Instance.LightningBool);
+                playerBools2.Add(OptionsManager.Instance.ShadowBool);
+                playerBools2.Add(OptionsManager.Instance.GreenBool);
+                playerBools2.Add(OptionsManager.Instance.StoneBool);
+                playerBools2.Add(OptionsManager.Instance.ChronosBool);
+                playerBools2.Add(OptionsManager.Instance.GeminiBool);
+                playerBools2.Add(OptionsManager.Instance.PiscesBool);
+                playerBools2.Add(OptionsManager.Instance.JollyBool);
+                playerBools2.Add(OptionsManager.Instance.BlinkBool);
+                playerBools2.Add(OptionsManager.Instance.WarpBool);
+                playerBools2.Add(OptionsManager.Instance.TetherBool);
+                playerBools2.Add(OptionsManager.Instance.MudBool);
+                playerBools2.Add(OptionsManager.Instance.GambitBool);
+                playerBools2.Add(OptionsManager.Instance.GorbinoBool);
+                for (int i = 0; i < playerBools2.Count; i++)
+                {
+                    boolsTest.Add(playerBools2[i]);
+                }
             }
         }
     }
