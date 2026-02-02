@@ -17545,7 +17545,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &276903870
 RectTransform:
   m_ObjectHideFlags: 0
@@ -24174,7 +24174,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &450155295
 RectTransform:
   m_ObjectHideFlags: 0
@@ -43361,7 +43361,7 @@ MonoBehaviour:
   enableDevTools: 1
   spawnAllSpellsKey: 109
   respawnAllSpellsKey: 110
-  devSpawnSpacing: 2.5
+  devSpawnSpacing: 0.1
   pickupPrefabs:
   - {fileID: 7109859178366572936, guid: a227066672fbdf248ad3205225023abe, type: 3}
   - {fileID: 2459800992572170402, guid: fff5a79dc4be55a48861a22405a31cc9, type: 3}
@@ -43425,6 +43425,7 @@ MonoBehaviour:
   WinLoseText: {fileID: 168140767}
   tutorialPanel: {fileID: 579273216}
   playerInput: {fileID: 0}
+  boolsTest: 
 --- !u!114 &1594825198
 MonoBehaviour:
   m_ObjectHideFlags: 0
