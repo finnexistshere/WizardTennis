@@ -763,10 +763,14 @@ public class NetworkedBall : NetworkBehaviour
         else upForce = ogUpForce;
         if (-6.25f < transform.position.z || transform.position.z < 6.25f) upForce += 2f;
 
-        // Spell effects (local visual only)
-        if (spellEffects != null && spellEffects.plrHitSpell)
+        // ? DECLARE localClientId ONCE at the top of this section
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+
+        // Check if we have an active spell
+        if (spellEffects != null && spellEffects.HasActiveSpell(localClientId))
         {
-            spellEffects.castSpell();
+            string activeSpell = spellEffects.GetActiveSpellName(localClientId);
+            Debug.Log($"[NetworkedBall] Player hit ball with active spell: {activeSpell}");
         }
 
         // Calculate aim position
@@ -797,10 +801,11 @@ public class NetworkedBall : NetworkBehaviour
             NetworkedScoreManager.Instance.IncrementRallyCountServerRpc();
         }
 
-        // Reset spell effects
-        if (spellEffects != null && spellEffects.resetOnPlrHit)
+        // REUSE localClientId (don't redeclare)
+        if (spellEffects != null)
         {
-            spellEffects.resetSpellEffect();
+            // Just log - OnPlayerHitBall in CollisionTracker will handle spell logic
+            Debug.Log($"[NetworkedBall] Client {localClientId} notified spell system of hit");
         }
 
         // Update collision tracker

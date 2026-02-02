@@ -182,13 +182,13 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
                     // - Ed
 
                     // Check for Mud spell on bounce
-                    if (networkedSpellEffects != null &&
-                        networkedSpellEffects.spellName == "Mud" &&
-                        networkedSpellEffects.resetOnBounce)
-                    {
-                        Debug.Log("[Ball] Mud spell triggered on bounce");
-                        networkedSpellEffects.resetSpellEffect();
-                    }
+                    //if (networkedSpellEffects != null &&
+                    //    networkedSpellEffects.spellName == "Mud" &&
+                    //    networkedSpellEffects.resetOnBounce)
+                    //{
+                    //    Debug.Log("[Ball] Mud spell triggered on bounce");
+                    //    networkedSpellEffects.resetSpellEffect();
+                    //}
                 }
                 else
                 {
@@ -233,7 +233,7 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
 
         Debug.Log($"[Ball-TryMarkLastHitPlayer] Previous: {previousHitterGameObject?.name ?? "NULL"}, Current: {lastHitterGameObject?.name}");
 
-        // Convert numeric clientId ? string label used by scoring logic
+        // Convert numeric clientId to string label used by scoring logic
         LastHitWizard = hitterId == 0 ? "Player_0" : "Player_1";
 
         Debug.Log($"[Ball-TryMarkLastHitPlayer] LastHitWizard set to: {LastHitWizard}");
@@ -257,7 +257,28 @@ public class NetworkedCollisionTrackerBall : NetworkBehaviour
             return;
         }
 
-        Debug.Log($"[Ball-TryMarkLastHitPlayer] networkedSpellEffects found, active spell: '{networkedSpellEffects.spellName}'");
+        // FIXED: Check for active spells properly
+        string activeSpellsInfo = "None";
+        if (networkedSpellEffects.IsAnySpellActive)
+        {
+            // Build a string showing all active spells
+            System.Text.StringBuilder spellList = new System.Text.StringBuilder();
+
+            // Check both players (assuming max 2 players)
+            for (ulong clientId = 0; clientId < 2; clientId++)
+            {
+                string spell = networkedSpellEffects.GetActiveSpellName(clientId);
+                if (!string.IsNullOrEmpty(spell))
+                {
+                    if (spellList.Length > 0) spellList.Append(", ");
+                    spellList.Append($"Client{clientId}:{spell}");
+                }
+            }
+
+            activeSpellsInfo = spellList.Length > 0 ? spellList.ToString() : "None";
+        }
+
+        Debug.Log($"[Ball-TryMarkLastHitPlayer] networkedSpellEffects found, active spells: {activeSpellsInfo}");
 
         if (previousHitterGameObject != null)
         {

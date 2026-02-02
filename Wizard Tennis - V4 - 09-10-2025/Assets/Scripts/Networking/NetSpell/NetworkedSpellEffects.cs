@@ -19,18 +19,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
 {
     public static NetworkedSpellEffects Instance { get; private set; }
 
-    // Context references (dynamically set per spell cast)
-    [Header("Context References")]
-    private GameObject currentPlayer;
-    private GameObject currentOpponent;
-    private TennisAI currentAI;
-
-    public string spellName;
-    public bool resetOnOppHit;
-    public bool resetOnPlrHit;
-    public bool oppHitSpell;
-    public bool plrHitSpell;
-    public bool resetOnBounce;
+    // Removed the old Context Variables
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -122,21 +111,39 @@ public class NetworkedSpellEffects : NetworkBehaviour
     private bool networkSpellActive = false;
     private GameObject Gorbino;
 
-    private Vector3 storedBlinkDirection = Vector3.zero;
-
-    private Coroutine activeLightningCoroutine = null;
-
     // Track active networked effects for cleanup
     private Dictionary<string, ulong> activeNetworkEffects = new Dictionary<string, ulong>();
 
     private Dictionary<ulong, Coroutine> activeFreezeCoroutines = new Dictionary<ulong, Coroutine>();
 
-    public NetworkVariable<bool> IsAnySpellActive =
-        new NetworkVariable<bool>(
-            false,
-            NetworkVariableReadPermission.Everyone,
-            NetworkVariableWritePermission.Server
-        );
+    /// <summary>
+    /// Tracks state for a single active spell cast by a specific player
+    /// </summary>
+    [System.Serializable]
+    public class ActiveSpellData
+    {
+        public string spellName;
+        public GameObject caster;
+        public GameObject target;
+        public TennisAI ai;
+        public bool resetOnOppHit;
+        public bool resetOnPlrHit;
+        public bool resetOnBounce;
+        public float startTime;
+        public Dictionary<string, GameObject> activeEffects = new Dictionary<string, GameObject>();
+
+        // Spell-specific tracking
+        public Coroutine activeLightningCoroutine;
+        public Coroutine activeFreezeCoroutine;
+        public Vector3 storedBlinkDirection;
+    }
+
+    private Dictionary<ulong, ActiveSpellData> activeSpells = new Dictionary<ulong, ActiveSpellData>();
+
+    public bool IsAnySpellActive => activeSpells.Count > 0;
+
+    private HashSet<string> globalLockSpells = new HashSet<string> { "Chronos" };
+    private string currentGlobalLockSpell = null;
 
     private void Awake()
     {
@@ -148,36 +155,28 @@ public class NetworkedSpellEffects : NetworkBehaviour
         Instance = this;
     }
 
-    // Global Spell Lock
-    [ServerRpc(RequireOwnership = false)]
-    public void BeginGlobalSpellLockServerRpc()
+    /// <summary>
+    /// UPDATED: Set context for a specific caster
+    /// </summary>
+    public void SetContext(ulong casterClientId, GameObject player, GameObject opponent, TennisAI ai)
     {
-        if (IsAnySpellActive.Value) return;
-        IsAnySpellActive.Value = true;
-    }
+        if (!activeSpells.ContainsKey(casterClientId))
+        {
+            activeSpells[casterClientId] = new ActiveSpellData();
+        }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void EndGlobalSpellLockServerRpc()
-    {
-        IsAnySpellActive.Value = false;
+        activeSpells[casterClientId].caster = player;
+        activeSpells[casterClientId].target = opponent;
+        activeSpells[casterClientId].ai = ai;
+        activeSpells[casterClientId].startTime = Time.time;
+
+        Debug.Log($"[SpellEffects] Context set for client {casterClientId} - Player: {player?.name}, Opponent: {opponent?.name}");
     }
 
     /// <summary>
-    /// Sets the context for spell effects - which player is casting, who the opponent is, and AI reference
+    /// UPDATED: Auto-set context for a specific caster
     /// </summary>
-    public void SetContext(GameObject player, GameObject opponent, TennisAI ai)
-    {
-        currentPlayer = player;
-        currentOpponent = opponent;
-        currentAI = ai;
-
-        Debug.Log($"[SpellEffects] Context set - Player: {player?.name}, Opponent: {opponent?.name}, AI: {ai != null}");
-    }
-
-    /// <summary>
-    /// Auto-set context based on who owns the spell - useful for on-hit spells
-    /// </summary>
-    public void AutoSetContext(GameObject ballOwner)
+    public void AutoSetContext(ulong casterClientId, GameObject ballOwner)
     {
         if (ballOwner == null)
         {
@@ -213,34 +212,76 @@ public class NetworkedSpellEffects : NetworkBehaviour
             }
         }
 
-        SetContext(player, opponent, ai);
-        Debug.Log($"[SpellEffects] AutoSetContext completed for {ballOwner.name} -> opponent: {opponent?.name}");
+        SetContext(casterClientId, player, opponent, ai);
+        Debug.Log($"[SpellEffects] AutoSetContext completed for client {casterClientId} -> opponent: {opponent?.name}");
     }
 
     /// <summary>
-    /// Clears the stored context (call when resetting or ending spells)
+    /// UPDATED: Clear context for a specific caster
     /// </summary>
-    public void ClearContext()
+    public void ClearContext(ulong casterClientId)
     {
-        currentPlayer = null;
-        currentOpponent = null;
-        currentAI = null;
+        if (activeSpells.ContainsKey(casterClientId))
+        {
+            activeSpells.Remove(casterClientId);
+            Debug.Log($"[SpellEffects] Context cleared for client {casterClientId}");
+        }
+    }
+
+    /// <summary>
+    /// UPDATED: Get active spell data for a caster
+    /// </summary>
+    private ActiveSpellData GetSpellData(ulong casterClientId)
+    {
+        if (activeSpells.TryGetValue(casterClientId, out ActiveSpellData data))
+        {
+            return data;
+        }
+
+        Debug.LogWarning($"[SpellEffects] No active spell data for client {casterClientId}");
+        return null;
+    }
+
+    /// <summary>
+    /// UPDATED: Check if a specific caster has an active spell
+    /// </summary>
+    public bool HasActiveSpell(ulong casterClientId)
+    {
+        return activeSpells.ContainsKey(casterClientId);
+    }
+
+    /// <summary>
+    /// UPDATED: Get the spell name for a specific caster
+    /// </summary>
+    public string GetActiveSpellName(ulong casterClientId)
+    {
+        if (activeSpells.TryGetValue(casterClientId, out ActiveSpellData data))
+        {
+            return data.spellName;
+        }
+        return null;
     }
 
     /// <summary>
     /// Gets the active player (context)
-    /// FIXED: Properly returns the local player's character, not spawner objects
+    /// UPDATED: Returns the local player or first active spell's caster
     /// </summary>
     public GameObject GetPlayer()
     {
-        // First: Try to use the stored context player
-        if (currentPlayer != null)
+        // First: Check if we have any active spells and return the first caster
+        if (activeSpells.Count > 0)
         {
-            Debug.Log($"[SpellEffects-GetPlayer] Using stored context player: {currentPlayer.name}");
-            return currentPlayer;
+            foreach (var kvp in activeSpells)
+            {
+                if (kvp.Value.caster != null)
+                {
+                    Debug.Log($"[SpellEffects-GetPlayer] Using active spell caster: {kvp.Value.caster.name}");
+                    return kvp.Value.caster;
+                }
+            }
         }
 
-        // Second: Try to find by LocalClientId (this is the player casting the spell)
+        // Second: Try to find by LocalClientId
         ulong localId = NetworkManager.Singleton.LocalClientId;
         GameObject player = GetPlayerByClientId(localId);
 
@@ -257,12 +298,11 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             GameObject go = spellcasting.gameObject;
 
-            // Skip objects without player components (these are likely spawners)
+            // Skip objects without player components
             if (go.GetComponent<MainCharacterMovement>() == null &&
                 go.GetComponent<CharacterController>() == null &&
                 go.GetComponent<Rigidbody>() == null)
             {
-                Debug.Log($"[SpellEffects-GetPlayer] Skipping {go.name} - no movement components");
                 continue;
             }
 
@@ -270,7 +310,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
             NetworkObject netObj = go.GetComponent<NetworkObject>();
             if (netObj != null && netObj.OwnerClientId == localId)
             {
-                Debug.Log($"[SpellEffects-GetPlayer] Found valid player via fallback: {go.name} at {go.transform.position}");
+                Debug.Log($"[SpellEffects-GetPlayer] Found valid player via fallback: {go.name}");
                 return go;
             }
         }
@@ -281,20 +321,43 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     /// <summary>
     /// Gets the active opponent (context)
+    /// UPDATED: Returns opponent from first active spell
     /// </summary>
     private GameObject GetOpponent()
     {
-        return currentOpponent;
+        if (activeSpells.Count > 0)
+        {
+            foreach (var kvp in activeSpells)
+            {
+                if (kvp.Value.target != null)
+                {
+                    return kvp.Value.target;
+                }
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
     /// Gets the active AI (context)
+    /// UPDATED: Returns AI from first active spell
     /// </summary>
     private TennisAI GetAI()
     {
-        return currentAI;
-    }
+        if (activeSpells.Count > 0)
+        {
+            foreach (var kvp in activeSpells)
+            {
+                if (kvp.Value.ai != null)
+                {
+                    return kvp.Value.ai;
+                }
+            }
+        }
 
+        return null;
+    }
     // ========== SHADOW SPELL NETWORK METHODS ==========
 
     /// <summary>
@@ -959,139 +1022,118 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
     // ========== MAIN SPELL CASTING ==========
 
-    public void castSpell()
+    /// <summary>
+    /// UPDATED: Cast spell for a specific caster
+    /// </summary>
+    public void castSpell(ulong casterClientId, string spell)
     {
-        // Check for valid spell name FIRST
-        if (string.IsNullOrEmpty(spellName))
+        // Validate input
+        if (string.IsNullOrEmpty(spell))
         {
             Debug.LogError("[SpellEffects] castSpell called with no spell name!");
-            networkSpellActive = false;  // Clear the lock
             return;
         }
 
-        networkSpellActive = true;
-
-        GameObject player = GetPlayer();
-        GameObject opponent = GetOpponent();
-
-        if (player == null)
+        // Check for global lock spells
+        if (globalLockSpells.Contains(spell))
         {
-            Debug.LogWarning("[SpellEffects] No player context! Attempting to auto-find players...");
-
-            // Use NetworkedSpellManager if available
-            if (NetworkedSpellManager.Instance != null && NetworkedSpellManager.Instance.GetPlayerCount() >= 1)
+            if (!string.IsNullOrEmpty(currentGlobalLockSpell))
             {
-                var players = NetworkedSpellManager.Instance.GetAllPlayers();
-                if (players.Count >= 1)
-                {
-                    player = players[0].gameObject;
-                    if (players.Count >= 2)
-                        opponent = players[1].gameObject;
-                }
+                Debug.LogWarning($"[SpellEffects] Cannot cast {spell} - {currentGlobalLockSpell} is active");
+                return;
             }
-            else
-            {
-                // Fallback: Find both networked players
-                NetworkedSpellcasting[] allPlayers = FindObjectsOfType<NetworkedSpellcasting>();
-                if (allPlayers.Length >= 2)
-                {
-                    player = allPlayers[0].gameObject;
-                    opponent = allPlayers[1].gameObject;
-                    Debug.Log($"[SpellEffects] Auto-found networked players: {player.name}, {opponent.name}");
-                }
-                else if (allPlayers.Length == 1)
-                {
-                    player = allPlayers[0].gameObject;
-                    Debug.Log($"[SpellEffects] Auto-found single networked player: {player.name}");
-                }
-            }
+            currentGlobalLockSpell = spell;
+        }
 
+        // Get or create spell data
+        if (!activeSpells.ContainsKey(casterClientId))
+        {
+            Debug.LogWarning($"[SpellEffects] No context for client {casterClientId}, attempting to find player...");
+
+            GameObject player = GetPlayerByClientId(casterClientId);
             if (player == null)
             {
-                Debug.LogError("[SpellEffects] Cannot cast spell - no player found even after auto-search!");
-                networkSpellActive = false;
+                Debug.LogError($"[SpellEffects] Cannot cast spell - no player found for client {casterClientId}");
                 return;
             }
 
-            // Set the context so we don't have to search again
-            SetContext(player, opponent, null);
+            GameObject opponent = null;
+            var allPlayers = FindObjectsOfType<NetworkedSpellcasting>();
+            foreach (var sc in allPlayers)
+            {
+                if (sc.gameObject != player)
+                {
+                    opponent = sc.gameObject;
+                    break;
+                }
+            }
+
+            SetContext(casterClientId, player, opponent, null);
         }
 
-        if (OptionsManager.Instance != null)
+        ActiveSpellData spellData = activeSpells[casterClientId];
+        spellData.spellName = spell;
+        spellData.startTime = Time.time;
+
+        GameObject casterPlayer = spellData.caster;
+        GameObject targetOpponent = spellData.target;
+
+        if (casterPlayer == null)
         {
-            // Show explanation only once per round per spell
-            if (!spellsUsedThisRound.Contains(spellName) && OptionsManager.Instance.spellTips)
-            {
-                spellsUsedThisRound.Add(spellName);
-                explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
-            }
+            Debug.LogError($"[SpellEffects] Cannot cast spell - caster is null for client {casterClientId}");
+            return;
+        }
+
+        // Show explanation (once per round per spell)
+        if (OptionsManager.Instance != null && !spellsUsedThisRound.Contains(spell) && OptionsManager.Instance.spellTips)
+        {
+            spellsUsedThisRound.Add(spell);
+            explanationRoutine = StartCoroutine(ShowSpellExplanation(spell));
         }
 
         // Get client IDs for network spawning
-        ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-        ulong targetClientId = opponent?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+        ulong targetClientId = targetOpponent?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+        bool isLocalCaster = (NetworkManager.Singleton.LocalClientId == casterClientId);
 
-        bool isLocalCaster = (player != null && NetworkManager.Singleton.LocalClientId == casterClientId);
+        Debug.Log($"[SpellEffects] Casting {spell} for client {casterClientId} - isLocalCaster: {isLocalCaster}");
 
-        Debug.Log($"[SpellEffects] Casting {spellName} - isLocalCaster: {isLocalCaster}");
-
-        switch (spellName)
+        // Execute spell logic
+        switch (spell)
         {
             case "Lightning":
                 if (isLocalCaster)
                 {
-                    var mcm = player.GetComponent<MainCharacterMovement>();
+                    var mcm = casterPlayer.GetComponent<MainCharacterMovement>();
                     if (mcm != null)
                     {
-                        if (activeLightningCoroutine != null)
-                            StopCoroutine(activeLightningCoroutine);
+                        if (spellData.activeLightningCoroutine != null)
+                            StopCoroutine(spellData.activeLightningCoroutine);
 
-                        activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(mcm, 5f));
-                        Debug.Log("[SpellEffects] Lightning speed boost applied");
-
-                        // Activate lightning trail for this player
-                        ActivateLightningTrail(player, true);
+                        spellData.activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(casterClientId, mcm, 5f));
+                        ActivateLightningTrail(casterPlayer, true);
                     }
                 }
                 break;
 
             case "Ice":
-                if (isLocalCaster && opponent != null && iceBlockPrefab != null)
+                if (isLocalCaster && targetOpponent != null && iceBlockPrefab != null)
                 {
-                    // Spawn ice block on opponent
                     SpawnEffectServerRpc("Ice", casterClientId, targetClientId,
-                        opponent.transform.position, opponent.transform.rotation);
-
-                    // Freeze opponent across all clients
+                        targetOpponent.transform.position, targetOpponent.transform.rotation);
                     FreezePlayerServerRpc(targetClientId, 5f);
-
-                    Debug.Log($"[SpellEffects] Ice spawned and freeze requested for opponent");
-
-                    // Force a reset across all clients
-                    ScheduleReset(5f);
+                    ScheduleReset(casterClientId, 5f);
                 }
                 break;
 
             case "Fireball":
-                Debug.Log($"[SpellEffects-castSpell] === FIREBALL CAST START ===");
-                Debug.Log($"[SpellEffects-castSpell] LocalClientId: {NetworkManager.Singleton.LocalClientId}");
-                Debug.Log($"[SpellEffects-castSpell] isLocalCaster: {isLocalCaster}");
-
                 if (isLocalCaster)
                 {
-                    // Set locally
-                    resetOnOppHit = true;
-                    resetOnPlrHit = false;
+                    spellData.resetOnOppHit = true;
+                    spellData.resetOnPlrHit = false;
 
-                    // Tell server to arm Fireball
                     if (!IsServer)
                     {
-                        Debug.Log("[SpellEffects-castSpell] Client telling server to arm Fireball");
-                        SetSpellArmedServerRpc(true, false);
-                    }
-                    else
-                    {
-                        Debug.Log("[SpellEffects-castSpell] Already on server, Fireball armed locally");
+                        SetSpellArmedServerRpc(casterClientId, true, false);
                     }
 
                     GameObject fireballBallObj = GameObject.FindWithTag("Ball");
@@ -1101,80 +1143,57 @@ public class NetworkedSpellEffects : NetworkBehaviour
                         if (tracker != null)
                         {
                             tracker.LastHitWizard = "Player";
-                            Debug.Log("[SpellEffects-castSpell] Marked ball tracker LastHitWizard = Player");
                         }
                     }
-
-                    Debug.Log($"[SpellEffects-castSpell] Fireball armed - resetOnOppHit: {resetOnOppHit}");
                 }
-                Debug.Log($"[SpellEffects-castSpell] === FIREBALL CAST END ===");
                 break;
 
             case "Shadow":
-                if (isLocalCaster && opponent != null)
+                if (isLocalCaster && targetOpponent != null)
                 {
-                    Debug.Log($"[SpellEffects] Casting Shadow - making {player.name} invisible to {opponent.name}");
-
-                    // Apply Shadow invisibility
                     ApplyShadowInvisibilityServerRpc(casterClientId, targetClientId);
-
-                    // Schedule automatic reset after 10 seconds (time-based only)
-                    ScheduleReset(10f);
-
-                    Debug.Log("[SpellEffects] Shadow will auto-reset in 10 seconds");
-                }
-                else if (isLocalCaster)
-                {
-                    Debug.LogWarning("[SpellEffects] Shadow cast failed - no opponent found");
+                    ScheduleReset(casterClientId, 10f);
                 }
                 break;
 
             case "Mud":
                 if (isLocalCaster)
                 {
-                    // Set locally - arm Mud to trigger on opponent hit
-                    resetOnOppHit = true;
-                    resetOnBounce = false; // Mud triggers on hit, not bounce
+                    spellData.resetOnOppHit = true;
+                    spellData.resetOnBounce = false;
 
-                    // Tell server to arm Mud
                     if (!IsServer)
                     {
-                        SetSpellArmedServerRpc(true, false);
+                        SetSpellArmedServerRpc(casterClientId, true, false);
                     }
-
-                    Debug.Log("[SpellEffects] Mud spell armed - will spawn pit when opponent hits ball");
                 }
                 break;
 
             case "Green":
                 if (isLocalCaster)
                 {
-                    var greenBall = player.GetComponent<NetworkedBall>();
+                    var greenBall = casterPlayer.GetComponent<NetworkedBall>();
                     if (greenBall != null)
                     {
                         greenBall.green = true;
 
                         if (IsOwner)
                         {
-                            var uiManager = player.GetComponent<NetworkedUIManager>();
+                            var uiManager = casterPlayer.GetComponent<NetworkedUIManager>();
                             if (uiManager != null)
                             {
                                 uiManager.UpdateSpellStatus("Green Active", Color.green);
                             }
                         }
-
-                        Debug.Log("[SpellEffects] Green spell activated");
                     }
-
-                    // Green lasts 10 seconds
-                    ScheduleReset(10f);
+                    ScheduleReset(casterClientId, 10f);
                 }
                 break;
 
             case "Stone":
-                if (isLocalCaster && player != null && stoneWallPrefab != null)
+                if (isLocalCaster && casterPlayer != null && stoneWallPrefab != null)
                 {
-                    Vector3 spawnPos = player.transform.position + player.transform.forward * 2f;
+                    Vector3 spawnPos = casterPlayer.transform.position + casterPlayer.transform.forward * 2f;
                     SpawnEffectServerRpc("Stone", casterClientId, targetClientId, spawnPos, Quaternion.identity);
                 }
                 break;
@@ -1182,106 +1201,89 @@ public class NetworkedSpellEffects : NetworkBehaviour
             case "Chronos":
                 if (isLocalCaster)
                 {
-                    StartCoroutine(ApplyChronosAfterExplanation());
+                    StartCoroutine(ApplyChronosAfterExplanation(casterClientId));
                 }
                 break;
 
             case "Gemini":
-                if (isLocalCaster && player != null && geminiPrefab != null)
+                if (isLocalCaster && casterPlayer != null && geminiPrefab != null)
                 {
-                    Vector3 gemPos = player.transform.position;
-                    gemPos.x = -player.transform.position.x;
-                    SpawnEffectServerRpc("Gemini", casterClientId, targetClientId, gemPos, player.transform.rotation);
+                    Vector3 gemPos = casterPlayer.transform.position;
+                    gemPos.x = -casterPlayer.transform.position.x;
+                    SpawnEffectServerRpc("Gemini", casterClientId, targetClientId, gemPos, casterPlayer.transform.rotation);
                 }
-                ScheduleReset(5f);
+                ScheduleReset(casterClientId, 5f);
                 break;
 
             case "Blink":
                 if (isLocalCaster)
                 {
-                    var blinkMCM = player.GetComponent<MainCharacterMovement>();
+                    var blinkMCM = casterPlayer.GetComponent<MainCharacterMovement>();
                     if (blinkMCM != null && blinkMCM.controller != null)
                     {
                         Vector3 velocity = blinkMCM.controller.velocity;
                         velocity.y = 0;
 
                         if (velocity.magnitude > 0.1f)
-                            storedBlinkDirection = velocity.normalized * 3f;
+                            spellData.storedBlinkDirection = velocity.normalized * 3f;
                         else
                         {
-                            storedBlinkDirection = player.transform.forward * 3f;
-                            storedBlinkDirection.y = 0;
+                            spellData.storedBlinkDirection = casterPlayer.transform.forward * 3f;
+                            spellData.storedBlinkDirection.y = 0;
                         }
                     }
                     else
                     {
-                        storedBlinkDirection = player.transform.forward * 3f;
-                        storedBlinkDirection.y = 0;
+                        spellData.storedBlinkDirection = casterPlayer.transform.forward * 3f;
+                        spellData.storedBlinkDirection.y = 0;
                     }
 
-                    PerformBlink(player);
+                    PerformBlink(casterPlayer, spellData.storedBlinkDirection);
                 }
-                ScheduleReset(5f);
+                ScheduleReset(casterClientId, 5f);
                 break;
 
             case "Jolly":
-                if (isLocalCaster && player != null)
+                if (isLocalCaster && casterPlayer != null)
                 {
-                    // Expand player collider
-                    var capsule = player.GetComponent<CapsuleCollider>();
+                    var capsule = casterPlayer.GetComponent<CapsuleCollider>();
                     if (capsule != null)
                     {
                         capsule.radius = 2;
-                        Debug.Log("[SpellEffects] Jolly - expanded collider");
                     }
 
-                    // Find and ENABLE the Jolly child object (instead of spawning)
-                    GameObject jollyObject = FindJollyObject(player);
-
+                    GameObject jollyObject = FindJollyObject(casterPlayer);
                     if (jollyObject != null)
                     {
                         jollyObject.SetActive(true);
-                        activeJolly = jollyObject;
-
-                        Debug.Log($"[SpellEffects] Jolly child object enabled: {jollyObject.name}");
-
-                        // Hide racket mesh
-                        HideRacketMesh(player, false); // Show racket (Jolly replaces it visually)
-                    }
-                    else
-                    {
-                        Debug.LogError("[SpellEffects] Jolly - could not find Jolly child object on player!");
+                        string key = $"{casterClientId}_Jolly";
+                        spellData.activeEffects[key] = jollyObject;
+                        HideRacketMesh(casterPlayer, false);
                     }
                 }
-                ScheduleReset(5f);
+                ScheduleReset(casterClientId, 5f);
                 break;
 
             case "Warp":
-                ScheduleReset(0.5f);
+                ScheduleReset(casterClientId, 0.5f);
                 break;
 
             case "Pisces":
-                if (isLocalCaster && player != null && orbiterPrefab != null)
+                if (isLocalCaster && casterPlayer != null && orbiterPrefab != null)
                 {
                     SpawnEffectServerRpc("Pisces", casterClientId, targetClientId,
-                        player.transform.position, player.transform.rotation);
+                        casterPlayer.transform.position, casterPlayer.transform.rotation);
                 }
                 break;
 
             case "Tether":
-                if (isLocalCaster && opponent != null && tetherPrefab != null)
+                if (isLocalCaster && targetOpponent != null && tetherPrefab != null)
                 {
-                    Vector3 tetherPos = opponent.transform.position;
+                    Vector3 tetherPos = targetOpponent.transform.position;
                     tetherPos.y = 1.45f;
-
                     SpawnEffectServerRpc("Tether", casterClientId, targetClientId, tetherPos, Quaternion.identity);
-                    Debug.Log($"[SpellEffects] Tether spawn requested at {tetherPos}");
                 }
-                else if (isLocalCaster)
-                {
-                    Debug.LogWarning($"[SpellEffects] Tether spawn failed");
-                }
-                ScheduleReset(5f);
+                ScheduleReset(casterClientId, 5f);
                 break;
 
             case "Gorbino":
@@ -1295,7 +1297,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
                         Gorbino.SetActive(false);
                     }
                 }
-                ScheduleReset(5f);
+                ScheduleReset(casterClientId, 5f);
                 break;
 
                 // The Gambit case WAS here, but I've removed it.
@@ -1307,7 +1309,10 @@ public class NetworkedSpellEffects : NetworkBehaviour
         }
     }
 
-    private void PerformBlink(GameObject player)
+    /// <summary>
+    /// UPDATED: Blink with direction parameter
+    /// </summary>
+    private void PerformBlink(GameObject player, Vector3 blinkDirection)
     {
         if (player == null)
         {
@@ -1315,91 +1320,81 @@ public class NetworkedSpellEffects : NetworkBehaviour
             return;
         }
 
-        // Use the stored direction
-        Vector3 blinkDirection = storedBlinkDirection;
-
         if (blinkDirection.magnitude < 0.1f)
         {
-            // Fallback - shouldn't happen, but just in case
             blinkDirection = player.transform.forward * 3f;
             blinkDirection.y = 0;
         }
 
-        // Calculate new position
         Vector3 newPos = player.transform.position + blinkDirection;
 
-        // Clamp to court boundaries
         if (player.transform.position.z > 0)
         {
-            // Front court (player side)
             newPos.z = Mathf.Clamp(newPos.z, 0.5f, 10.9f);
         }
         else
         {
-            // Back court (opponent side)
             newPos.z = Mathf.Clamp(newPos.z, -11.5f, -1f);
         }
 
         newPos.x = Mathf.Clamp(newPos.x, -4.9f, 4.9f);
-        newPos.y = player.transform.position.y; // Keep same height
+        newPos.y = player.transform.position.y;
 
-        Debug.Log($"[SpellEffects] Blink: {player.transform.position} -> {newPos} (direction: {blinkDirection})");
-
-        // Disable components temporarily
         var movement = player.GetComponent<MainCharacterMovement>();
         var controller = player.GetComponent<CharacterController>();
 
         if (movement != null) movement.enabled = false;
         if (controller != null) controller.enabled = false;
 
-        // Teleport
         player.transform.position = newPos;
 
-        // Re-enable components
         if (controller != null) controller.enabled = true;
         if (movement != null)
         {
             movement.enabled = true;
-            movement.ForceMovementRefresh(); // Reset velocity/grounding
+            movement.ForceMovementRefresh();
         }
-
-        Debug.Log($"[SpellEffects] Blink completed to {player.transform.position}");
-
-        // Clear stored direction
-        storedBlinkDirection = Vector3.zero;
     }
 
-    public void resetSpellEffect()
+    /// <summary>
+    /// UPDATED: Reset spell for a specific caster
+    /// </summary>
+    public void resetSpellEffect(ulong casterClientId)
     {
-        GameObject player = GetPlayer();
-        GameObject opponent = GetOpponent();
-
-        if (player == null)
+        if (!activeSpells.TryGetValue(casterClientId, out ActiveSpellData spellData))
         {
-            networkSpellActive = false;
+            Debug.LogWarning($"[SpellEffects] No active spell to reset for client {casterClientId}");
             return;
         }
 
-        switch (spellName)
+        GameObject player = spellData.caster;
+        GameObject opponent = spellData.target;
+        string spell = spellData.spellName;
+
+        if (player == null)
+        {
+            Debug.LogWarning($"[SpellEffects] Cannot reset spell - player is null for client {casterClientId}");
+            activeSpells.Remove(casterClientId);
+            return;
+        }
+
+        Debug.Log($"[SpellEffects] Resetting spell '{spell}' for client {casterClientId}");
+
+        switch (spell)
         {
             case "Lightning":
-                // Stop the coroutine if it's still running
-                if (activeLightningCoroutine != null)
+                if (spellData.activeLightningCoroutine != null)
                 {
-                    StopCoroutine(activeLightningCoroutine);
-                    activeLightningCoroutine = null;
+                    StopCoroutine(spellData.activeLightningCoroutine);
+                    spellData.activeLightningCoroutine = null;
                 }
 
-                // Restore speed
                 var mcm = player.GetComponent<MainCharacterMovement>();
                 if (mcm != null)
                 {
                     mcm.speed = 7;
-                    Debug.Log("[SpellEffects] Lightning reset: Speed restored to 7");
                 }
 
-                // Deactivate lightning trail for this player
-                Debug.Log($"[SpellEffects] Attempting to deactivate lightning trail for {player?.name}");
                 ActivateLightningTrail(player, false);
                 break;
 
@@ -1408,127 +1403,48 @@ public class NetworkedSpellEffects : NetworkBehaviour
                 if (greenBall != null)
                 {
                     greenBall.green = false;
-                    Debug.Log("[SpellEffects] Green deactivated");
                 }
                 break;
 
             case "Ice":
-                // Clear freeze tracking
-                if (opponent != null)
+                ulong oppClientId = opponent?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                if (oppClientId != ulong.MaxValue)
                 {
-                    ulong oppClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                    if (oppClientId != ulong.MaxValue && activeFreezeCoroutines.ContainsKey(oppClientId))
-                    {
-                        if (activeFreezeCoroutines[oppClientId] != null)
-                        {
-                            StopCoroutine(activeFreezeCoroutines[oppClientId]);
-                        }
-                        activeFreezeCoroutines.Remove(oppClientId);
-
-                        // Force restore movement
-                        var oppMcm = opponent.GetComponent<MainCharacterMovement>();
-                        if (oppMcm != null && oppMcm.speed == 0f)
-                        {
-                            oppMcm.speed = 7;
-                            Debug.Log($"[SpellEffects] Ice Reset: Force restored opponent speed");
-                        }
-                    }
+                    UnfreezePlayerServerRpc(oppClientId);
                 }
-                activeIceBlock = null;
                 break;
 
             case "Fireball":
-                // Clear locally
-                resetOnOppHit = false;
+                spellData.resetOnOppHit = false;
 
-                // Tell server to disarm
                 if (!IsServer)
                 {
-                    SetSpellArmedServerRpc(false, false);
+                    SetSpellArmedServerRpc(casterClientId, false, false);
                 }
 
-                // Spawn flame effect on the victim (currentOpponent was set by OnPlayerHitBall)
-                if (flamePrefab != null && currentOpponent != null)
+                if (flamePrefab != null && opponent != null)
                 {
                     ulong localClientId = NetworkManager.Singleton.LocalClientId;
-                    GameObject casterPlayer = currentPlayer ?? GetPlayer();
-                    ulong playerClientId = casterPlayer?.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-
-                    // Only caster spawns the flame
-                    if (localClientId == playerClientId)
+                    if (localClientId == casterClientId)
                     {
-                        ulong targetClientId = currentOpponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                        SpawnEffectServerRpc("Flame", playerClientId, targetClientId,
-                            currentOpponent.transform.position, Quaternion.identity);
-
-                        Debug.Log($"[SpellEffects] Fireball reset - spawning flame on {currentOpponent.name}");
+                        ulong targetClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                        SpawnEffectServerRpc("Flame", casterClientId, targetClientId,
+                            opponent.transform.position, Quaternion.identity);
                     }
                 }
                 break;
 
             case "Shadow":
-                Debug.Log($"[SpellEffects-Reset] === SHADOW RESET START ===");
-                Debug.Log($"[SpellEffects-Reset] player: {player?.name}, opponent: {opponent?.name}");
-                Debug.Log($"[SpellEffects-Reset] IsServer: {IsServer}");
-
-                // Remove Shadow invisibility via server
                 if (player != null && opponent != null)
                 {
-                    ulong casterClientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                    ulong opponentClientId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    ulong casterCId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                    ulong opponentCId = opponent.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
 
-                    Debug.Log($"[SpellEffects-Reset] Calling RemoveShadowInvisibilityServerRpc - caster: {casterClientId}, opponent: {opponentClientId}");
-
-                    if (casterClientId != ulong.MaxValue && opponentClientId != ulong.MaxValue)
+                    if (casterCId != ulong.MaxValue && opponentCId != ulong.MaxValue)
                     {
-                        RemoveShadowInvisibilityServerRpc(casterClientId, opponentClientId);
-                    }
-                    else
-                    {
-                        Debug.LogError($"[SpellEffects-Reset] Invalid client IDs - caster: {casterClientId}, opponent: {opponentClientId}");
+                        RemoveShadowInvisibilityServerRpc(casterCId, opponentCId);
                     }
                 }
-                else
-                {
-                    Debug.LogWarning($"[SpellEffects-Reset] Cannot remove Shadow via server - player or opponent is null!");
-
-                    // Emergency cleanup - try to restore materials locally
-                    Debug.Log($"[SpellEffects-Reset] Attempting emergency local cleanup");
-
-                    if (shadowOriginalMaterials.Count > 0)
-                    {
-                        Debug.Log($"[SpellEffects-Reset] Emergency local cleanup - restoring {shadowOriginalMaterials.Count} materials");
-                        foreach (var kvp in shadowOriginalMaterials)
-                        {
-                            if (kvp.Key != null && kvp.Value != null)
-                            {
-                                kvp.Key.material = kvp.Value;
-                            }
-                        }
-                        shadowOriginalMaterials.Clear();
-                        currentShadowCasterId = ulong.MaxValue;
-                    }
-
-                    if (shadowCasterOriginalMaterials.Count > 0)
-                    {
-                        Debug.Log($"[SpellEffects-Reset] Emergency local cleanup - restoring {shadowCasterOriginalMaterials.Count} caster materials");
-                        foreach (var kvp in shadowCasterOriginalMaterials)
-                        {
-                            if (kvp.Key != null && kvp.Value != null)
-                            {
-                                kvp.Key.material = kvp.Value;
-                            }
-                        }
-                        shadowCasterOriginalMaterials.Clear();
-                        currentShadowCasterFeedbackId = ulong.MaxValue;
-                    }
-                }
-
-                // Clean up any local references
-                opponentRenderer = null;
-                originalOpponentMaterial = null;
-
-                Debug.Log($"[SpellEffects-Reset] === SHADOW RESET END ===");
                 break;
 
             case "Chronos":
@@ -1539,72 +1455,42 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     chronosMcm.speed = 7;
                     chronosMcm.gravity = 25f;
                 }
-                break;
-
-            case "Gemini":
-                // Despawn handled by DespawnEffectAfterDelay
-                activeGemini = null;
+                currentGlobalLockSpell = null;
                 break;
 
             case "Jolly":
                 if (player != null)
                 {
-                    // Restore collider
                     var capsule = player.GetComponent<CapsuleCollider>();
                     if (capsule != null)
                     {
                         capsule.radius = 1;
-                        Debug.Log("[SpellEffects] Jolly - restored collider radius");
                     }
 
-                    // Show racket mesh
                     HideRacketMesh(player, false);
 
-                    // Disable Jolly object ✓ Already correct!
-                    if (activeJolly != null)
+                    string key = $"{casterClientId}_Jolly";
+                    if (spellData.activeEffects.TryGetValue(key, out GameObject jollyObj) && jollyObj != null)
                     {
-                        activeJolly.SetActive(false);
-                        Debug.Log($"[SpellEffects] Jolly object {activeJolly.name} disabled");
-                        activeJolly = null;
+                        jollyObj.SetActive(false);
+                        spellData.activeEffects.Remove(key);
                     }
-                    else
-                    {
-                        // Fallback: try to find and disable it
-                        GameObject jollyObject = FindJollyObject(player);
-                        if (jollyObject != null && jollyObject.activeSelf)
-                        {
-                            jollyObject.SetActive(false);
-                            Debug.Log($"[SpellEffects] Jolly fallback: found and disabled {jollyObject.name}");
-                        }
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[SpellEffects] Jolly reset: player is null");
                 }
                 break;
 
             case "Mud":
-                Debug.Log($"[SpellEffects-Reset] === MUD RESET START ===");
+                spellData.resetOnOppHit = false;
+                spellData.resetOnBounce = false;
 
-                // Clear locally
-                resetOnOppHit = false;
-                resetOnBounce = false;
-
-                // Tell server to disarm
                 if (!IsServer)
                 {
-                    SetSpellArmedServerRpc(false, false);
+                    SetSpellArmedServerRpc(casterClientId, false, false);
                 }
-
-                Debug.Log($"[SpellEffects-Reset] Mud disarmed");
-                Debug.Log($"[SpellEffects-Reset] === MUD RESET END ===");
                 break;
 
             case "Warp":
                 {
                     float min, max;
-
                     var netBallComp = player.GetComponent<NetworkedBall>();
                     if (netBallComp != null && netBallComp.aimTarget != null && netBallComp.aimTarget.position.x > 0)
                     {
@@ -1623,72 +1509,38 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     if (warpBall != null)
                     {
                         Rigidbody ballRb = warpBall.GetComponent<Rigidbody>();
-
                         Vector3 savedVelocity = Vector3.zero;
                         Vector3 savedAngularVelocity = Vector3.zero;
                         bool hadGravity = true;
 
                         if (ballRb != null)
                         {
-                            // Cache momentum
                             savedVelocity = ballRb.linearVelocity;
                             savedAngularVelocity = ballRb.angularVelocity;
                             hadGravity = ballRb.useGravity;
-
-                            // Temporarily stabilize
                             ballRb.useGravity = false;
                             ballRb.isKinematic = true;
                         }
 
-                        // Warp position only
                         Vector3 ballPos = warpBall.transform.position;
                         ballPos.x = ballX;
                         warpBall.transform.position = ballPos;
 
-                        Debug.Log($"[SpellEffects] Warped ball to x={ballX}");
-
                         if (ballRb != null)
                         {
-                            // Restore physics & momentum
                             ballRb.isKinematic = false;
                             ballRb.useGravity = hadGravity;
                             ballRb.linearVelocity = savedVelocity;
                             ballRb.angularVelocity = savedAngularVelocity;
                         }
                     }
-                    else
-                    {
-                        Debug.LogWarning("[SpellEffects] Warp failed - ball not found");
-                    }
-
-                    break;
                 }
-
-            case "Pisces":
-                // Despawn handled by DespawnEffectAfterDelay
-                activeOrbiter = null;
-                break;
-
-            case "Tether":
-                // Despawn handled by DespawnEffectAfterDelay
-                activeTether = null;
-                break;
-
-            case "Gorbino":
-                // Despawn handled by DespawnEffectAfterDelay
-                activeBall = null;
-                if (Gorbino != null)
-                    Gorbino.SetActive(true);
                 break;
         }
 
-        // Clear network guard and flags
-        networkSpellActive = false;
-
-        spellName = null;
-        plrHitSpell = false;
-        oppHitSpell = false;
-        spellHit = false;
+        // Clean up spell data
+        activeSpells.Remove(casterClientId);
+        Debug.Log($"[SpellEffects] Spell '{spell}' reset complete for client {casterClientId}");
     }
 
     // ========== EFFECT BEHAVIORS ==========
@@ -1782,40 +1634,36 @@ public class NetworkedSpellEffects : NetworkBehaviour
         return FollowPositionOnlyWithNullChecks(obj, target);
     }
 
-    private IEnumerator ApplyLightningSpeed(MainCharacterMovement mcm, float duration)
+    /// <summary>
+    /// UPDATED: Lightning speed boost for specific caster
+    /// </summary>
+    private IEnumerator ApplyLightningSpeed(ulong casterClientId, MainCharacterMovement mcm, float duration)
     {
         if (mcm == null)
         {
-            Debug.LogWarning("[SpellEffects] Lightning: MCM is null");
+            Debug.LogWarning($"[SpellEffects] Lightning: MCM is null for client {casterClientId}");
             yield break;
         }
 
         float originalSpeed = mcm.speed;
-        float boostedSpeed;
+        float boostedSpeed = 17f;
 
-        if (spellName == "Chronos")
+        ActiveSpellData spellData = GetSpellData(casterClientId);
+        if (spellData != null && spellData.spellName == "Chronos")
         {
             boostedSpeed = 70f;
         }
-        else
-        {
-            boostedSpeed = 17f;
-        }
 
-            Debug.Log($"[SpellEffects] Lightning: Setting speed from {originalSpeed} to {boostedSpeed}");
+        Debug.Log($"[SpellEffects] Lightning: Setting speed from {originalSpeed} to {boostedSpeed} for client {casterClientId}");
         mcm.speed = boostedSpeed;
 
         float elapsed = 0f;
-
-        // Continuously enforce the speed for the duration
         while (elapsed < duration)
         {
             if (mcm == null) yield break;
 
-            // Keep enforcing the boosted speed
             if (mcm.speed != boostedSpeed)
             {
-                Debug.Log($"[SpellEffects] Lightning: Speed changed to {mcm.speed}, re-applying boost");
                 mcm.speed = boostedSpeed;
             }
 
@@ -1823,89 +1671,80 @@ public class NetworkedSpellEffects : NetworkBehaviour
             yield return null;
         }
 
-        // Restore original speed
         if (mcm != null)
         {
             mcm.speed = originalSpeed;
-            Debug.Log($"[SpellEffects] Lightning: Restored speed to {originalSpeed}");
+            Debug.Log($"[SpellEffects] Lightning: Restored speed to {originalSpeed} for client {casterClientId}");
         }
-
-        activeLightningCoroutine = null;
     }
 
+    /// <summary>
+    /// UPDATED: Fireball knockback for specific caster/victim
+    /// </summary>
     [ServerRpc(RequireOwnership = false)]
-    public void ApplyFireballKnockbackServerRpc(ulong victimClientId, ServerRpcParams rpcParams = default)
+    public void ApplyFireballKnockbackServerRpc(ulong casterClientId, ulong victimClientId, ServerRpcParams rpcParams = default)
     {
-        Debug.Log($"[SpellEffects-ServerRpc] === ApplyFireballKnockbackServerRpc START ===");
-        Debug.Log($"[SpellEffects-ServerRpc] IsServer: {IsServer}");
-        Debug.Log($"[SpellEffects-ServerRpc] victimClientId: {victimClientId}");
+        if (!IsServer) return;
 
-        if (!IsServer)
+        ActiveSpellData spellData = GetSpellData(casterClientId);
+        if (spellData == null)
         {
-            Debug.LogWarning("[SpellEffects-ServerRpc] EXIT - Not server!");
+            Debug.LogError($"[SpellEffects-ServerRpc] No spell data for caster {casterClientId}");
             return;
         }
 
-        // Use context: currentPlayer = caster, currentOpponent = victim
-        GameObject caster = currentPlayer;
+        GameObject caster = spellData.caster;
         GameObject victim = GetPlayerByClientId(victimClientId);
-
-        Debug.Log($"[SpellEffects-ServerRpc] caster (from context): {caster?.name ?? "NULL"}");
-        Debug.Log($"[SpellEffects-ServerRpc] victim (from GetPlayerByClientId): {victim?.name ?? "NULL"}");
 
         if (victim == null)
         {
-            Debug.LogError($"[SpellEffects-ServerRpc] ? FAILED - victim not found for client {victimClientId}");
+            Debug.LogError($"[SpellEffects-ServerRpc] Victim not found for client {victimClientId}");
             return;
         }
 
-        // Check for required components
-        var controller = victim.GetComponent<CharacterController>();
-        var movement = victim.GetComponent<MainCharacterMovement>();
-
-        Debug.Log($"[SpellEffects-ServerRpc] Victim components - CharacterController: {controller != null}, MainCharacterMovement: {movement != null}");
-
-        if (controller == null)
-        {
-            Debug.LogError($"[SpellEffects-ServerRpc] ? FAILED - victim {victim.name} has no CharacterController!");
-            return;
-        }
-
-        Debug.Log($"[SpellEffects-ServerRpc] ? Applying Fireball knockback - caster: {caster?.name ?? "NULL"}, victim: {victim.name}");
-
-        // Calculate knockback direction
-        Vector3 knockbackDirection = Vector3.back; // Default fallback
-
+        Vector3 knockbackDirection = Vector3.back;
         if (caster != null)
         {
             Vector3 directionFromCaster = (victim.transform.position - caster.transform.position).normalized;
             Vector3 horizontal = new Vector3(directionFromCaster.x, 0, directionFromCaster.z).normalized;
             Vector3 upward = Vector3.up * 0.75f;
             knockbackDirection = (horizontal + upward).normalized;
-
-            Debug.Log($"[SpellEffects-ServerRpc] Calculated direction from caster: {knockbackDirection}");
         }
-        else
+
+        ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, fireballForceStrength, 0.45f);
+
+        // Reset after knockback
+        StartCoroutine(DelayedResetAfterKnockback(casterClientId, 0.65f));
+    }
+    private IEnumerator DelayedResetAfterKnockback(ulong casterClientId, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        resetSpellEffect(casterClientId);
+    }
+
+    /// <summary>
+    /// NEW: Unfreeze a specific player
+    /// </summary>
+    [ServerRpc(RequireOwnership = false)]
+    private void UnfreezePlayerServerRpc(ulong targetClientId, ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        UnfreezePlayerClientRpc(targetClientId);
+    }
+
+    [ClientRpc]
+    private void UnfreezePlayerClientRpc(ulong targetClientId)
+    {
+        GameObject target = GetPlayerByClientId(targetClientId);
+        if (target != null)
         {
-            Vector3 awayFromCenter = (victim.transform.position - Vector3.zero).normalized;
-            knockbackDirection = (new Vector3(awayFromCenter.x, 0, awayFromCenter.z) + Vector3.up * 0.75f).normalized;
-
-            Debug.Log($"[SpellEffects-ServerRpc] Using fallback direction (no caster): {knockbackDirection}");
+            var mcm = target.GetComponent<MainCharacterMovement>();
+            if (mcm != null && mcm.speed == 0f)
+            {
+                mcm.speed = 7f;
+                Debug.Log($"[SpellEffects-Client] Force unfroze {target.name}");
+            }
         }
-
-        Vector3 knockbackForce = knockbackDirection * fireballForceStrength;
-        float duration = 0.45f;
-
-        Debug.Log($"[SpellEffects-ServerRpc] knockbackForce: {knockbackForce}, duration: {duration}");
-
-        Debug.Log($"[SpellEffects-ServerRpc] Broadcasting ApplyFireballKnockbackClientRpc to all clients");
-        ApplyFireballKnockbackClientRpc(victimClientId, knockbackDirection, fireballForceStrength, duration);
-
-        // Reset spell AFTER knockback completes (add small buffer)
-        Debug.Log($"[SpellEffects-ServerRpc] Scheduling resetSpellEffect in {duration + 0.2f}s");
-        Invoke(nameof(resetSpellEffect), duration + 0.2f);
-
-        Debug.Log($"[SpellEffects-ServerRpc] === ApplyFireballKnockbackServerRpc END ===");
     }
 
     /// <summary>
@@ -1978,7 +1817,27 @@ public class NetworkedSpellEffects : NetworkBehaviour
         if (IsServer)
         {
             ulong victimClientId = target.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-            ApplyFireballKnockbackServerRpc(victimClientId);
+            // We need BOTH caster and victim IDs now
+            ulong casterClientId = ulong.MaxValue;
+
+            // Try to find which spell data has this victim as the target
+            foreach (var kvp in activeSpells)
+            {
+                if (kvp.Value.target == target)
+                {
+                    casterClientId = kvp.Key;
+                    break;
+                }
+            }
+
+            if (casterClientId != ulong.MaxValue)
+            {
+                ApplyFireballKnockbackServerRpc(casterClientId, victimClientId);
+            }
+            else
+            {
+                Debug.LogError("[SpellEffects] Cannot apply Fireball knockback - no active spell found for this target");
+            }
         }
         else
         {
@@ -2150,38 +2009,37 @@ public class NetworkedSpellEffects : NetworkBehaviour
         Debug.Log($"[ApplyKnockback] === END ===");
     }
 
-    private IEnumerator ApplyChronosAfterExplanation()
+    /// <summary>
+    /// UPDATED: Chronos with context
+    /// </summary>
+    private IEnumerator ApplyChronosAfterExplanation(ulong casterClientId)
     {
-        GameObject player = GetPlayer();
-        if (player == null)
+        ActiveSpellData spellData = GetSpellData(casterClientId);
+        if (spellData == null || spellData.caster == null)
         {
-            Debug.LogError("[SpellEffects] Chronos failed - no player found");
+            Debug.LogError($"[SpellEffects] Chronos failed - no spell data for client {casterClientId}");
             yield break;
         }
+
+        GameObject player = spellData.caster;
         var mcm = player.GetComponent<MainCharacterMovement>();
 
-        // Wait for any existing slowdown to finish
         yield return new WaitUntil(() => !SpellEffects.isSpellSlowdownActive);
         yield return new WaitForSecondsRealtime(0.05f);
 
         lastOriginalTimeScale = Time.timeScale;
         isSpellSlowdownActive = true;
-
-        // Apply time scale
         Time.timeScale = 0.1f;
-        Debug.Log($"[SpellEffects] Chronos applied - timeScale: {Time.timeScale}");
 
-        // Stealing the Lightning Coroutine to Alter the Caster's speed
-        if (activeLightningCoroutine != null)
-            StopCoroutine(activeLightningCoroutine);
+        if (spellData.activeLightningCoroutine != null)
+            StopCoroutine(spellData.activeLightningCoroutine);
 
-        activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(mcm, 0.4f));
+        spellData.activeLightningCoroutine = StartCoroutine(ApplyLightningSpeed(casterClientId, mcm, 0.4f));
 
-        // Show explanation if enabled
-        if (OptionsManager.Instance != null && OptionsManager.Instance.spellTips && !string.IsNullOrEmpty(spellName))
+        if (OptionsManager.Instance != null && OptionsManager.Instance.spellTips && !string.IsNullOrEmpty(spellData.spellName))
         {
             if (explanationRoutine != null) StopCoroutine(explanationRoutine);
-            explanationRoutine = StartCoroutine(ShowSpellExplanation(spellName));
+            explanationRoutine = StartCoroutine(ShowSpellExplanation(spellData.spellName));
             yield return new WaitForSecondsRealtime(explanationDuration);
         }
         else
@@ -2189,33 +2047,33 @@ public class NetworkedSpellEffects : NetworkBehaviour
             yield return new WaitForSecondsRealtime(2.5f);
         }
 
-        // Restore time scale
         Time.timeScale = lastOriginalTimeScale;
         isSpellSlowdownActive = false;
-        Debug.Log($"[SpellEffects] Chronos ended - timeScale restored: {Time.timeScale}");
 
-        // Reset movement
         if (mcm != null)
         {
             mcm.speed = 7f;
             mcm.gravity = 25f;
         }
 
-        Invoke(nameof(resetSpellEffect), 0.1f);
+        yield return new WaitForSeconds(0.1f);
+        resetSpellEffect(casterClientId);
     }
 
     /// <summary>
-    /// Tell the server to arm Fireball (or other on-hit spells)
+    /// UPDATED: Set spell armed state for specific caster
     /// </summary>
     [ServerRpc(RequireOwnership = false)]
-    private void SetSpellArmedServerRpc(bool oppHit, bool plrHit, ServerRpcParams rpcParams = default)
+    private void SetSpellArmedServerRpc(ulong casterClientId, bool oppHit, bool plrHit, ServerRpcParams rpcParams = default)
     {
         if (!IsServer) return;
 
-        resetOnOppHit = oppHit;
-        resetOnPlrHit = plrHit;
-
-        Debug.Log($"[SpellEffects-Server] Spell armed - resetOnOppHit: {resetOnOppHit}, resetOnPlrHit: {resetOnPlrHit}");
+        if (activeSpells.TryGetValue(casterClientId, out ActiveSpellData spellData))
+        {
+            spellData.resetOnOppHit = oppHit;
+            spellData.resetOnPlrHit = plrHit;
+            Debug.Log($"[SpellEffects-Server] Spell armed for client {casterClientId} - resetOnOppHit: {oppHit}");
+        }
     }
 
     private IEnumerator ShowSpellExplanation(string spell)
@@ -2325,134 +2183,78 @@ public class NetworkedSpellEffects : NetworkBehaviour
     }
 
     /// <summary>
-    /// Called when a player hits the ball - checks if spell should trigger
-    /// Server-side only (called by NetworkedCollisionTrackerBall on server)
+    /// UPDATED: Check all active spells when player hits ball
     /// </summary>
     public void OnPlayerHitBall(GameObject hitter, GameObject ballOwner)
     {
-        Debug.Log($"[SpellEffects-OnPlayerHitBall] === START ===");
-        Debug.Log($"[SpellEffects-OnPlayerHitBall] spellName: '{spellName}' (empty={string.IsNullOrEmpty(spellName)})");
-        Debug.Log($"[SpellEffects-OnPlayerHitBall] IsServer: {IsServer}");
-        Debug.Log($"[SpellEffects-OnPlayerHitBall] hitter: {hitter?.name ?? "NULL"}");
-        Debug.Log($"[SpellEffects-OnPlayerHitBall] ballOwner: {ballOwner?.name ?? "NULL"}");
+        Debug.Log($"[SpellEffects-OnPlayerHitBall] Checking {activeSpells.Count} active spells");
 
-        if (string.IsNullOrEmpty(spellName))
-        {
-            Debug.Log("[SpellEffects-OnPlayerHitBall] EXIT - spellName is null/empty");
+        if (activeSpells.Count == 0)
             return;
-        }
 
         if (!IsServer)
         {
-            Debug.LogWarning("[SpellEffects-OnPlayerHitBall] EXIT - Not server!");
+            Debug.LogWarning("[SpellEffects-OnPlayerHitBall] Called on non-server!");
             return;
         }
 
-        Debug.Log($"[SpellEffects-OnPlayerHitBall] Active spell: {spellName}, resetOnOppHit: {resetOnOppHit}");
-
-        // Fireball: knockback when OPPONENT hits the enchanted ball
-        if (spellName == "Fireball")
+        // Check each active spell
+        foreach (var kvp in new Dictionary<ulong, ActiveSpellData>(activeSpells))
         {
-            Debug.Log($"[SpellEffects-OnPlayerHitBall] FIREBALL CHECK:");
-            Debug.Log($"  - resetOnOppHit: {resetOnOppHit}");
-            Debug.Log($"  - ballOwner: {ballOwner?.name ?? "NULL"}");
-            Debug.Log($"  - hitter: {hitter?.name ?? "NULL"}");
-            Debug.Log($"  - hitter != ballOwner: {hitter != ballOwner}");
-            Debug.Log($"  - currentPlayer (context): {currentPlayer?.name ?? "NULL"}");
-            Debug.Log($"  - currentOpponent (context): {currentOpponent?.name ?? "NULL"}");
+            ulong casterClientId = kvp.Key;
+            ActiveSpellData spellData = kvp.Value;
+            string spell = spellData.spellName;
 
-            if (resetOnOppHit && ballOwner != null && hitter != ballOwner)
+            Debug.Log($"[SpellEffects-OnPlayerHitBall] Checking spell '{spell}' from client {casterClientId}");
+
+            // Fireball: knockback when OPPONENT hits the enchanted ball
+            if (spell == "Fireball")
             {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✓ FIREBALL TRIGGERED!");
-
-                ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] Victim ClientId: {victimClientId}");
-
-                if (victimClientId != ulong.MaxValue)
+                if (spellData.resetOnOppHit && ballOwner != null && hitter != ballOwner && ballOwner == spellData.caster)
                 {
-                    // CRITICAL: Set context BEFORE calling ServerRpc
-                    // This ensures the server has the right caster/victim reference
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Setting context - caster:{ballOwner.name}, victim:{hitter.name}");
-                    SetContext(ballOwner, hitter, null);
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Fireball triggered!");
 
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Calling ApplyFireballKnockbackServerRpc({victimClientId})");
-                    ApplyFireballKnockbackServerRpc(victimClientId);
-                }
-                else
-                {
-                    Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - hitter has no NetworkObject");
-                }
-            }
-            else
-            {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✗ Fireball not triggered - armed:{resetOnOppHit}");
-            }
-
-            Debug.Log($"[SpellEffects-OnPlayerHitBall] === END (Fireball) ===");
-            return;
-        }
-
-        // Shadow: reset when opponent hits
-        if (spellName == "Shadow" && resetOnOppHit)
-        {
-            if (ballOwner != null && hitter != ballOwner)
-            {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] Shadow broken by {hitter.name} hitting the ball");
-                resetSpellEffect();
-            }
-        }
-
-        if (spellName == "Mud")
-        {
-            Debug.Log($"[SpellEffects-OnPlayerHitBall] MUD CHECK:");
-            Debug.Log($"  - resetOnOppHit: {resetOnOppHit}");
-            Debug.Log($"  - ballOwner: {ballOwner?.name ?? "NULL"}");
-            Debug.Log($"  - hitter: {hitter?.name ?? "NULL"}");
-
-            if (resetOnOppHit && ballOwner != null && hitter != ballOwner)
-            {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✓ MUD TRIGGERED!");
-
-                // Find the ball to get its position (like the non-networked version)
-                GameObject ballObject = GameObject.FindWithTag("Ball");
-
-                if (ballObject != null)
-                {
-                    Vector3 spawnPos = ballObject.transform.position;
-                    spawnPos.y = 0.94f; // Match the non-networked version's ground height
-
-                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Spawning mud pit at ball position: {spawnPos}");
-
-                    ulong casterClientId = ballOwner.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
                     ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
-
-                    if (casterClientId != ulong.MaxValue && victimClientId != ulong.MaxValue)
+                    if (victimClientId != ulong.MaxValue)
                     {
-                        SpawnEffectServerRpc("Mud", casterClientId, victimClientId, spawnPos, Quaternion.identity);
-
-                        // Reset the spell after spawning
-                        resetSpellEffect();
+                        ApplyFireballKnockbackServerRpc(casterClientId, victimClientId);
                     }
-                    else
-                    {
-                        Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - invalid client IDs");
-                    }
-                }
-                else
-                {
-                    Debug.LogError("[SpellEffects-OnPlayerHitBall] ✗ FAILED - Ball not found!");
                 }
             }
-            else
+
+            // Shadow: reset when opponent hits
+            if (spell == "Shadow")
             {
-                Debug.Log($"[SpellEffects-OnPlayerHitBall] ✗ Mud not triggered");
+                if (spellData.resetOnOppHit && ballOwner != null && hitter != ballOwner && ballOwner == spellData.caster)
+                {
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Shadow broken!");
+                    resetSpellEffect(casterClientId);
+                }
             }
 
-            Debug.Log($"[SpellEffects-OnPlayerHitBall] === END (Mud) ===");
-            return;
-        }
+            // Mud: spawn pit when opponent hits
+            if (spell == "Mud")
+            {
+                if (spellData.resetOnOppHit && ballOwner != null && hitter != ballOwner && ballOwner == spellData.caster)
+                {
+                    Debug.Log($"[SpellEffects-OnPlayerHitBall] Mud triggered!");
 
-        Debug.Log($"[SpellEffects-OnPlayerHitBall] === END ===");
+                    GameObject ballObject = GameObject.FindWithTag("Ball");
+                    if (ballObject != null)
+                    {
+                        Vector3 spawnPos = ballObject.transform.position;
+                        spawnPos.y = 0.94f;
+
+                        ulong victimClientId = hitter.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+                        if (victimClientId != ulong.MaxValue)
+                        {
+                            SpawnEffectServerRpc("Mud", casterClientId, victimClientId, spawnPos, Quaternion.identity);
+                            resetSpellEffect(casterClientId);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private IEnumerator MirrorMovement(GameObject gemini, MainCharacterMovement casterMCM, float duration)
@@ -2483,21 +2285,17 @@ public class NetworkedSpellEffects : NetworkBehaviour
     }
 
     /// <summary>
-    /// Helper: Schedule a reset and cancel any pending resets for this spell
+    /// Schedule a reset for a specific caster's spell
     /// </summary>
-    private void ScheduleReset(float delay)
+    private void ScheduleReset(ulong casterClientId, float delay)
     {
-        // Small catch so this doesn't fire unessecarily
-        if (spellName == "Ice")
-        {
-            // Force all Active Freeze Routines to stop
-            ForceUnfreezeAllPlayers();
-        }
+        StartCoroutine(ScheduledResetCoroutine(casterClientId, delay));
+    }
 
-        CancelInvoke(nameof(resetSpellEffect));
-
-        // Schedule new reset
-        Invoke(nameof(resetSpellEffect), delay);
+    private IEnumerator ScheduledResetCoroutine(ulong casterClientId, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        resetSpellEffect(casterClientId);
     }
 
     /// <summary>
@@ -2874,5 +2672,107 @@ public class NetworkedSpellEffects : NetworkBehaviour
         {
             Debug.LogWarning($"[SpellEffects] Could not find racket mesh on {player.name}");
         }
+    }
+
+    // BACKWARDS COMPATIBILITY SHIT
+
+    /// <summary>
+    /// BACKWARD COMPATIBILITY: Old method signature
+    /// Attempts to find caster client ID from current player
+    /// </summary>
+    public void castSpell()
+    {
+        // Try to determine which client is calling this
+        GameObject player = GetPlayer();
+        if (player != null)
+        {
+            ulong clientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+            if (clientId != ulong.MaxValue)
+            {
+                // Find the spell name from context (this is fragile)
+                string spell = null;
+                foreach (var kvp in activeSpells)
+                {
+                    if (kvp.Value.caster == player)
+                    {
+                        spell = kvp.Value.spellName;
+                        break;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(spell))
+                {
+                    castSpell(clientId, spell);
+                    return;
+                }
+            }
+        }
+
+        Debug.LogError("[SpellEffects] castSpell() called without context - use castSpell(ulong casterClientId, string spell) instead");
+    }
+
+    /// <summary>
+    /// BACKWARD COMPATIBILITY: Old method signature
+    /// </summary>
+    public void resetSpellEffect()
+    {
+        GameObject player = GetPlayer();
+        if (player != null)
+        {
+            ulong clientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+            if (clientId != ulong.MaxValue)
+            {
+                resetSpellEffect(clientId);
+                return;
+            }
+        }
+
+        Debug.LogWarning("[SpellEffects] resetSpellEffect() called without context");
+    }
+
+    /// <summary>
+    /// BACKWARD COMPATIBILITY: Old SetContext signature
+    /// </summary>
+    public void SetContext(GameObject player, GameObject opponent, TennisAI ai)
+    {
+        if (player != null)
+        {
+            ulong clientId = player.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+            if (clientId != ulong.MaxValue)
+            {
+                SetContext(clientId, player, opponent, ai);
+                return;
+            }
+        }
+
+        Debug.LogError("[SpellEffects] SetContext() called without valid player NetworkObject");
+    }
+
+    /// <summary>
+    /// BACKWARD COMPATIBILITY: Old AutoSetContext signature
+    /// </summary>
+    public void AutoSetContext(GameObject ballOwner)
+    {
+        if (ballOwner != null)
+        {
+            ulong clientId = ballOwner.GetComponent<NetworkObject>()?.OwnerClientId ?? ulong.MaxValue;
+            if (clientId != ulong.MaxValue)
+            {
+                AutoSetContext(clientId, ballOwner);
+                return;
+            }
+        }
+
+        Debug.LogWarning("[SpellEffects] AutoSetContext() called without valid ballOwner NetworkObject");
+    }
+
+    /// <summary>
+    /// BACKWARD COMPATIBILITY: Old ClearContext signature
+    /// </summary>
+    public void ClearContext()
+    {
+        // Clear all contexts (risky but maintains old behavior)
+        activeSpells.Clear();
+        Debug.LogWarning("[SpellEffects] ClearContext() cleared ALL active spells");
     }
 }

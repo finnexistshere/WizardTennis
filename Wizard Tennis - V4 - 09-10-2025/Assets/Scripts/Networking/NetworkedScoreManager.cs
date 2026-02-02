@@ -120,7 +120,17 @@ public class NetworkedScoreManager : NetworkBehaviour
         if (spellEffects != null)
         {
             // Check if spellName is "Green"
-            return spellEffects.spellName == "Green";
+            // Check if ANY player has Green spell active
+            foreach (var clientId in new ulong[] { 0, 1 }) // Assuming max 2 players
+            {
+                string activeSpell = spellEffects.GetActiveSpellName(clientId);
+                if (activeSpell == "Green")
+                {
+                    Debug.Log($"[ScoreManager] Green spell detected for client {clientId}");
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Fallback: check NetworkedBall components
