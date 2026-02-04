@@ -43,6 +43,19 @@ public class NetworkedBall : NetworkBehaviour
     public float ogUpForce = 11f;
     private float upForce;
 
+    [Header("Velocity Limits")]
+    [Tooltip("Maximum horizontal speed the ball can travel (m/s)")]
+    public float maxHorizontalVelocity = 35f;
+
+    [Tooltip("Maximum vertical speed the ball can travel (m/s)")]
+    public float maxVerticalVelocity = 25f;
+
+    [Tooltip("Maximum total velocity magnitude (m/s)")]
+    public float maxTotalVelocity = 40f;
+
+    [Tooltip("If true, clamp velocity every physics frame")]
+    public bool enforceVelocityCapInFixedUpdate = true;
+
     [Header("Network Sync Settings")]
     [Tooltip("How often to sync ball position (seconds)")]
     public float positionSyncInterval = 0.05f;
@@ -395,11 +408,18 @@ public class NetworkedBall : NetworkBehaviour
         // Server: Periodically sync ball state to all clients
         if (IsServer && currentBallInstance != null)
         {
+            Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
+
+            // Enforce velocity cap every physics frame (server-authoritative)
+            if (rb != null && enforceVelocityCapInFixedUpdate)
+            {
+                ClampBallVelocity(rb);
+            }
+
             if (Time.time - lastPositionSyncTime >= positionSyncInterval)
             {
                 lastPositionSyncTime = Time.time;
                 
-                Rigidbody rb = currentBallInstance.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
                     SyncBallStateClientRpc(
@@ -659,6 +679,9 @@ public class NetworkedBall : NetworkBehaviour
             Vector3 serveVelocity = new Vector3(0, ogUpForce, 0);
             rb.linearVelocity = serveVelocity;
 
+            // Clamping here isn't really necessary but I'm being heavy handed with this.
+            ClampBallVelocity(rb);
+
             Debug.Log($"[Server] Ball served by client {rpcParams.Receive.SenderClientId} - velocity: {rb.linearVelocity}");
             
             // Immediately sync the serve to all clients
@@ -712,7 +735,13 @@ public class NetworkedBall : NetworkBehaviour
 
         Vector3 finalVelocity = direction.normalized * force + Vector3.up * upwardForce;
         rb.linearVelocity = finalVelocity;
-        
+
+        // Clamp the Ball's velocity. It was doing some WACKY shit before so this method is going to put a stop to it
+        ClampBallVelocity(rb);
+
+        // Get the clamped velocity for sync
+        Vector3 clampedVelocity = rb.linearVelocity;
+
         // Immediately sync to all clients
         SyncBallStateClientRpc(currentBallInstance.transform.position, finalVelocity, Time.time);
 
@@ -789,14 +818,18 @@ public class NetworkedBall : NetworkBehaviour
 
         // Play local audio
         Vector3 contactPoint = other.ClosestPoint(transform.position);
-        PlayHitsound(contactPoint);
+
+        if (IsOwner)
+        {
+            PlayHitsound(contactPoint);
+        }
 
         // Request server to apply physics
         Vector3 direction = targetPos - transform.position;
         HitBallServerRpc(direction, strength, upForce);
 
         // Update rally count
-        if (NetworkedScoreManager.Instance != null)
+        if (IsOwner && NetworkedScoreManager.Instance != null)
         {
             NetworkedScoreManager.Instance.IncrementRallyCountServerRpc();
         }
@@ -817,7 +850,7 @@ public class NetworkedBall : NetworkBehaviour
         }
 
         // Hit slowdown effect
-        if (spellEffects != null && spellEffects.spellHit)
+        if (IsOwner && spellEffects != null && spellEffects.spellHit)
         {
             StartCoroutine(HitSlowdown());
         }
@@ -906,6 +939,54 @@ public class NetworkedBall : NetworkBehaviour
         Time.timeScale = originalTimeScale;
         cam.fieldOfView = originalFOV;
         isHitSlowActive = false;
+    }
+
+    /// <summary>
+    /// Clamps a rigidbody's velocity to the configured maximum values
+    /// </summary>
+    private void ClampBallVelocity(Rigidbody rb)
+    {
+        if (rb == null) return;
+
+        Vector3 velocity = rb.linearVelocity;
+        bool wasClamped = false;
+
+        // Clamp horizontal velocity (XZ plane)
+        Vector3 horizontalVelocity = new Vector3(velocity.x, 0, velocity.z);
+        if (horizontalVelocity.magnitude > maxHorizontalVelocity)
+        {
+            horizontalVelocity = horizontalVelocity.normalized * maxHorizontalVelocity;
+            velocity.x = horizontalVelocity.x;
+            velocity.z = horizontalVelocity.z;
+            wasClamped = true;
+
+            Debug.LogWarning($"[NetworkedBall] Clamped horizontal velocity to {maxHorizontalVelocity} m/s");
+        }
+
+        // Clamp vertical velocity
+        if (Mathf.Abs(velocity.y) > maxVerticalVelocity)
+        {
+            velocity.y = Mathf.Sign(velocity.y) * maxVerticalVelocity;
+            wasClamped = true;
+
+            Debug.LogWarning($"[NetworkedBall] Clamped vertical velocity to {maxVerticalVelocity} m/s");
+        }
+
+        // Clamp total velocity magnitude
+        if (velocity.magnitude > maxTotalVelocity)
+        {
+            velocity = velocity.normalized * maxTotalVelocity;
+            wasClamped = true;
+
+            Debug.LogWarning($"[NetworkedBall] Clamped total velocity to {maxTotalVelocity} m/s");
+        }
+
+        // Apply clamped velocity
+        if (wasClamped)
+        {
+            rb.linearVelocity = velocity;
+            Debug.Log($"[NetworkedBall] Final clamped velocity: {velocity} (magnitude: {velocity.magnitude:F2})");
+        }
     }
 
     public void SetToServingState()

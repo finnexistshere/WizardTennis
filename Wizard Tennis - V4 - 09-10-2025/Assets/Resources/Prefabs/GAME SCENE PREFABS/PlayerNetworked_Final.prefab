@@ -5636,7 +5636,11 @@ MonoBehaviour:
   - ServingWalls
   strength: 11
   ogUpForce: 5
-  positionSyncInterval: 0.01
+  maxHorizontalVelocity: 35
+  maxVerticalVelocity: 25
+  maxTotalVelocity: 40
+  enforceVelocityCapInFixedUpdate: 1
+  positionSyncInterval: 0.1
   positionLerpSpeed: 0.3
   audioSource: {fileID: 0}
   hitsounds:
@@ -6026,38 +6030,7 @@ MonoBehaviour:
     m_Bits: 256
   customColourMaterialSlot: -1
   debugLog: 0
-  fireball:
-    m_InternalValue: 1
-  ice:
-    m_InternalValue: 1
-  lightning:
-    m_InternalValue: 1
-  shadow:
-    m_InternalValue: 1
-  green:
-    m_InternalValue: 1
-  stone:
-    m_InternalValue: 1
-  chronos:
-    m_InternalValue: 1
-  gemini:
-    m_InternalValue: 1
-  pisces:
-    m_InternalValue: 1
-  jolly:
-    m_InternalValue: 1
-  blink:
-    m_InternalValue: 1
-  warp:
-    m_InternalValue: 1
-  tether:
-    m_InternalValue: 1
-  mud:
-    m_InternalValue: 1
-  gambit:
-    m_InternalValue: 1
-  gorbino:
-    m_InternalValue: 1
+  boolsTest: 
 --- !u!1 &8784951100886631635
 GameObject:
   m_ObjectHideFlags: 0
