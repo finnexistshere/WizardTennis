@@ -34297,9 +34297,11 @@ MonoBehaviour:
   availableHeads:
   - {fileID: 5611062545380133758, guid: 85127a8540972e547b575689e2d31f1d, type: 3}
   - {fileID: 4363149620502280517, guid: c22188f072cc8244aba61d3a055915db, type: 3}
+  - {fileID: 6054334596905553302, guid: 29b97a2fae505a24a87b1109aa9b18f0, type: 3}
   headNames:
   - Wizard - Default
   - Hood
+  - Dapper
   headPreviewSprites:
   - {fileID: 21300000, guid: aa2d03c88b096f743befcc096f72d6d9, type: 3}
   - {fileID: 21300000, guid: aa2d03c88b096f743befcc096f72d6d9, type: 3}
