@@ -5770,6 +5770,10 @@ MonoBehaviour:
   arrowMoveSpeed: 0.6
   arrowLifetime: 0.6
   arrowFadeStart: 0.25
+  leftArrowColor: {r: 0.61960787, g: 1, b: 0.88235295, a: 1}
+  rightArrowColor: {r: 0.7176471, g: 0.227451, b: 0.227451, a: 1}
+  upArrowColor: {r: 1, g: 0.7058824, b: 0.33333334, a: 1}
+  downArrowColor: {r: 0.67058825, g: 0, b: 0.75294125, a: 1}
   racketShader: {fileID: -876546973899608171, guid: 122f223ebd6d65f43bcd839f75c86d74, type: 3}
   spellBookPanel: {fileID: 0}
   spellAddressText: {fileID: 0}

@@ -106,6 +106,22 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     [SerializeField] private float arrowLifetime = 0.6f;
     [SerializeField] private float arrowFadeStart = 0.25f;
 
+    [Header("Arrow Color Settings")]
+    [Tooltip("Color for Left arrow (a)")]
+    [SerializeField] private Color leftArrowColor = new Color(0.3f, 0.6f, 1f);  // Light Blue
+
+    [Tooltip("Color for Right arrow (A)")]
+    [SerializeField] private Color rightArrowColor = new Color(1f, 0.4f, 0.4f);  // Light Red
+
+    [Tooltip("Color for Up arrow (B)")]
+    [SerializeField] private Color upArrowColor = new Color(0.4f, 1f, 0.4f);  // Light Green
+
+    [Tooltip("Color for Down arrow (b)")]
+    [SerializeField] private Color downArrowColor = new Color(1f, 1f, 0.4f);  // Light Yellow
+
+    // Internal color mapping
+    private Dictionary<string, Color> arrowColors = new Dictionary<string, Color>();
+
     // --- Racket Shader Reference ---
     [SerializeField] public Material racketShader;
 
@@ -183,6 +199,7 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     {
         AutoSetupReferences();
         InitializeRacketShader();
+        InitializeArrowColors();
     }
 
     public override void OnNetworkSpawn()
@@ -290,6 +307,16 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             racketShader.SetColor("_Racket_Color_Top", new Color32(171, 171, 171, 255));
             racketShader.SetColor("_Racket_Color_Bottom", new Color32(99, 99, 99, 255));
         }
+    }
+
+    private void InitializeArrowColors()
+    {
+        arrowColors["a"] = leftArrowColor;   // Left
+        arrowColors["A"] = rightArrowColor;  // Right
+        arrowColors["B"] = upArrowColor;     // Up
+        arrowColors["b"] = downArrowColor;   // Down
+
+        Debug.Log("[NetworkedSpellcasting] Arrow colors initialized.");
     }
 
     private void Update()
@@ -591,7 +618,15 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             arrowInstance.GetComponentInChildren<TextMeshProUGUI>();
 
         if (arrowText != null)
+        {
             arrowText.text = arrowSymbol;
+
+            // Apply color based on direction
+            if (arrowColors.TryGetValue(arrowSymbol, out Color arrowColor))
+            {
+                arrowText.color = arrowColor;
+            }
+        }
 
         StartCoroutine(AnimateArrowParticle(arrowInstance, arrowText));
     }
@@ -1327,7 +1362,17 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     private void UpdateSpellBook()
     {
         if (spellAddressText != null)
-            spellAddressText.text = string.IsNullOrEmpty(inputSpellAddress) ? "" : inputSpellAddress;
+        {
+            if (string.IsNullOrEmpty(inputSpellAddress))
+            {
+                spellAddressText.text = "";
+            }
+            else
+            {
+                // Use rich text to color each character
+                spellAddressText.text = ColorizeSpellAddress(inputSpellAddress);
+            }
+        }
 
         foreach (GameObject currentSpell in GameObject.FindGameObjectsWithTag("SpellUI"))
             Destroy(currentSpell);
@@ -1342,6 +1387,56 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
                 newEntry.SetText(item.Value, item.Key);
             }
         }
+    }
+
+    /// <summary>
+    /// Converts a spell address into colored rich text
+    /// Example: "aAB" -> <color=#5599FF>a</color><color=#FF6666>A</color><color=#66FF66>B</color>
+    /// </summary>
+    private string ColorizeSpellAddress(string address)
+    {
+        if (string.IsNullOrEmpty(address))
+            return "";
+
+        System.Text.StringBuilder coloredText = new System.Text.StringBuilder();
+
+        foreach (char c in address)
+        {
+            string direction = c.ToString();
+
+            if (arrowColors.TryGetValue(direction, out Color color))
+            {
+                // Convert color to hex for TextMeshPro rich text
+                string hexColor = ColorUtility.ToHtmlStringRGB(color);
+                coloredText.Append($"<color=#{hexColor}>{direction}</color>");
+            }
+            else
+            {
+                // Fallback: no color
+                coloredText.Append(direction);
+            }
+        }
+
+        return coloredText.ToString();
+    }
+
+    /// <summary>
+    /// Public method for SpellTextEntry to get colorized addresses
+    /// </summary>
+    public string GetColorizedAddress(string address)
+    {
+        return ColorizeSpellAddress(address);
+    }
+
+    /// <summary>
+    /// Get the color for a specific arrow direction
+    /// </summary>
+    public Color GetArrowColor(string direction)
+    {
+        if (arrowColors.TryGetValue(direction, out Color color))
+            return color;
+
+        return Color.white; // Default
     }
 
     /// <summary>

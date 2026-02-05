@@ -60,8 +60,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83e4732f61b969749922dc107f7e0083, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nameText: {fileID: 3213267129712226829}
-  addressText: {fileID: 3977932936513504394}
+  spellNameText: {fileID: 3213267129712226829}
+  spellAddressText: {fileID: 3977932936513504394}
 --- !u!114 &3213267129712226829
 MonoBehaviour:
   m_ObjectHideFlags: 0
