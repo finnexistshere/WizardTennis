@@ -7,19 +7,31 @@ public class SpellTextEntry : MonoBehaviour
     public TextMeshProUGUI nameText;
     public TextMeshProUGUI addressText;
 
+    private Spellcasting spellcasting;
+
+    private void Awake()
+    {
+        // Try to find it, but don't require it
+        spellcasting = FindObjectOfType<Spellcasting>();
+    }
+
     /// <summary>
     /// Sets both the spell name and address text.
+    /// Uses spellcasting color formatting if available,
+    /// otherwise falls back to default text.
     /// </summary>
     public void SetText(string spellName, string spellAddress)
     {
         if (nameText != null)
             nameText.text = spellName;
-        else
-            Debug.LogWarning("[SpellTextEntry] nameText is not assigned!");
 
         if (addressText != null)
-            addressText.text = spellAddress;
-        else
-            Debug.LogWarning("[SpellTextEntry] addressText is not assigned!");
+        {
+            // Use coloured version if possible
+            if (spellcasting != null)
+                addressText.text = spellcasting.GetColorizedAddress(spellAddress);
+            else
+                addressText.text = spellAddress; // fallback
+        }
     }
 }

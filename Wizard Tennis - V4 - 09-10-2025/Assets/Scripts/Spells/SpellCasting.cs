@@ -78,6 +78,22 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
     public Vector2 randomAngleRange = new Vector2(-30f, 30f);  // Random angle variance
     public float arrowSpawnRadius = 0.3f;  // Random spawn offset
 
+    [Header("Arrow Color Settings")]
+    [Tooltip("Color for Left arrow (a)")]
+    public Color leftArrowColor = new Color(0.3f, 0.6f, 1f);  // Light Blue
+
+    [Tooltip("Color for Right arrow (A)")]
+    public Color rightArrowColor = new Color(1f, 0.4f, 0.4f);  // Light Red
+
+    [Tooltip("Color for Up arrow (B)")]
+    public Color upArrowColor = new Color(0.4f, 1f, 0.4f);  // Light Green
+
+    [Tooltip("Color for Down arrow (b)")]
+    public Color downArrowColor = new Color(1f, 1f, 0.4f);  // Light Yellow
+
+    // Internal mapping
+    private Dictionary<string, Color> arrowColors = new Dictionary<string, Color>();
+
     // ================================================================
     // INITIALIZATION
     // ================================================================
@@ -86,6 +102,17 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
     {
         AutoSetupReferences();
         InitializeRacketShader();
+        InitializeArrowColors();
+    }
+
+    private void InitializeArrowColors()
+    {
+        arrowColors["a"] = leftArrowColor;   // Left
+        arrowColors["A"] = rightArrowColor;  // Right
+        arrowColors["B"] = upArrowColor;     // Up
+        arrowColors["b"] = downArrowColor;   // Down
+
+        Debug.Log("[Spellcasting] Arrow colors initialized.");
     }
 
     private void Start()
@@ -456,7 +483,16 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
     private void UpdateSpellBook()
     {
         if (spellAddressText != null)
-            spellAddressText.text = string.IsNullOrEmpty(inputSpellAddress) ? "" : inputSpellAddress;
+        {
+            if (string.IsNullOrEmpty(inputSpellAddress))
+            {
+                spellAddressText.text = "";
+            }
+            else
+            {
+                spellAddressText.text = ColorizeSpellAddress(inputSpellAddress);
+            }
+        }
 
         foreach (GameObject currentSpell in GameObject.FindGameObjectsWithTag("SpellUI"))
             Destroy(currentSpell);
@@ -773,6 +809,11 @@ public void CastSpellNormal(string spellName)
         if (arrowText != null)
         {
             arrowText.text = arrowSymbol;
+
+            if (arrowColors.TryGetValue(direction, out Color arrowColor))
+            {
+                arrowText.color = arrowColor;
+            }
         }
         else
         {
@@ -843,10 +884,48 @@ public void CastSpellNormal(string spellName)
         }
     }
 
-    // ADD THIS NEW METHOD IN Spellcasting:
     private void OnLanguageChanged(Language newLanguage)
     {
         Debug.Log($"[Spellcasting] Language changed to: {LanguageHelper.GetLanguageName(newLanguage)}");
         RefreshSpellBookUI();
+    }
+
+    /// <summary>
+    /// Converts a spell address into colored rich text
+    /// Example: "aAB" -> <color=#5599FF>a</color><color=#FF6666>A</color><color=#66FF66>B</color>
+    /// </summary>
+    private string ColorizeSpellAddress(string address)
+    {
+        if (string.IsNullOrEmpty(address))
+            return "";
+
+        System.Text.StringBuilder coloredText = new System.Text.StringBuilder();
+
+        foreach (char c in address)
+        {
+            string direction = c.ToString();
+
+            if (arrowColors.TryGetValue(direction, out Color color))
+            {
+                // Convert color to hex for TextMeshPro rich text
+                string hexColor = ColorUtility.ToHtmlStringRGB(color);
+                coloredText.Append($"<color=#{hexColor}>{direction}</color>");
+            }
+            else
+            {
+                // Fallback: no color
+                coloredText.Append(direction);
+            }
+        }
+
+        return coloredText.ToString();
+    }
+
+    /// <summary>
+    /// Public method for SpellTextEntry to get colorized addresses
+    /// </summary>
+    public string GetColorizedAddress(string address)
+    {
+        return ColorizeSpellAddress(address);
     }
 }
