@@ -503,6 +503,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 27708880}
   m_CullTransparentMesh: 1
+--- !u!4 &30566209 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 381048815776053082, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+  m_PrefabInstance: {fileID: 1708906520}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &38735795
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -31242,6 +31247,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 8179f0c2d810c8f4d884e6dd5bdabdb8, type: 3}
   m_PrefabInstance: {fileID: 508699848}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &819674790 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 837744336287078888, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+  m_PrefabInstance: {fileID: 1708906520}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &832880828 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 233c1d04373bad24f9fea80911a837ef, type: 3}
@@ -46978,7 +46988,7 @@ MonoBehaviour:
   spawnRadius: 6
   maxActivePickups: 4
   spawnCenter: {fileID: 658361824}
-  spellcasting: {fileID: 0}
+  spellcasting: {fileID: 1708906524}
   ballPrefab: {fileID: 0}
   ballSpawnPoint: {fileID: 0}
   pauseMenuUI: {fileID: 265330815}
@@ -47012,7 +47022,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e241b6e3a1f5c06429f6696e64ba78df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Player: {fileID: 0}
+  Player: {fileID: 1756418948}
   PlayerName: Player_Singleplayer
   Opponent: {fileID: 2092549635}
   TennisAI: {fileID: 1594825194}
@@ -47040,10 +47050,12 @@ MonoBehaviour:
   mudPrefab: {fileID: 6622199852326541046, guid: 2e4ad7e8bdb68b248869e973c529e432, type: 3}
   orbiterPrefab: {fileID: 1664898280556804845, guid: 1b909269e4c14a249a38ba2dda10af9f, type: 3}
   tetherPrefab: {fileID: 7245028594593329606, guid: 43847781cb6a7244f9c92d25630a510f, type: 3}
-  jollyPrefab: {fileID: 6974429216218887945, guid: 6931c73d6b9e40f449e0c1b8ce25993d, type: 3}
+  jollyPrefab: {fileID: 6974429216218887945, guid: dddf3d8e88c78f2479c6bd2efd1eeb11, type: 3}
   BallPrefab: {fileID: 5499011774259568949, guid: 23daab679bb69d54c9d92efa7a6a88d0, type: 3}
   flamePrefab: {fileID: 8057782250999151861, guid: cc56ac6547b79a940b3636f73d6eb516, type: 3}
   lightningTrailObject: {fileID: 727092754}
+  jollyHandBone: {fileID: 819674790}
+  racketMesh: {fileID: 30566209}
   shadowMaterial: {fileID: 2100000, guid: 4861d9c0b7f020c49a0694223e19806c, type: 2}
   spellHit: 0
 --- !u!1 &1596896129
@@ -53365,6 +53377,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3696794507323943539, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
   m_PrefabInstance: {fileID: 1708906520}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1708906524 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1799513330200298478, guid: db0a97bacf782dc4fb8ef9a0da29ba94, type: 3}
+  m_PrefabInstance: {fileID: 1708906520}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1756418948}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 899ff2024ed4c6a41987d549fd46cf51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &1710648335 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: dcb581a0dd811d844bf5807c2a463c22, type: 3}

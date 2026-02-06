@@ -58,6 +58,13 @@ public class SpellEffects : MonoBehaviour
     private GameObject activeFlame;
     public GameObject lightningTrailObject;
 
+    [Header("Jolly Spell References")]
+    [Tooltip("The hand bone where Jolly prefab attaches (usually Right Hand)")]
+    public Transform jollyHandBone;
+
+    [Tooltip("The racket mesh to hide when Jolly is active")]
+    public Transform racketMesh;
+
     [Header("Shadow Spell Settings")]
     public Material shadowMaterial;  // Material to apply to opponent (semi-transparent/ghostly)
     private Dictionary<Renderer, Material> shadowOriginalMaterials = new Dictionary<Renderer, Material>();
@@ -260,13 +267,22 @@ public class SpellEffects : MonoBehaviour
                 Player.GetComponent<CapsuleCollider>().radius = 2;
                 Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
 
-                activeJolly = Instantiate(jollyPrefab, Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform.position, Quaternion.identity);
-                activeJolly.transform.parent = Player.transform.GetChild(2).GetChild(1).GetChild(0).GetChild(0).GetChild(1).GetChild(0).GetChild(0).transform;
-                activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
-                activeJolly.transform.localRotation = jollyRot;
-                activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+                Transform handBone = jollyHandBone;
 
-                Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(false);
+                if (handBone != null)
+                {
+                    activeJolly = Instantiate(jollyPrefab, handBone.position, Quaternion.identity);
+                    activeJolly.transform.SetParent(handBone);
+                    activeJolly.transform.localPosition = new Vector3(0, 0.05f, 0);
+                    activeJolly.transform.localRotation = jollyRot;
+                    activeJolly.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+                }
+                else
+                {
+                    Debug.LogWarning("[SpellEffects] Jolly: Could not find hand bone - spawning at player position");
+                    activeJolly = Instantiate(jollyPrefab, Player.transform.position, Quaternion.identity);
+                    activeJolly.transform.SetParent(Player.transform);
+                }
 
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
@@ -388,8 +404,24 @@ public class SpellEffects : MonoBehaviour
                 break;
             case "Jolly":
                 Player.GetComponent<CapsuleCollider>().radius = 1;
-                Player.transform.GetChild(2).GetChild(0).GetChild(4).GetChild(0).GetChild(0).gameObject.SetActive(true);
-                Destroy(activeJolly);
+
+                // Find racket mesh and re-enable it
+                Transform racketMesh = FindRacketMesh(Player.transform);
+
+                if (racketMesh != null)
+                {
+                    racketMesh.gameObject.SetActive(true);
+                }
+                else
+                {
+                    Debug.LogWarning("[SpellEffects] Jolly reset: Could not find racket mesh to show");
+                }
+
+                if (activeJolly != null)
+                {
+                    Destroy(activeJolly);
+                    activeJolly = null;
+                }
                 break;
             case "Mud":
                 resetOnOppHit = false;
@@ -754,5 +786,111 @@ public class SpellEffects : MonoBehaviour
     public static void ResetSpellsForNewRound()
     {
         spellsUsedThisRound.Clear();
+    }
+
+    /// <summary>
+    /// Finds the hand bone in the player hierarchy
+    /// Searches for common hand bone names
+    /// </summary>
+    private Transform FindHandBone(Transform root)
+    {
+        if (root == null)
+            return null;
+
+        // Common hand bone names
+        string[] handBoneNames = new string[]
+        {
+        "Hand_R",
+        "RightHand",
+        "Right Hand",
+        "hand_r",
+        "R_Hand",
+        "mixamorig:RightHand",
+        "Bip01 R Hand"
+        };
+
+        // Search for hand bone by name
+        foreach (string boneName in handBoneNames)
+        {
+            Transform found = FindTransformRecursive(root, boneName);
+            if (found != null)
+            {
+                Debug.Log($"[SpellEffects] Found hand bone: {found.name}");
+                return found;
+            }
+        }
+
+        Debug.LogWarning("[SpellEffects] Could not find hand bone - tried all common names");
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the racket mesh in the player hierarchy
+    /// Searches for objects with "racket" in their name
+    /// </summary>
+    private Transform FindRacketMesh(Transform root)
+    {
+        if (root == null)
+            return null;
+
+        // Search for racket by name (case-insensitive)
+        Transform racket = FindTransformRecursive(root, "racket", caseSensitive: false);
+
+        if (racket != null)
+        {
+            Debug.Log($"[SpellEffects] Found racket mesh: {racket.name}");
+            return racket;
+        }
+
+        // Fallback: search for mesh renderer named similar to racket
+        string[] racketNames = new string[]
+        {
+        "Racket",
+        "racket",
+        "TennisRacket",
+        "Racquet",
+        "sm_Racket",
+        "Racket_Mesh"
+        };
+
+        foreach (string name in racketNames)
+        {
+            Transform found = FindTransformRecursive(root, name);
+            if (found != null)
+            {
+                Debug.Log($"[SpellEffects] Found racket mesh: {found.name}");
+                return found;
+            }
+        }
+
+        Debug.LogWarning("[SpellEffects] Could not find racket mesh");
+        return null;
+    }
+
+    /// <summary>
+    /// Recursively searches for a child transform by name
+    /// </summary>
+    private Transform FindTransformRecursive(Transform parent, string name, bool caseSensitive = true)
+    {
+        if (parent == null)
+            return null;
+
+        // Check current transform
+        bool nameMatch = caseSensitive
+            ? parent.name == name
+            : parent.name.ToLower().Contains(name.ToLower());
+
+        if (nameMatch)
+            return parent;
+
+        // Check all children recursively
+        foreach (Transform child in parent)
+        {
+            Transform result = FindTransformRecursive(child, name, caseSensitive);
+            if (result != null)
+                return result;
+        }
+
+        return null;
     }
 }
