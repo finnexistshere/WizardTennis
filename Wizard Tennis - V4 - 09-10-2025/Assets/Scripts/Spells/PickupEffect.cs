@@ -263,6 +263,8 @@ public class PickupEffect : NetworkBehaviour
                     audioSource.PlayOneShot(pickupAudio);
 
                 RequestPickupServerRpc(playerNetObj.NetworkObjectId);
+                // Update On Pickup instead of every frame
+                netSpell.UpdateSpellBook();
             }
         }
     }

@@ -232,20 +232,6 @@ public class TwoHandIKController : MonoBehaviour
             if (debugLogs)
                 Debug.Log($"{name}: Rig built and activated");
         }
-        else
-        {
-            // Legacy behavior - build every frame (original functionality)
-            if (rig != null)
-            {
-                rig.Build();
-                foreach (var layer in rig.layers)
-                {
-                    if (layer.rig != null)
-                        layer.rig.weight = 1f;
-                }
-
-            }
-        }
 
         // Main IK update
         UpdateIKTarget();

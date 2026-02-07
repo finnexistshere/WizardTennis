@@ -7,6 +7,8 @@ using Unity.Netcode;
 [RequireComponent(typeof(NetworkObject))]
 public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
 {
+    private System.Text.StringBuilder colorTextBuilder = new System.Text.StringBuilder(16);
+
     // Serializable struct to pass spellBook over network
     [System.Serializable]
     public struct SerializedSpellBook : INetworkSerializable
@@ -324,31 +326,49 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         // Only owner needs ball for visuals and input
         if (!IsOwner) return;
 
-        // Periodic ball check for owner only
-        if (Time.time >= nextBallCheckTime)
+        // OPTIMIZATION: Periodic ball check (already optimized)
+        if (currentBall == null)
         {
-            nextBallCheckTime = Time.time + ballCheckInterval;
-            TryFindAndLinkBall();
+            if (Time.time >= nextBallCheckTime)
+            {
+                nextBallCheckTime = Time.time + ballCheckInterval;
+                TryFindAndLinkBall();
+            }
         }
 
+        // Early exit if casting
         if (isCasting) return;
 
-        UpdateSpellBook();
+        // OPTIMIZATION: Only update spell book when input changes (moved to RegisterInput)
+        // UpdateSpellBook(); // REMOVED FROM UPDATE
 
+        // Input timeout check (only when we have input)
         if (!string.IsNullOrEmpty(inputSpellAddress) && Time.time - lastInputTime >= inputTimeout)
         {
-            inputSpellAddress = "";
-            UpdateSpellBook();
+            ClearSpellInput();
         }
 
+        // Input check
         if (CheckSpellInput(out SpellInputDirection dir))
         {
             RegisterInput(DirectionToGlyph(dir));
             TriggerInputFeedback(dir);
         }
 
+        // Spell check (only when we have valid input)
         if (!string.IsNullOrEmpty(inputSpellAddress) && spellBook.ContainsKey(inputSpellAddress))
+        {
             CheckSpell();
+        }
+    }
+
+    /// <summary>
+    /// Clears spell input and updates UI
+    /// </summary>
+    private void ClearSpellInput()
+    {
+        inputSpellAddress = "";
+        UpdateSpellBook();
     }
 
     private void TryFindAndLinkBall()
@@ -455,30 +475,28 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     /// </summary>
     private void CheckSpell()
     {
-        if (!spellBook.ContainsKey(inputSpellAddress))
+        // OPTIMIZATION: Single dictionary lookup instead of multiple
+        if (!spellBook.TryGetValue(inputSpellAddress, out string spellName))
             return;
 
         if (isCasting)
             return;
 
-        // Check if ANY spell is active (not just ours)
+        // Check if ANY spell is active
         if (NetworkedSpellEffects.Instance != null && NetworkedSpellEffects.Instance.IsAnySpellActive)
         {
-            // Check if we already have an active spell
             if (NetworkedSpellEffects.Instance.HasActiveSpell(OwnerClientId))
             {
                 Debug.Log($"[NetworkedSpellcasting] Cannot cast - we already have an active spell");
-                inputSpellAddress = "";
-                UpdateSpellBook();
+                ClearSpellInput();
                 return;
             }
 
-            // Another player has a spell active - we can still cast!
             Debug.Log($"[NetworkedSpellcasting] Another player has active spell, but we can still cast");
         }
 
-        // Cast immediately
-        ExecuteSpell(inputSpellAddress, spellBook[inputSpellAddress]);
+        // Cast immediately - spellName already retrieved
+        ExecuteSpell(inputSpellAddress, spellName);
     }
 
     /// <summary>
@@ -1359,8 +1377,12 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
         return null;
     }
 
-    private void UpdateSpellBook()
+    // Cache for spell UI objects to avoid repeated tag searches
+    private List<GameObject> cachedSpellUIObjects = new List<GameObject>();
+
+    public void UpdateSpellBook()
     {
+        // Update address text
         if (spellAddressText != null)
         {
             if (string.IsNullOrEmpty(inputSpellAddress))
@@ -1369,23 +1391,40 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             }
             else
             {
-                // Use rich text to color each character
                 spellAddressText.text = ColorizeSpellAddress(inputSpellAddress);
             }
         }
 
-        foreach (GameObject currentSpell in GameObject.FindGameObjectsWithTag("SpellUI"))
-            Destroy(currentSpell);
+        // OPTIMIZATION: Clear cached objects instead of FindGameObjectsWithTag
+        for (int i = cachedSpellUIObjects.Count - 1; i >= 0; i--)
+        {
+            if (cachedSpellUIObjects[i] != null)
+            {
+                Destroy(cachedSpellUIObjects[i]);
+            }
+        }
+        cachedSpellUIObjects.Clear();
 
+        // OPTIMIZATION: Early exit if no spell book panel
+        if (spellBookPanel == null || spellTextPrefab == null)
+            return;
+
+        // OPTIMIZATION: Use cached transform reference
+        Transform panelTransform = spellBookPanel.transform;
+
+        // Create spell entries (only for matching spells)
         foreach (KeyValuePair<string, string> item in spellBook)
         {
-            if (!item.Key.StartsWith(inputSpellAddress)) continue;
-            if (spellBookPanel != null && spellTextPrefab != null)
-            {
-                SpellTextEntry newEntry = Instantiate(spellTextPrefab, spellBookPanel.transform, false);
-                newEntry.gameObject.tag = "SpellUI";
-                newEntry.SetText(item.Value, item.Key);
-            }
+            // OPTIMIZATION: Use StartsWith (already optimized)
+            if (!item.Key.StartsWith(inputSpellAddress))
+                continue;
+
+            SpellTextEntry newEntry = Instantiate(spellTextPrefab, panelTransform, false);
+            newEntry.gameObject.tag = "SpellUI";
+            newEntry.SetText(item.Value, item.Key);
+
+            // Cache the created object
+            cachedSpellUIObjects.Add(newEntry.gameObject);
         }
     }
 
@@ -1393,12 +1432,17 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
     /// Converts a spell address into colored rich text
     /// Example: "aAB" -> <color=#5599FF>a</color><color=#FF6666>A</color><color=#66FF66>B</color>
     /// </summary>
+    /// <summary>
+    /// Converts a spell address into colored rich text
+    /// OPTIMIZED: Reuses StringBuilder to reduce allocations
+    /// </summary>
     private string ColorizeSpellAddress(string address)
     {
         if (string.IsNullOrEmpty(address))
             return "";
 
-        System.Text.StringBuilder coloredText = new System.Text.StringBuilder();
+        // Reuse StringBuilder instead of creating new one
+        colorTextBuilder.Clear();
 
         foreach (char c in address)
         {
@@ -1408,16 +1452,19 @@ public class NetworkedSpellcasting : NetworkBehaviour, ISpellcasting
             {
                 // Convert color to hex for TextMeshPro rich text
                 string hexColor = ColorUtility.ToHtmlStringRGB(color);
-                coloredText.Append($"<color=#{hexColor}>{direction}</color>");
+                colorTextBuilder.Append("<color=#");
+                colorTextBuilder.Append(hexColor);
+                colorTextBuilder.Append(">");
+                colorTextBuilder.Append(direction);
+                colorTextBuilder.Append("</color>");
             }
             else
             {
-                // Fallback: no color
-                coloredText.Append(direction);
+                colorTextBuilder.Append(direction);
             }
         }
 
-        return coloredText.ToString();
+        return colorTextBuilder.ToString();
     }
 
     /// <summary>
