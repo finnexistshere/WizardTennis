@@ -5621,6 +5621,7 @@ MonoBehaviour:
   aimTarget: {fileID: 0}
   opponent: {fileID: 0}
   OppIKRig: {fileID: 0}
+  PlayerIKRig: {fileID: 5254710448533051725}
   spellEffects: {fileID: 0}
   scoreManager: {fileID: 0}
   green: 0
@@ -5718,13 +5719,13 @@ MonoBehaviour:
   sideOffsetMax: 0.8
   heightOffset: 0.5
   forwardOffset: 0.5
-  followSpeed: 5
-  swingDistance: 3
+  followSpeed: 45
+  swingDistance: 4
   swingSharpness: 0.1
   followThroughAmount: 5
   swingTriggerDistance: 0.4
   nudgeDamping: 12
-  updateInterval: 1
+  updateInterval: 8
   cullingDistance: 0
   smartRigBuilding: 1
   debugLogs: 0
@@ -6362,6 +6363,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3911448812893759365, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4139147192337721799, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}
+      propertyPath: m_UpdateMode
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4178451337192950073, guid: d9a85ec26396ba7458202d807f561b5f, type: 3}

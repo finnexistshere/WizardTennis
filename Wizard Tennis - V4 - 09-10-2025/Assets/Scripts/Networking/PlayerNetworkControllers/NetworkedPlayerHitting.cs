@@ -10,6 +10,7 @@ public class NetworkedBall : NetworkBehaviour
     public Transform aimTarget;
     public GameObject opponent;
     public TwoHandIKController_Opponent OppIKRig;
+    public TwoHandIKController PlayerIKRig;
     public NetworkedSpellEffects spellEffects;
     public NetworkedScoreManager scoreManager;
     private NetworkedUIManager uiManager;
@@ -382,6 +383,7 @@ public class NetworkedBall : NetworkBehaviour
 
             barrierController?.RequestDisableBarriers();
             NetworkedGameManager.Instance?.RequestUnlockPickupSpawning();
+            PlayerIKRig.SetUpRigAndBall();
         }
 
         // Pause/Resume for testing

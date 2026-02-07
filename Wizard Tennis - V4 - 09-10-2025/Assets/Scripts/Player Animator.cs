@@ -138,6 +138,11 @@ public class TwoHandIKController : MonoBehaviour
 
     private void Start()
     {
+        SetUpRigAndBall();
+    }
+
+    public void SetUpRigAndBall()
+    {
         // Start searching immediately in case ball spawns late
         StartFindingBall();
 
@@ -212,6 +217,11 @@ public class TwoHandIKController : MonoBehaviour
             return;
         }
 
+        if (ball != null)
+        {
+            StartFindingBall();
+        }
+
         // OPTIMIZATION: Smart rig building - only when ball reference changes
         // Original code rebuilt rig every frame when ball existed
         if (rig != null && !rigInitialized)
@@ -231,6 +241,14 @@ public class TwoHandIKController : MonoBehaviour
 
             if (debugLogs)
                 Debug.Log($"{name}: Rig built and activated");
+        }
+        else
+        {
+            // Legacy behavior - build every frame
+            if (rig != null)
+            {
+                rig.Build();  // BUILDS EVERY FRAME!
+            }
         }
 
         // Main IK update
