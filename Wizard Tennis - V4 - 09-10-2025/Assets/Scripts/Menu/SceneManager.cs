@@ -13,6 +13,7 @@ public class SceneChanger : MonoBehaviour
     public GameObject SpellbookMenu;
     public GameObject MultiplayerMenu;
     public GameObject CustomisationMenu;
+    public GameObject QuitPopup;
 
     [Header("Help Panels")]
     public GameObject MainMenuHelp;
@@ -50,6 +51,16 @@ public class SceneChanger : MonoBehaviour
     public void ChangeSceneByIndex(int sceneIndex)
     {
         SceneManager.LoadScene(sceneIndex);
+    }
+
+    public void OpenQuitPopup()
+    {
+        QuitPopup.SetActive(true);
+    }
+
+    public void CloseQuitPopup()
+    {
+        QuitPopup.SetActive(false);
     }
 
     public void ExitApplication()
