@@ -23,6 +23,7 @@ public class SpellEffects : MonoBehaviour
     [Header("Audio")]
     public AudioSource audioSource;
     public AudioClip[] ouchVoicelines;
+    public AudioClip gambitVoiceLine;
 
     [Header("Point SFX")]
     public AudioSource pointSource;
@@ -337,6 +338,7 @@ public class SpellEffects : MonoBehaviour
             case "Gambit":
                 int spellInt = Random.Range(0, allSpells.Length);
                 spellName = allSpells[spellInt];
+                audioSource.PlayOneShot(gambitVoiceLine);
                 castSpell();
                 return;
         }
@@ -555,6 +557,11 @@ public class SpellEffects : MonoBehaviour
 
     private IEnumerator HandleMud(GameObject mud, float duration)
     {
+        if (spellName == "Fireball" && ouchVoicelines.Length > 0)
+        {
+            int index = Random.Range(0, ouchVoicelines.Length);
+            audioSource.PlayOneShot(ouchVoicelines[index]);
+        }
         Vector3 endScale = mud.transform.localScale;
         Vector3 startScale = new Vector3(0.1f, 0.01f, 0.1f);
         mud.transform.localScale = startScale;
@@ -566,6 +573,7 @@ public class SpellEffects : MonoBehaviour
             mud.transform.localScale = Vector3.Lerp(startScale, endScale, t);
             yield return null;
         }
+
 
         // Wait for the wall's duration
         yield return new WaitForSeconds(duration - 1f);

@@ -157,7 +157,6 @@ public class GameManager : MonoBehaviour
                     }
         }
 
-
         // Clean up destroyed pickups
         activePickups.RemoveAll(p => p == null);
 
@@ -303,7 +302,8 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 0f;
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("UI");
-        pauseMenuUI?.SetActive(true);
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(true);
     }
 
     public void ResumeGame()
@@ -312,7 +312,10 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
         if (playerInput != null)
             playerInput.SwitchCurrentActionMap("Player");
-        pauseMenuUI.SetActive(false);
+        if (pauseMenuUI != null)
+            pauseMenuUI.SetActive(false);
+        else
+            Debug.LogError("[GameManager] pauseMenuUI is NULL in ResumeGame!");
         Debug.Log("Resuming Game");
     }
 
