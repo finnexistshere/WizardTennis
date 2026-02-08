@@ -304,6 +304,8 @@ public class GameManager : MonoBehaviour
             playerInput.SwitchCurrentActionMap("UI");
         if (pauseMenuUI != null)
             pauseMenuUI.SetActive(true);
+        else
+            Debug.LogError("[GameManager] pauseMenuUI is NULL in PauseGame!");
     }
 
     public void ResumeGame()

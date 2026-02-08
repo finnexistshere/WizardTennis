@@ -33186,7 +33186,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pauseMenuUI: {fileID: 265330815}
-  playerInput: {fileID: 0}
+  playerInput: {fileID: 1756418954}
   pauseCooldown: 0.3
 --- !u!4 &1039338799
 Transform:
