@@ -503,7 +503,7 @@ public class SpellEffects : MonoBehaviour
         Player.GetComponent<MainCharacterMovement>().gravity = 250f;
 
         // Keep it active for a few seconds in real time
-        yield return new WaitForSecondsRealtime(2.0f);
+        yield return new WaitForSecondsRealtime(5.0f);
 
         // Restore normal time and player physics
         Time.timeScale = 1f;

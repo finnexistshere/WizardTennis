@@ -103,6 +103,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         AutoSetupReferences();
         InitializeRacketShader();
         InitializeArrowColors();
+        UpdateSpellBook();
     }
 
     private void InitializeArrowColors()
@@ -122,6 +123,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
         {
             OptionsManager.Instance.OnLanguageChanged += OnLanguageChanged;
         }
+        UpdateSpellBook();
     }
 
     private void AutoSetupReferences()
