@@ -397,6 +397,7 @@ public class PickupEffect : NetworkBehaviour
 
             sc.AddSpell(spellAddress, localizedName, value, spellVisualPrefab,
                        onHitBool, Color1, Color2, spellCastAudio, wizardSpellSound, duration);
+            sc.UpdateSpellBook();
 
             Debug.Log($"[PickupEffect] Added spell '{localizedName}' in singleplayer " +
                      $"(lang: {LanguageHelper.GetLanguageName(currentLang)})");

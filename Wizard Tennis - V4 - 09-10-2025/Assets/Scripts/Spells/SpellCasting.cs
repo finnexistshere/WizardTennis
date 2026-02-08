@@ -282,8 +282,6 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
 
         if (isCasting) return;
 
-        UpdateSpellBook();
-
         if (!string.IsNullOrEmpty(inputSpellAddress) && Time.time - lastInputTime >= inputTimeout)
         {
             inputSpellAddress = "";
@@ -480,7 +478,7 @@ public class Spellcasting : MonoBehaviour, ISpellcasting
     // UTILITY
     // ================================================================
 
-    private void UpdateSpellBook()
+    public void UpdateSpellBook()
     {
         if (spellAddressText != null)
         {
