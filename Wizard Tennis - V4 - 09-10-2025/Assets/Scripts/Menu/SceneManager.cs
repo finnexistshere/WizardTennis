@@ -29,10 +29,10 @@ public class SceneChanger : MonoBehaviour
     public TextMeshProUGUI modeLabel;
 
     [Header("Camera Movement")]
-    public Camera menuCamera;                       // Assign your background camera
-    public Transform mainMenuCamPos;                // Camera position for Main Menu
-    public Transform creditsCamPos;                 // Camera position for Credits
-    public Transform optionsCamPos;                 // Camera position for Options
+    public Camera menuCamera;                      
+    public Transform mainMenuCamPos;
+    public Transform creditsCamPos;
+    public Transform optionsCamPos;
     public Transform MultiplayerCamPos;
     public Transform CustomisationCamPos;
 

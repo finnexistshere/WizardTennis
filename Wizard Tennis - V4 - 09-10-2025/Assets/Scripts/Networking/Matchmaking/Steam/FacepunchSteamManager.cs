@@ -3,13 +3,12 @@ using Steamworks;
 
 /// <summary>
 /// Simple Steam initialization for Facepunch.Steamworks
-/// Place this in your first scene (menu/lobby scene)
 /// </summary>
 public class FacepunchSteamManager : MonoBehaviour
 {
     public static FacepunchSteamManager Instance { get; private set; }
 
-    [SerializeField] private uint appId = 480; // Use 480 for testing, your App ID for production
+    [SerializeField] private uint appId = 480; // Use 480 for testing. CHANGE TO OUR OWN APP ID FOR RELEASE. DO NOT FORGET.
 
     public static bool Initialized { get; private set; }
 

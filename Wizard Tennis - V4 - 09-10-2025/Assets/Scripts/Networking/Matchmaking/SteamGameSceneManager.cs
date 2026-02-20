@@ -3,8 +3,7 @@ using Unity.Netcode;
 using Steamworks;
 
 /// <summary>
-/// Place this script in your game scene (the scene that loads when game starts)
-/// It handles post-connection setup and ensures players are properly initialized
+/// Handles post-connection setup and ensures players are properly initialized
 /// </summary>
 public class SteamGameSceneManager : MonoBehaviour
 {
@@ -210,7 +209,6 @@ public class SteamGameSceneManager : MonoBehaviour
         }
 
         // Disable any components that should only be active on this client's player
-        // (This depends on your player setup - you may need to add more here)
 
         Log("Client setup complete");
     }

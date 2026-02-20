@@ -788,7 +788,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
                     // Run the behaviour locally on each client
                     StartCoroutine(HandleStoneWall(effectObj, 5f));
 
-                    // Trigger your reset logic
+                    // Trigger reset logic
                     Invoke(nameof(resetSpellEffect), 5f);
 
                     Debug.Log("[SpellEffects-Client] Stone Wall Behavior Applied");
@@ -1897,7 +1897,7 @@ public class NetworkedSpellEffects : NetworkBehaviour
 
         // Track vertical velocity for gravity
         float verticalVelocity = knockbackForce.y;
-        float gravity = 25f; // Match your MainCharacterMovement gravity value
+        float gravity = 25f; // Match MainCharacterMovement gravity value
 
         Debug.Log($"[ApplyKnockback] Starting knockback loop:");
         Debug.Log($"  - knockbackForce: {knockbackForce}");

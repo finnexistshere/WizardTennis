@@ -1,5 +1,3 @@
-// Save this as: Assets/Editor/PickupEffectEditor.cs
-
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;

@@ -3,8 +3,8 @@ using UnityEngine;
 public class CameraElasticSway : MonoBehaviour
 {
     [Header("Target Settings")]
-    [SerializeField] public Transform player; // Assign in Inspector or auto-find by tag
-    [SerializeField] public Transform spawnPoint; // optional starting position
+    [SerializeField] public Transform player;
+    [SerializeField] public Transform spawnPoint;
 
     [Header("Camera Settings")]
     [SerializeField] private float maxSway = 2f;       // maximum X offset

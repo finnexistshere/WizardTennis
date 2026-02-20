@@ -3,7 +3,7 @@ using Unity.Netcode;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Attach this to any GameObject in your game scene
+/// Attach this to any GameObject in the game scene
 /// Press F1 to see detailed network and scene state
 /// </summary>
 public class SceneDebugger : MonoBehaviour

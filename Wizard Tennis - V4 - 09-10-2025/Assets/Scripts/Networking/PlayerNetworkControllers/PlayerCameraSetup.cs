@@ -4,8 +4,8 @@ using UnityEngine;
 public class PlayerCameraRig : NetworkBehaviour
 {
     [Header("Camera")]
-    [SerializeField] private GameObject cameraRigPrefab; // assign your camera rig prefab
-    [SerializeField] private Transform cameraSpawnPoint; // optional empty transform behind player
+    [SerializeField] private GameObject cameraRigPrefab;
+    [SerializeField] private Transform cameraSpawnPoint;
 
     private GameObject cameraInstance;
 

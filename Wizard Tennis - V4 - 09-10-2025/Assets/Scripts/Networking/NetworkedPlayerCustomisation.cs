@@ -3,10 +3,8 @@ using Unity.Netcode;
 using NUnit.Framework;
 using System.Collections.Generic;
 
-/// <summary>
-/// Handles networked player customisation - syncs material and color choices across clients
-/// Attach this to your networked player prefab
-/// </summary>
+
+// Handles networked player customisation - syncs material and color choices across clients
 public class NetworkedPlayerCustomisation : NetworkBehaviour
 {
     [Header("Customisation Settings")]
@@ -492,4 +490,6 @@ public class NetworkedPlayerCustomisation : NetworkBehaviour
     //        playerPrefabs = gameManager.pickupPrefabs;
     //    }
     //}
+
+    // You like Green? Yeah I like Green too.
 }
