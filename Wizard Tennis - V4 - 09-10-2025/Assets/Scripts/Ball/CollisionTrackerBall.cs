@@ -114,7 +114,8 @@ public class CollisionTrackerBall : MonoBehaviour
         {
             // Double bounce = lose point
             if (LastHitWizard == "Player")
-                AwardPoint("Opponent", "The AI is stupid and couldn't hit the ball properly");
+                // Setting this to award to the Player instead of the Opponent so that if WE fuck up then the player isn't punished for it.
+                AwardPoint("Player", "The AI is stupid and couldn't hit the ball properly");
             else if (LastHitWizard == "Opponent")
                 AwardPoint("Opponent", "You lose! Your ball bounced too many times!");
         }
