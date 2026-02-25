@@ -14,6 +14,7 @@ public class SceneChanger : MonoBehaviour
     public GameObject MultiplayerMenu;
     public GameObject CustomisationMenu;
     public GameObject QuitPopup;
+    public GameObject DifficultyPanel;
 
     [Header("Help Panels")]
     public GameObject MainMenuHelp;
@@ -29,12 +30,15 @@ public class SceneChanger : MonoBehaviour
     public TextMeshProUGUI modeLabel;
 
     [Header("Camera Movement")]
-    public Camera menuCamera;                      
+    public Camera menuCamera;
     public Transform mainMenuCamPos;
     public Transform creditsCamPos;
     public Transform optionsCamPos;
     public Transform MultiplayerCamPos;
     public Transform CustomisationCamPos;
+
+    [Header("Misc")]
+    public DifficultyManager difficultyManager;
 
     [Tooltip("Higher values = slower camera movement")]
     public float cameraMoveDuration = 1.5f;
@@ -56,6 +60,21 @@ public class SceneChanger : MonoBehaviour
     public void OpenQuitPopup()
     {
         QuitPopup.SetActive(true);
+    }
+
+    public void ConfirmStartGame()
+    {
+        ChangeSceneByIndex(1);
+    }
+
+    public void OpenDifficultyMenu()
+    {
+        difficultyManager.ShowMenu();
+    }
+
+    public void BackFromDifficulty()
+    {
+        difficultyManager.HideMenu();
     }
 
     public void CloseQuitPopup()
