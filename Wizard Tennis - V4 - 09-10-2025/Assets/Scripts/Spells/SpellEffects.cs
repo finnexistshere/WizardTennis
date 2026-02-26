@@ -81,6 +81,9 @@ public class SpellEffects : MonoBehaviour
 
     private string[] allSpells = { "Lightning", "Ice", "Fireball", "Shadow", "Green", "Stone", "Chronos", "Gemini", "Blink", "Jolly", "Mud", "Warp", "Pisces", "Tether" };
 
+    private float originalPlayerRadius;
+    private bool jollyRadiusModified = false;
+
     private void Awake()
     {
         Player = GameObject.Find(PlayerName);
@@ -265,7 +268,19 @@ public class SpellEffects : MonoBehaviour
                 Invoke(nameof(resetSpellEffect), 5f);
                 break;
             case "Jolly":
-                Player.GetComponent<CapsuleCollider>().radius = 2;
+                CapsuleCollider col = Player.GetComponent<CapsuleCollider>();
+
+                if (col != null)
+                {
+                    if (!jollyRadiusModified)
+                    {
+                        originalPlayerRadius = col.radius;
+                        jollyRadiusModified = true;
+                    }
+
+                    col.radius *= 2f; // <- multiplier (Instead of doing a set number like we were before, now that Hit Radius is changed in Difficulty settings)
+                }
+
                 Quaternion jollyRot = Quaternion.identity * Quaternion.Euler(0, -90, 90);
 
                 Transform handBone = jollyHandBone;
@@ -405,7 +420,13 @@ public class SpellEffects : MonoBehaviour
                 Destroy(activeGemini);
                 break;
             case "Jolly":
-                Player.GetComponent<CapsuleCollider>().radius = 1;
+                CapsuleCollider col = Player.GetComponent<CapsuleCollider>();
+
+                if (col != null && jollyRadiusModified)
+                {
+                    col.radius = originalPlayerRadius;
+                    jollyRadiusModified = false;
+                }
 
                 // Find racket mesh and re-enable it
                 Transform racketMesh = FindRacketMesh(Player.transform);
