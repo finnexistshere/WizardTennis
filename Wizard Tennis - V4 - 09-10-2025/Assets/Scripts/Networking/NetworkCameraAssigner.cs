@@ -175,23 +175,24 @@ public class NetworkCameraAssigner : MonoBehaviour
         if (isAssigned)
         {
             Debug.LogWarning($"[NetworkCameraAssigner] Camera {gameObject.name} is already assigned!");
-            return;
         }
 
         if (cameraSwayComponent == null)
         {
             Debug.LogError($"[NetworkCameraAssigner] Cannot assign camera - no CameraElasticSway component!");
-            return;
         }
 
         Debug.Log($"[NetworkCameraAssigner] Assigning {gameObject.name} to player {playerTransform.name}");
 
         // Set up the camera sway component
-        cameraSwayComponent.player = playerTransform;
-        cameraSwayComponent.spawnPoint = spawnTransform;
+        if (cameraSwayComponent != null)
+        {
+            cameraSwayComponent.player = playerTransform;
+            cameraSwayComponent.spawnPoint = spawnTransform;
 
-        // Enable the component and activate the camera
-        cameraSwayComponent.enabled = true;
+            // Enable the component and activate the camera
+            cameraSwayComponent.enabled = true;
+        }
 
         // Enable the Camera component
         Camera cam = GetComponent<Camera>();
