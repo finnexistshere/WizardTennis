@@ -21460,6 +21460,69 @@ MonoBehaviour:
   updateOnStart: 1
   useFormatting: 0
   defaultFontSize: 0
+--- !u!1 &844915680
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 844915682}
+  - component: {fileID: 844915681}
+  m_Layer: 0
+  m_Name: VoiceManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &844915681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 844915680}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1e135a9d2134c548a8134d6e473a6f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Netcode.Transports.Facepunch.FacepunchVoiceManager
+  microphoneDevice: 
+  microphoneFrequency: 48000
+  microphoneBufferSeconds: 2
+  voiceSampleRate: 16000
+  frameMilliseconds: 20
+  silenceThreshold: 0.015
+  voiceActivation: 1
+  pushToTalkKey: 118
+  voiceModifier:
+    type: 0
+    pitch: 1
+    volume: 1
+    distortion: 0
+    robotAmount: 0
+    radioAmount: 0
+  use3DVoice: 0
+  voiceMinDistance: 2
+  voiceMaxDistance: 20
+  defaultPlayerVolume: 1
+--- !u!4 &844915682
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 844915680}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -2.15652, y: 1.42162, z: -8.29469}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &845132628
 GameObject:
   m_ObjectHideFlags: 0
@@ -39699,12 +39762,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1479144565}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2b859b887f858cb43ae8f1cc32e5c431, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LocalTestHelper
-  useLocalTesting: 0
+  useLocalTesting: 1
   ipAddress: 127.0.0.1
   port: 7777
 --- !u!1 &1487472478
@@ -53378,3 +53441,4 @@ SceneRoots:
   - {fileID: 279181990}
   - {fileID: 105307966}
   - {fileID: 215335651}
+  - {fileID: 844915682}

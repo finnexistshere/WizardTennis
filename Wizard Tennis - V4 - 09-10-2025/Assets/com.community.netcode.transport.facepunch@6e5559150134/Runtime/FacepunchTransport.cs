@@ -53,7 +53,33 @@ namespace Netcode.Transports.Facepunch
         {
             public SteamId steamId;
             public SocketConnection connection;
+
         }
+
+        public const byte VoicePacket = 0xF1;
+
+        public event Action<ulong, ArraySegment<byte>> OnVoiceDataReceived;
+
+        public bool IsServer => socketManager != null;
+        public bool IsClient => connectionManager != null;
+
+        public IReadOnlyDictionary<ulong, Steamworks.Data.Connection> ServerConnections
+        {
+            get
+            {
+                var result = new Dictionary<ulong, Steamworks.Data.Connection>();
+
+                foreach (var pair in connectedClients)
+                    result[pair.Key] = pair.Value.connection;
+
+                return result;
+            }
+        }
+
+        public Steamworks.Data.Connection ClientConnection =>
+            connectionManager != null
+                ? connectionManager.Connection
+                : default;
 
         #region MonoBehaviour Messages
 
@@ -224,7 +250,12 @@ namespace Netcode.Transports.Facepunch
                 Debug.Log($"[{nameof(FacepunchTransport)}] - Disconnected Steam user {info.Identity.SteamId}.");
         }
 
-        unsafe void IConnectionManager.OnMessage(IntPtr data, int size, long messageNum, long recvTime, int channel)
+        unsafe void IConnectionManager.OnMessage(
+            IntPtr data,
+            int size,
+            long messageNum,
+            long recvTime,
+            int channel)
         {
             EnsurePayloadCapacity(size);
 
@@ -233,7 +264,32 @@ namespace Netcode.Transports.Facepunch
                 UnsafeUtility.MemCpy(payload, (byte*)data, size);
             }
 
-            InvokeOnTransportEvent(NetworkEvent.Data, ServerClientId, new ArraySegment<byte>(payloadCache, 0, size), Time.realtimeSinceStartup);
+            if (size > 0 && payloadCache[0] == VoicePacket)
+            {
+                byte[] voiceData = new byte[size - 1];
+
+                Buffer.BlockCopy(
+                    payloadCache,
+                    1,
+                    voiceData,
+                    0,
+                    size - 1
+                );
+
+                OnVoiceDataReceived?.Invoke(
+                    ServerClientId,
+                    new ArraySegment<byte>(voiceData)
+                );
+
+                return;
+            }
+
+            InvokeOnTransportEvent(
+                NetworkEvent.Data,
+                ServerClientId,
+                new ArraySegment<byte>(payloadCache, 0, size),
+                Time.realtimeSinceStartup
+            );
         }
 
         #endregion
@@ -280,7 +336,14 @@ namespace Netcode.Transports.Facepunch
                 Debug.LogWarning($"[{nameof(FacepunchTransport)}] - Failed to diconnect client with ID {connection.Id}, client not connected.");
         }
 
-        unsafe void ISocketManager.OnMessage(SocketConnection connection, NetIdentity identity, IntPtr data, int size, long messageNum, long recvTime, int channel)
+        unsafe void ISocketManager.OnMessage(
+            SocketConnection connection,
+            NetIdentity identity,
+            IntPtr data,
+            int size,
+            long messageNum,
+            long recvTime,
+            int channel)
         {
             EnsurePayloadCapacity(size);
 
@@ -289,7 +352,32 @@ namespace Netcode.Transports.Facepunch
                 UnsafeUtility.MemCpy(payload, (byte*)data, size);
             }
 
-            InvokeOnTransportEvent(NetworkEvent.Data, connection.Id, new ArraySegment<byte>(payloadCache, 0, size), Time.realtimeSinceStartup);
+            if (size > 0 && payloadCache[0] == VoicePacket)
+            {
+                byte[] voiceData = new byte[size - 1];
+
+                Buffer.BlockCopy(
+                    payloadCache,
+                    1,
+                    voiceData,
+                    0,
+                    size - 1
+                );
+
+                OnVoiceDataReceived?.Invoke(
+                    connection.Id,
+                    new ArraySegment<byte>(voiceData)
+                );
+
+                return;
+            }
+
+            InvokeOnTransportEvent(
+                NetworkEvent.Data,
+                connection.Id,
+                new ArraySegment<byte>(payloadCache, 0, size),
+                Time.realtimeSinceStartup
+            );
         }
 
         #endregion
@@ -312,5 +400,74 @@ namespace Netcode.Transports.Facepunch
         }
 
         #endregion
+
+        #region Voice Chat Methods
+
+        public void SendVoiceToServer(byte[] data)
+        {
+            if (connectionManager == null)
+                return;
+
+            if (connectionManager.Connection == null)
+                return;
+
+            byte[] packet = new byte[data.Length + 1];
+
+            packet[0] = VoicePacket;
+
+            Buffer.BlockCopy(
+                data,
+                0,
+                packet,
+                1,
+                data.Length
+            );
+
+            connectionManager.Connection.SendMessage(
+                packet,
+                SendType.Unreliable
+            );
+        }
+
+        public void SendVoiceToClient(ulong clientId, byte[] data)
+        {
+            if (connectedClients == null)
+            {
+                Debug.LogError("[Voice] connectedClients dictionary is null — " +
+                                "Initialize() was never called on this FacepunchTransport instance.");
+                return;
+            }
+
+            if (!connectedClients.TryGetValue(clientId, out Client client))
+            {
+                if (LogLevel <= LogLevel.Normal)
+                    Debug.LogWarning($"[{nameof(FacepunchTransport)}] - Failed to send voice packet " +
+                                      $"to remote client with ID {clientId}, client not connected.");
+                return;
+            }
+
+            if (client == null)
+            {
+                Debug.LogError($"[Voice] connectedClients contained a null entry for client {clientId}.");
+                return;
+            }
+
+            byte[] packet = new byte[data.Length + 1];
+            packet[0] = VoicePacket;
+
+            Buffer.BlockCopy(data, 0, packet, 1, data.Length);
+
+            try
+            {
+                client.connection.SendMessage(packet, SendType.Unreliable);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Voice] client.connection.SendMessage threw for client {clientId}: {e}");
+            }
+        }
+
+        #endregion
+
     }
 }
