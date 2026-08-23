@@ -21489,6 +21489,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d1e135a9d2134c548a8134d6e473a6f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Netcode.Transports.Facepunch.FacepunchVoiceManager
+  networkTransportReference: {fileID: 1479144566}
   microphoneDevice: 
   microphoneFrequency: 48000
   microphoneBufferSeconds: 2
@@ -39750,7 +39751,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1479144565}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4168fc8fd4e9cf74ab10a25b7d57354a, type: 3}
   m_Name: 
@@ -39762,7 +39763,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1479144565}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2b859b887f858cb43ae8f1cc32e5c431, type: 3}
   m_Name: 
